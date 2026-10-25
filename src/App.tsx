@@ -5,6 +5,7 @@ import { Sidebar, NavTab } from './components/layout/Sidebar';
 import { NewEntryModal } from './components/pos/NewEntryModal';
 import { CheckoutModal } from './components/pos/CheckoutModal';
 import { AddSnackModal } from './components/pos/AddSnackModal';
+import { ReceiptModal } from './components/pos/ReceiptModal';
 
 import { DashboardPage } from './pages/DashboardPage';
 import { ActiveSessionsPage } from './pages/ActiveSessionsPage';
@@ -16,7 +17,9 @@ import { SettingsPage } from './pages/SettingsPage';
 import { AuditLogPage } from './pages/AuditLogPage';
 
 import { Station, Session } from './types';
-import { db } from './services/storage';
+import { db, VAULT_DATA_CHANGED_EVENT } from './services/storage';
+import { CheckCircle, Printer, X } from 'lucide-react';
+import { formatRupees } from './utils/formatters';
 
 const AppContent: React.FC = () => {
   const { currentUser, isAdmin } = useAuth();
@@ -33,6 +36,11 @@ const AppContent: React.FC = () => {
   const [checkoutSession, setCheckoutSession] = useState<Session | null>(null);
   const [addSnackSession, setAddSnackSession] = useState<Session | null>(null);
 
+  // Settlement feedback & Receipt modals
+  const [completedToastSession, setCompletedToastSession] = useState<Session | null>(null);
+  const [receiptModalSession, setReceiptModalSession] = useState<Session | null>(null);
+  const [autoPrintReceipt, setAutoPrintReceipt] = useState(false);
+
   // Sync state from database
   const refreshData = () => {
     setStations(db.getStations());
@@ -41,10 +49,26 @@ const AppContent: React.FC = () => {
 
   useEffect(() => {
     refreshData();
+    const handleDataChanged = () => {
+      refreshData();
+    };
+    window.addEventListener(VAULT_DATA_CHANGED_EVENT, handleDataChanged);
     // Auto sync periodically
     const timer = setInterval(refreshData, 15000);
-    return () => clearInterval(timer);
+    return () => {
+      window.removeEventListener(VAULT_DATA_CHANGED_EVENT, handleDataChanged);
+      clearInterval(timer);
+    };
   }, []);
+
+  // Auto-dismiss toast after 7 seconds
+  useEffect(() => {
+    if (!completedToastSession) return;
+    const timer = setTimeout(() => {
+      setCompletedToastSession(null);
+    }, 7000);
+    return () => clearTimeout(timer);
+  }, [completedToastSession]);
 
   // Global Keyboard Shortcuts (Alt+N for new entry)
   useEffect(() => {
@@ -77,6 +101,18 @@ const AppContent: React.FC = () => {
     if (session) {
       setCheckoutSession(session);
     }
+  };
+
+  const handleSessionCompleted = (completed?: Session) => {
+    refreshData();
+    if (completed) {
+      setCompletedToastSession(completed);
+    }
+  };
+
+  const handlePrintReceipt = (session: Session) => {
+    setReceiptModalSession(session);
+    setAutoPrintReceipt(true);
   };
 
   const activeCount = sessions.filter((s) => s.status === 'active').length;
@@ -114,6 +150,7 @@ const AppContent: React.FC = () => {
                   setPreselectedStationId(null);
                   setNewEntryOpen(true);
                 }}
+                onPrintReceipt={handlePrintReceipt}
               />
             )}
 
@@ -157,9 +194,8 @@ const AppContent: React.FC = () => {
         isOpen={Boolean(checkoutSession)}
         onClose={() => setCheckoutSession(null)}
         session={checkoutSession}
-        onSessionCompleted={() => {
-          refreshData();
-        }}
+        onSessionCompleted={handleSessionCompleted}
+        onPrintReceipt={handlePrintReceipt}
       />
 
       <AddSnackModal
@@ -170,6 +206,67 @@ const AppContent: React.FC = () => {
           refreshData();
         }}
       />
+
+      <ReceiptModal
+        isOpen={Boolean(receiptModalSession)}
+        onClose={() => {
+          setReceiptModalSession(null);
+          setAutoPrintReceipt(false);
+        }}
+        session={receiptModalSession}
+        autoPrint={autoPrintReceipt}
+      />
+
+      {/* Instant Settlement Success Toast (Non-blocking) */}
+      {completedToastSession && (
+        <div className="fixed top-5 right-5 z-50 max-w-md w-full bg-slate-900/95 backdrop-blur-md border border-emerald-500/70 shadow-2xl shadow-emerald-950/50 rounded-xl p-4 animate-in fade-in slide-in-from-top-3 duration-200">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-start gap-3">
+              <div className="w-8 h-8 rounded-full bg-emerald-500/20 border border-emerald-500/50 flex items-center justify-center text-emerald-400 shrink-0 mt-0.5">
+                <CheckCircle className="w-5 h-5" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h4 className="text-sm font-bold text-white">Payment Settled</h4>
+                  <span className="text-2xs px-2 py-0.5 rounded-full bg-emerald-950 border border-emerald-700/60 text-emerald-300 font-mono font-bold">
+                    {formatRupees(completedToastSession.finalBillPaise)}
+                  </span>
+                </div>
+                <p className="text-xs text-slate-300 mt-1">
+                  <strong>{completedToastSession.customerName}</strong> • {completedToastSession.stationName} is now <span className="text-emerald-400 font-semibold">Available</span>
+                </p>
+                {completedToastSession.payment?.changeDuePaise! > 0 && (
+                  <p className="text-2xs text-emerald-300 font-mono mt-0.5">
+                    Returned {formatRupees(completedToastSession.payment?.changeDuePaise)} cash change
+                  </p>
+                )}
+                <div className="flex items-center gap-2 mt-2.5">
+                  <button
+                    onClick={() => {
+                      setReceiptModalSession(completedToastSession);
+                      setAutoPrintReceipt(false);
+                    }}
+                    className="px-2.5 py-1 rounded-md bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-200 flex items-center gap-1.5 transition-colors border border-slate-700 shadow-sm"
+                  >
+                    <Printer className="w-3.5 h-3.5 text-amber-400" />
+                    <span>Print Receipt</span>
+                  </button>
+                  <span className="text-3xs text-slate-500 uppercase font-mono">
+                    {completedToastSession.payment?.method}
+                  </span>
+                </div>
+              </div>
+            </div>
+            <button
+              onClick={() => setCompletedToastSession(null)}
+              className="text-slate-400 hover:text-slate-200 p-1 rounded-md hover:bg-slate-800 transition-colors"
+              title="Dismiss"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

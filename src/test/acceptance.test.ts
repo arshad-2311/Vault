@@ -13,7 +13,7 @@ import {
   paiseToRupees,
   formatPaiseToInputRupees,
 } from '../utils/formatters';
-import { DEFAULT_PRICING_CONFIG, db, INITIAL_USERS } from '../services/storage';
+import { DEFAULT_PRICING_CONFIG, db, INITIAL_USERS, subscribeToDataChanges } from '../services/storage';
 import { SessionItem, User } from '../types';
 
 describe('VAULT POS Acceptance & Financial Correctness Test Suite', () => {
@@ -397,5 +397,38 @@ describe('VAULT POS Acceptance & Financial Correctness Test Suite', () => {
       const releasedStation = stationsAfterCheckout.find((s) => s.id === station.id);
       expect(releasedStation?.status).toBe('available');
     }
+  });
+
+  // Acceptance Test 18: Instant event emission fires data change listeners without reload
+  it('Scenario 18: Session completion emits data change event immediately for zero-reload reactive updates', () => {
+    let changeFired = false;
+    const unsubscribe = subscribeToDataChanges(() => {
+      changeFired = true;
+    });
+
+    const station = db.getStations().find((s) => s.status === 'available');
+    if (station) {
+      const session = db.createSession({
+        customerName: 'Instant Gamer',
+        gamingType: station.gamingType,
+        stationId: station.id,
+        billingType: 'hourly',
+        startTimeISO: new Date().toISOString(),
+        actor: empUser,
+      });
+
+      changeFired = false;
+      db.completeSession({
+        sessionId: session.id,
+        endTimeISO: new Date().toISOString(),
+        paymentMethod: 'gpay',
+        gpayAmountPaise: session.finalBillPaise,
+        cashAmountPaise: 0,
+        actor: empUser,
+      });
+
+      expect(changeFired).toBe(true);
+    }
+    unsubscribe();
   });
 });

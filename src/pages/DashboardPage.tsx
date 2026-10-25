@@ -14,12 +14,13 @@ import {
   ArrowUpRight,
   RefreshCw,
   Plus,
+  Printer,
 } from 'lucide-react';
 import { Station, Session, DashboardMetrics } from '../types';
 import { StationCard } from '../components/pos/StationCard';
 import { Badge } from '../components/common/Badge';
 import { Button } from '../components/common/Button';
-import { db } from '../services/storage';
+import { db, VAULT_DATA_CHANGED_EVENT } from '../services/storage';
 import { formatRupees, formatDateTime, getTodayDateString } from '../utils/formatters';
 
 interface DashboardPageProps {
@@ -28,6 +29,7 @@ interface DashboardPageProps {
   onEndSession: (sessionId: string) => void;
   onViewAllTransactions: () => void;
   onOpenNewEntry: () => void;
+  onPrintReceipt?: (session: Session) => void;
 }
 
 export const DashboardPage: React.FC<DashboardPageProps> = ({
@@ -36,6 +38,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   onEndSession,
   onViewAllTransactions,
   onOpenNewEntry,
+  onPrintReceipt,
 }) => {
   // Synchronous initial state guarantees no 0/0 stations or missing cards flicker on mount
   const [stations, setStations] = useState<Station[]>(() => db.getStations());
@@ -85,9 +88,16 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
 
   useEffect(() => {
     loadData();
+    const handleDataChanged = () => {
+      loadData();
+    };
+    window.addEventListener(VAULT_DATA_CHANGED_EVENT, handleDataChanged);
     // Auto-refresh every 30 seconds for live counter monitoring
     const interval = setInterval(loadData, 30000);
-    return () => clearInterval(interval);
+    return () => {
+      window.removeEventListener(VAULT_DATA_CHANGED_EVENT, handleDataChanged);
+      clearInterval(interval);
+    };
   }, [rangePreset]);
 
   // Find active sessions map
@@ -361,6 +371,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                   <th className="px-4 py-3">Payment Split</th>
                   <th className="px-4 py-3">Status</th>
                   <th className="px-4 py-3 text-right">Settled Total</th>
+                  <th className="px-4 py-3 text-right">Receipt</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/80">
@@ -429,6 +440,20 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                     </td>
                     <td className="px-4 py-3 text-right font-mono font-bold text-sm text-slate-100">
                       {formatRupees(s.finalBillPaise)}
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      {onPrintReceipt && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          type="button"
+                          onClick={() => onPrintReceipt(s)}
+                          leftIcon={<Printer className="w-3.5 h-3.5 text-amber-400" />}
+                          className="text-2xs"
+                        >
+                          Slip
+                        </Button>
+                      )}
                     </td>
                   </tr>
                 ))}

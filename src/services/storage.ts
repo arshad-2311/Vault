@@ -28,6 +28,26 @@ const STORAGE_KEYS = {
   CURRENT_USER: 'vault_pos_current_user',
 };
 
+export const VAULT_DATA_CHANGED_EVENT = 'vault_pos_data_changed';
+
+const inMemoryListeners = new Set<() => void>();
+
+export function subscribeToDataChanges(callback: () => void): () => void {
+  inMemoryListeners.add(callback);
+  return () => inMemoryListeners.delete(callback);
+}
+
+export function emitDataChanged(): void {
+  inMemoryListeners.forEach((fn) => {
+    try {
+      fn();
+    } catch {}
+  });
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent(VAULT_DATA_CHANGED_EVENT));
+  }
+}
+
 // Initial default seed configuration
 export const DEFAULT_PRICING_CONFIG: PricingConfig = {
   id: 'cfg-default',
@@ -564,6 +584,7 @@ class PosStorageEngine {
     if (index !== -1) {
       stations[index] = { ...stations[index], ...updates };
       safeStorage.setItem(STORAGE_KEYS.STATIONS, JSON.stringify(stations));
+      emitDataChanged();
     }
   }
 
@@ -805,6 +826,7 @@ class PosStorageEngine {
       newState: newSession,
     });
 
+    emitDataChanged();
     return newSession;
   }
 
@@ -872,6 +894,7 @@ class PosStorageEngine {
       details: `Added ${quantity}x ${snackName} (₹${(newItem.lineTotalPaise / 100).toFixed(2)}) to session for ${session.customerName}`,
     });
 
+    emitDataChanged();
     return session;
   }
 
@@ -1005,6 +1028,7 @@ class PosStorageEngine {
       newState: session,
     });
 
+    emitDataChanged();
     return session;
   }
 
@@ -1054,6 +1078,7 @@ class PosStorageEngine {
       details: `Voided transaction for ${session.customerName} (Original Bill: ₹${(session.finalBillPaise / 100).toFixed(2)}). Reason: ${reason}`,
     });
 
+    emitDataChanged();
     return session;
   }
 

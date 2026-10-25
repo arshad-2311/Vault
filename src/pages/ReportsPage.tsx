@@ -17,7 +17,7 @@ import {
 import { DashboardMetrics, Session } from '../types';
 import { Button } from '../components/common/Button';
 import { Badge } from '../components/common/Badge';
-import { db } from '../services/storage';
+import { db, VAULT_DATA_CHANGED_EVENT } from '../services/storage';
 import { formatRupees, getTodayDateString, formatDateOnly } from '../utils/formatters';
 
 export const ReportsPage: React.FC = () => {
@@ -67,6 +67,11 @@ export const ReportsPage: React.FC = () => {
 
   useEffect(() => {
     calculateReport();
+    const handleDataChanged = () => {
+      calculateReport();
+    };
+    window.addEventListener(VAULT_DATA_CHANGED_EVENT, handleDataChanged);
+    return () => window.removeEventListener(VAULT_DATA_CHANGED_EVENT, handleDataChanged);
   }, [rangeMode, selectedDate, customStart, customEnd]);
 
   const handleExportCSV = () => {

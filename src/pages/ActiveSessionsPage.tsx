@@ -15,7 +15,7 @@ import {
 import { Session, Station } from '../types';
 import { Button } from '../components/common/Button';
 import { Badge } from '../components/common/Badge';
-import { db } from '../services/storage';
+import { db, VAULT_DATA_CHANGED_EVENT } from '../services/storage';
 import {
   formatRupees,
   formatTimeOnly,
@@ -45,11 +45,18 @@ export const ActiveSessionsPage: React.FC<ActiveSessionsPageProps> = ({
 
   useEffect(() => {
     loadData();
+    const handleDataChanged = () => {
+      loadData();
+    };
+    window.addEventListener(VAULT_DATA_CHANGED_EVENT, handleDataChanged);
     // Update live clock every second
     const interval = setInterval(() => {
       setNowMs(Date.now());
     }, 1000);
-    return () => clearInterval(interval);
+    return () => {
+      window.removeEventListener(VAULT_DATA_CHANGED_EVENT, handleDataChanged);
+      clearInterval(interval);
+    };
   }, []);
 
   const filteredSessions = sessions.filter((s) => {

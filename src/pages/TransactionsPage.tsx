@@ -18,8 +18,9 @@ import { Session, PaymentMethod, GamingType } from '../types';
 import { Button } from '../components/common/Button';
 import { Badge } from '../components/common/Badge';
 import { Modal } from '../components/common/Modal';
+import { ReceiptModal } from '../components/pos/ReceiptModal';
 import { useAuth } from '../../src/context/AuthContext';
-import { db } from '../services/storage';
+import { db, VAULT_DATA_CHANGED_EVENT } from '../services/storage';
 import { formatRupees, formatDateTime, formatDuration } from '../utils/formatters';
 
 export const TransactionsPage: React.FC = () => {
@@ -41,6 +42,8 @@ export const TransactionsPage: React.FC = () => {
 
   // Selected Session for Details Modal
   const [selectedSession, setSelectedSession] = useState<Session | null>(null);
+  const [receiptSession, setReceiptSession] = useState<Session | null>(null);
+  const [autoPrintReceipt, setAutoPrintReceipt] = useState(false);
 
   // Void Modal
   const [voidModalOpen, setVoidModalOpen] = useState(false);
@@ -53,6 +56,11 @@ export const TransactionsPage: React.FC = () => {
 
   useEffect(() => {
     loadData();
+    const handleDataChanged = () => {
+      loadData();
+    };
+    window.addEventListener(VAULT_DATA_CHANGED_EVENT, handleDataChanged);
+    return () => window.removeEventListener(VAULT_DATA_CHANGED_EVENT, handleDataChanged);
   }, []);
 
   // Filter Logic
@@ -367,15 +375,31 @@ export const TransactionsPage: React.FC = () => {
                     </td>
 
                     <td className="px-4 py-3 text-right">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setSelectedSession(s)}
-                        leftIcon={<Eye className="w-3.5 h-3.5" />}
-                        className="text-2xs"
-                      >
-                        Details
-                      </Button>
+                      <div className="flex items-center justify-end gap-1.5">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          type="button"
+                          onClick={() => {
+                            setReceiptSession(s);
+                            setAutoPrintReceipt(false);
+                          }}
+                          leftIcon={<Printer className="w-3.5 h-3.5 text-amber-400" />}
+                          className="text-2xs"
+                        >
+                          Receipt
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          type="button"
+                          onClick={() => setSelectedSession(s)}
+                          leftIcon={<Eye className="w-3.5 h-3.5" />}
+                          className="text-2xs"
+                        >
+                          Details
+                        </Button>
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -575,9 +599,23 @@ export const TransactionsPage: React.FC = () => {
                 <div />
               )}
 
-              <Button variant="secondary" size="sm" onClick={() => setSelectedSession(null)}>
-                Close
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  type="button"
+                  onClick={() => {
+                    setReceiptSession(selectedSession);
+                    setAutoPrintReceipt(false);
+                  }}
+                  leftIcon={<Printer className="w-3.5 h-3.5 text-amber-400" />}
+                >
+                  Print Receipt
+                </Button>
+                <Button variant="secondary" size="sm" onClick={() => setSelectedSession(null)}>
+                  Close
+                </Button>
+              </div>
             </div>
           </div>
         </Modal>
@@ -634,6 +672,14 @@ export const TransactionsPage: React.FC = () => {
           </div>
         </Modal>
       )}
+
+      {/* Dedicated Thermal Receipt Modal */}
+      <ReceiptModal
+        isOpen={Boolean(receiptSession)}
+        onClose={() => setReceiptSession(null)}
+        session={receiptSession}
+        autoPrint={autoPrintReceipt}
+      />
     </div>
   );
 };
