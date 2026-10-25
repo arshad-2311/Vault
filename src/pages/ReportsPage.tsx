@@ -222,7 +222,7 @@ export const ReportsPage: React.FC = () => {
               <div className="text-2xl font-bold font-mono text-emerald-100 mt-1 tabular-nums">
                 {formatRupees(metrics.cashCollectionsPaise)}
               </div>
-              <p className="text-2xs text-slate-400 mt-1">To match daily cash closing</p>
+              <p className="text-2xs text-slate-400 mt-1">Physical currency received in register</p>
             </div>
 
             <div className="p-4 rounded-xl bg-slate-900 border border-amber-900/30">

@@ -14,7 +14,7 @@ export type GamingType = 'ps5' | 'pool';
 export type BillingType = 'hourly' | 'fixed';
 export type SessionStatus = 'active' | 'completed' | 'cancelled';
 export type PaymentMethod = 'gpay' | 'cash' | 'split';
-export type PaymentStatus = 'PAID' | 'PARTIAL' | 'UNPAID' | 'VOIDED';
+export type PaymentStatus = 'PAID' | 'PARTIAL' | 'UNPAID' | 'OVERPAID_CHANGE_DUE' | 'VOIDED';
 
 export interface Station {
   id: string;
@@ -53,6 +53,8 @@ export interface PaymentRecord {
   totalReceivedPaise: number;
   finalBillPaise: number;
   outstandingBalancePaise: number;
+  changeDuePaise?: number; // Change returned to customer for cash overpayment
+  discrepancyPaise?: number; // Explicit overpayment/discrepancy notes
   recordedBy: string;
   recordedByName: string;
   timestamp: string;

@@ -952,13 +952,6 @@ class PosStorageEngine {
     }
 
     const totalReceivedPaise = gpayAmountPaise + cashAmountPaise;
-    const outstandingBalancePaise = Math.max(0, billBreakdown.finalBillPaise - totalReceivedPaise);
-    const paymentStatus =
-      totalReceivedPaise >= billBreakdown.finalBillPaise
-        ? 'PAID'
-        : totalReceivedPaise > 0
-        ? 'PARTIAL'
-        : 'UNPAID';
 
     const paymentRecord: PaymentRecord = {
       id: `pay-${Date.now()}`,
@@ -968,11 +961,12 @@ class PosStorageEngine {
       cashAmountPaise,
       totalReceivedPaise,
       finalBillPaise: billBreakdown.finalBillPaise,
-      outstandingBalancePaise,
+      outstandingBalancePaise: paymentValidation.outstandingBalancePaise,
+      changeDuePaise: paymentValidation.changeDuePaise,
       recordedBy: actor.id,
       recordedByName: actor.displayName,
       timestamp: endTimeISO,
-      status: paymentStatus,
+      status: paymentValidation.paymentStatus,
       notes,
     };
 

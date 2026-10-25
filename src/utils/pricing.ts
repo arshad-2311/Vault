@@ -163,13 +163,16 @@ export function calculateFinalBill(params: {
 }
 
 /**
- * Validates financial payment inputs with strict zero-loss checks.
+ * Validates financial payment inputs with strict zero-loss checks and integer paise arithmetic.
  */
 export interface PaymentValidationResult {
   isValid: boolean;
   error?: string;
   totalReceivedPaise: number;
   outstandingBalancePaise: number;
+  changeDuePaise: number;
+  paymentStatus: 'PAID' | 'PARTIAL' | 'UNPAID' | 'OVERPAID_CHANGE_DUE';
+  discrepancyNote?: string;
 }
 
 export function validatePaymentAmounts(params: {
@@ -187,6 +190,8 @@ export function validatePaymentAmounts(params: {
       error: 'Payment amounts cannot be negative.',
       totalReceivedPaise: 0,
       outstandingBalancePaise: finalBillPaise,
+      changeDuePaise: 0,
+      paymentStatus: 'UNPAID',
     };
   }
 
@@ -200,6 +205,8 @@ export function validatePaymentAmounts(params: {
         error: 'Cash amount must be ₹0 when method is GPay only.',
         totalReceivedPaise: totalReceived,
         outstandingBalancePaise: Math.max(0, finalBillPaise - totalReceived),
+        changeDuePaise: 0,
+        paymentStatus: 'UNPAID',
       };
     }
   } else if (method === 'cash') {
@@ -210,6 +217,8 @@ export function validatePaymentAmounts(params: {
         error: 'GPay amount must be ₹0 when method is Cash only.',
         totalReceivedPaise: totalReceived,
         outstandingBalancePaise: Math.max(0, finalBillPaise - totalReceived),
+        changeDuePaise: 0,
+        paymentStatus: 'UNPAID',
       };
     }
   } else if (method === 'split') {
@@ -220,35 +229,102 @@ export function validatePaymentAmounts(params: {
         error: 'Split payments require positive amounts for both GPay and Cash.',
         totalReceivedPaise: totalReceived,
         outstandingBalancePaise: Math.max(0, finalBillPaise - totalReceived),
+        changeDuePaise: 0,
+        paymentStatus: 'UNPAID',
       };
     }
   }
 
-  // Check overpayment
-  if (totalReceived > finalBillPaise) {
+  // 1. Zero payment
+  if (totalReceived === 0 && finalBillPaise > 0) {
+    if (!allowPartial) {
+      return {
+        isValid: false,
+        error: 'Please enter payment amount.',
+        totalReceivedPaise: 0,
+        outstandingBalancePaise: finalBillPaise,
+        changeDuePaise: 0,
+        paymentStatus: 'UNPAID',
+      };
+    }
     return {
-      isValid: false,
-      error: `Total received (₹${(totalReceived / 100).toFixed(2)}) exceeds final bill (₹${(finalBillPaise / 100).toFixed(2)}). Change must be returned before recording.`,
-      totalReceivedPaise: totalReceived,
-      outstandingBalancePaise: 0,
+      isValid: true,
+      totalReceivedPaise: 0,
+      outstandingBalancePaise: finalBillPaise,
+      changeDuePaise: 0,
+      paymentStatus: 'UNPAID',
     };
   }
 
-  // Check partial payment policy
+  // 2. Partial payment (total < bill)
   if (totalReceived < finalBillPaise) {
+    const outstanding = finalBillPaise - totalReceived;
     if (!allowPartial) {
       return {
         isValid: false,
         error: `Partial payments are not enabled. Received ₹${(totalReceived / 100).toFixed(2)} does not match bill ₹${(finalBillPaise / 100).toFixed(2)}.`,
         totalReceivedPaise: totalReceived,
-        outstandingBalancePaise: finalBillPaise - totalReceived,
+        outstandingBalancePaise: outstanding,
+        changeDuePaise: 0,
+        paymentStatus: 'PARTIAL',
       };
     }
+    return {
+      isValid: true,
+      totalReceivedPaise: totalReceived,
+      outstandingBalancePaise: outstanding,
+      changeDuePaise: 0,
+      paymentStatus: 'PARTIAL',
+    };
   }
 
+  // 3. Exact settlement
+  if (totalReceived === finalBillPaise) {
+    return {
+      isValid: true,
+      totalReceivedPaise: totalReceived,
+      outstandingBalancePaise: 0,
+      changeDuePaise: 0,
+      paymentStatus: 'PAID',
+    };
+  }
+
+  // 4. Overpayment (total > bill)
+  const excessPaise = totalReceived - finalBillPaise;
+
+  // Case 4A: Pure GPay overpayment (discrepancy that cannot dispense cash change automatically)
+  if (method === 'gpay') {
+    return {
+      isValid: false,
+      error: `GPay payment of ₹${(gpayAmountPaise / 100).toFixed(2)} exceeds bill of ₹${(finalBillPaise / 100).toFixed(2)} by ₹${(excessPaise / 100).toFixed(2)}. Digital transfers cannot dispense cash change without explicit manager adjustment.`,
+      totalReceivedPaise: totalReceived,
+      outstandingBalancePaise: 0,
+      changeDuePaise: 0,
+      paymentStatus: 'UNPAID',
+      discrepancyNote: `UPI overpayment by ₹${(excessPaise / 100).toFixed(2)}`,
+    };
+  }
+
+  // Case 4B: Split payment where GPay alone exceeds the entire bill
+  if (method === 'split' && gpayAmountPaise > finalBillPaise) {
+    return {
+      isValid: false,
+      error: `GPay portion (₹${(gpayAmountPaise / 100).toFixed(2)}) already exceeds final bill (₹${(finalBillPaise / 100).toFixed(2)}). Adjust GPay before splitting.`,
+      totalReceivedPaise: totalReceived,
+      outstandingBalancePaise: 0,
+      changeDuePaise: 0,
+      paymentStatus: 'UNPAID',
+    };
+  }
+
+  // Case 4C: Cash overpayment (or split where excess is from physical cash tendered) -> Return Cash Change
   return {
     isValid: true,
     totalReceivedPaise: totalReceived,
-    outstandingBalancePaise: Math.max(0, finalBillPaise - totalReceived),
+    outstandingBalancePaise: 0,
+    changeDuePaise: excessPaise,
+    paymentStatus: 'OVERPAID_CHANGE_DUE',
+    discrepancyNote: `Cash change due: ₹${(excessPaise / 100).toFixed(2)}`,
   };
 }
+

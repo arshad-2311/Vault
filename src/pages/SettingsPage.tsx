@@ -107,7 +107,7 @@ export const SettingsPage: React.FC = () => {
   const handleResetDemo = () => {
     if (
       window.confirm(
-        'Warning: This will reset all demo sessions, closings, and seed data to the clean initial demo state. Continue?'
+        'Warning: This will reset all demo sessions, transactions, and seed data to the clean initial demo state. Continue?'
       )
     ) {
       db.resetToDemoData();

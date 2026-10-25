@@ -11,7 +11,6 @@ import { ActiveSessionsPage } from './pages/ActiveSessionsPage';
 import { TransactionsPage } from './pages/TransactionsPage';
 import { SnacksPage } from './pages/SnacksPage';
 import { ReportsPage } from './pages/ReportsPage';
-import { CashClosingPage } from './pages/CashClosingPage';
 import { EmployeesPage } from './pages/EmployeesPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { AuditLogPage } from './pages/AuditLogPage';
@@ -23,9 +22,9 @@ const AppContent: React.FC = () => {
   const { currentUser, isAdmin } = useAuth();
   const [activeTab, setActiveTab] = useState<NavTab>('dashboard');
 
-  // Stations & Active sessions state
-  const [stations, setStations] = useState<Station[]>([]);
-  const [sessions, setSessions] = useState<Session[]>([]);
+  // Stations & Active sessions state - synchronously loaded from storage
+  const [stations, setStations] = useState<Station[]>(() => db.getStations());
+  const [sessions, setSessions] = useState<Session[]>(() => db.getSessions());
 
   // Modals state
   const [newEntryOpen, setNewEntryOpen] = useState(false);
@@ -134,8 +133,6 @@ const AppContent: React.FC = () => {
             {activeTab === 'snacks' && <SnacksPage />}
 
             {activeTab === 'reports' && <ReportsPage />}
-
-            {activeTab === 'closing' && <CashClosingPage />}
 
             {activeTab === 'employees' && <EmployeesPage />}
 

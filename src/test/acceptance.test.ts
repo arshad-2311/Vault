@@ -11,16 +11,17 @@ import {
   formatRupees,
   rupeesToPaise,
   paiseToRupees,
+  formatPaiseToInputRupees,
 } from '../utils/formatters';
 import { DEFAULT_PRICING_CONFIG, db, INITIAL_USERS } from '../services/storage';
 import { SessionItem, User } from '../types';
 
-describe('Gaming Centre POS Acceptance & Financial Invariants Tests', () => {
+describe('VAULT POS Acceptance & Financial Correctness Test Suite', () => {
   const adminUser = INITIAL_USERS[0]; // Vikram Admin
   const empUser = INITIAL_USERS[1]; // Rahul Sharma
 
   beforeEach(() => {
-    // Reset test storage state
+    // Reset test storage state to clean demo baseline
     db.resetToDemoData();
   });
 
@@ -101,7 +102,7 @@ describe('Gaming Centre POS Acceptance & Financial Invariants Tests', () => {
     expect(snackSubtotal).toBe(30000); // ₹300.00
   });
 
-  // Acceptance Test 5: A ₹300 bill with ₹200 GPay and ₹100 cash updates all totals correctly
+  // Acceptance Test 5: Split payment of ₹300 bill with ₹200 GPay and ₹100 cash
   it('Scenario 5: Split payment of ₹300 bill with ₹200 GPay and ₹100 Cash validates and satisfies invariants', () => {
     const finalBillPaise = 30000; // ₹300.00
     const gpayPaise = 20000; // ₹200.00
@@ -118,6 +119,8 @@ describe('Gaming Centre POS Acceptance & Financial Invariants Tests', () => {
     expect(validation.isValid).toBe(true);
     expect(validation.totalReceivedPaise).toBe(30000);
     expect(validation.outstandingBalancePaise).toBe(0);
+    expect(validation.changeDuePaise).toBe(0);
+    expect(validation.paymentStatus).toBe('PAID');
     expect(gpayPaise + cashPaise).toBe(validation.totalReceivedPaise);
   });
 
@@ -134,6 +137,7 @@ describe('Gaming Centre POS Acceptance & Financial Invariants Tests', () => {
     expect(validation.isValid).toBe(true);
     expect(validation.totalReceivedPaise).toBe(25000);
     expect(validation.outstandingBalancePaise).toBe(0);
+    expect(validation.paymentStatus).toBe('PAID');
   });
 
   // Acceptance Test 7: Full GPay payment updates only GPay
@@ -149,45 +153,64 @@ describe('Gaming Centre POS Acceptance & Financial Invariants Tests', () => {
     expect(validation.isValid).toBe(true);
     expect(validation.totalReceivedPaise).toBe(40000);
     expect(validation.outstandingBalancePaise).toBe(0);
+    expect(validation.paymentStatus).toBe('PAID');
   });
 
-  // Acceptance Test 8: Invalid payment splits are rejected
-  it('Scenario 8: Overpayments, negative amounts, and invalid split zeros are rejected', () => {
-    // 1. Overpayment: ₹350 on a ₹300 bill
-    const overpayment = validatePaymentAmounts({
-      method: 'cash',
-      finalBillPaise: 30000,
-      gpayAmountPaise: 0,
-      cashAmountPaise: 35000,
-      allowPartial: true,
-    });
-    expect(overpayment.isValid).toBe(false);
-    expect(overpayment.error).toContain('exceeds final bill');
+  // Acceptance Test 8 (Phase 3 Financial Invariant): A ₹137.50 bill with ₹138 GPay received is NOT silently marked exact settlement
+  it('Scenario 8: Phase 3 - A ₹137.50 bill with ₹138 GPay received triggers explicit discrepancy error requiring adjustment', () => {
+    const finalBillPaise = 13750; // ₹137.50
+    const gpayAmountPaise = 13800; // ₹138.00 (entered overpayment)
 
-    // 2. Negative amount
+    const validation = validatePaymentAmounts({
+      method: 'gpay',
+      finalBillPaise,
+      gpayAmountPaise,
+      cashAmountPaise: 0,
+      allowPartial: false,
+    });
+
+    // Pure UPI overpayment cannot dispense cash change automatically
+    expect(validation.isValid).toBe(false);
+    expect(validation.error).toContain('Digital transfers cannot dispense cash change');
+    expect(validation.discrepancyNote).toContain('UPI overpayment by ₹0.50');
+
+    // Negative amounts must also be rejected
     const negative = validatePaymentAmounts({
       method: 'gpay',
-      finalBillPaise: 30000,
+      finalBillPaise: 13750,
       gpayAmountPaise: -5000,
       cashAmountPaise: 0,
       allowPartial: true,
     });
     expect(negative.isValid).toBe(false);
-
-    // 3. Split with 0 in one part
-    const invalidSplit = validatePaymentAmounts({
-      method: 'split',
-      finalBillPaise: 30000,
-      gpayAmountPaise: 30000,
-      cashAmountPaise: 0,
-      allowPartial: true,
-    });
-    expect(invalidSplit.isValid).toBe(false);
-    expect(invalidSplit.error).toContain('Split payments require positive amounts');
+    expect(negative.error).toContain('cannot be negative');
   });
 
-  // Acceptance Test 9: Incomplete payment tracked as outstanding balance
-  it('Scenario 9: Partial payments track remaining balance accurately when enabled', () => {
+  // Acceptance Test 9 (Phase 3 Cash Overpayment): Cash overpayment calculates change due explicitly
+  it('Scenario 9: Phase 3 - Cash overpayment of ₹140 on a ₹137.50 bill calculates ₹2.50 change due and OVERPAID_CHANGE_DUE status', () => {
+    const finalBillPaise = 13750; // ₹137.50
+    const cashAmountPaise = 14000; // ₹140.00 cash note tendered
+
+    const validation = validatePaymentAmounts({
+      method: 'cash',
+      finalBillPaise,
+      gpayAmountPaise: 0,
+      cashAmountPaise,
+      allowPartial: false,
+    });
+
+    expect(validation.isValid).toBe(true);
+    expect(validation.totalReceivedPaise).toBe(14000);
+    expect(validation.outstandingBalancePaise).toBe(0);
+    expect(validation.changeDuePaise).toBe(250); // ₹2.50 change due
+    expect(validation.paymentStatus).toBe('OVERPAID_CHANGE_DUE');
+
+    // Verify formatters display
+    expect(formatRupees(validation.changeDuePaise)).toBe('₹2.50');
+  });
+
+  // Acceptance Test 10: Incomplete payment tracked as outstanding balance
+  it('Scenario 10: Partial payments track remaining balance accurately when enabled', () => {
     const validation = validatePaymentAmounts({
       method: 'cash',
       finalBillPaise: 30000, // ₹300 bill
@@ -199,10 +222,11 @@ describe('Gaming Centre POS Acceptance & Financial Invariants Tests', () => {
     expect(validation.isValid).toBe(true);
     expect(validation.totalReceivedPaise).toBe(18000);
     expect(validation.outstandingBalancePaise).toBe(12000); // ₹120 due
+    expect(validation.paymentStatus).toBe('PARTIAL');
   });
 
-  // Acceptance Test 10 & 11: Revenue separation and no double counting
-  it('Scenario 10 & 11: Gaming and snack revenue are strictly separated without double counting', () => {
+  // Acceptance Test 11: Revenue separation and no double counting
+  it('Scenario 11: Gaming and snack revenue are strictly separated without double counting', () => {
     const gamingChargePaise = 15000; // ₹150
     const snackSubtotalPaise = 10000; // ₹100
     const discountPaise = 2000; // ₹20
@@ -295,27 +319,83 @@ describe('Gaming Centre POS Acceptance & Financial Invariants Tests', () => {
     expect(charge.gamingChargePaise).toBe(26250);
   });
 
-  // Acceptance Test 15: Daily closing variance calculation
-  it('Scenario 15: Daily closing calculates cash variance correctly', () => {
-    // Expected cash: let's test a count of ₹500 against expected ₹300 -> variance +₹200
-    const closing = db.createDailyClosing({
-      closingDate: '2026-10-25',
-      countedCashPaise: 50000, // ₹500 counted
-      denominations: {
-        note500: 1,
-        note200: 0,
-        note100: 0,
-        note50: 0,
-        note20: 0,
-        note10: 0,
-        coins: 0,
-      },
-      notes: 'Drawer verified with closing shift supervisor',
-      actor: empUser,
-    });
+  // Acceptance Test 15: Idempotent checkout prevents duplicate completions
+  it('Scenario 15: Idempotent checkout prevents double-settling or duplicate transaction creation', () => {
+    const active = db.getSessions().find((s) => s.status === 'active');
+    expect(active).toBeDefined();
 
-    expect(closing.countedCashPaise).toBe(50000);
-    expect(closing.cashVariancePaise).toBe(closing.countedCashPaise - closing.expectedCashPaise);
-    expect(closing.closedBy).toBe(empUser.id);
+    if (active) {
+      // First checkout succeeds
+      const completed = db.completeSession({
+        sessionId: active.id,
+        endTimeISO: new Date().toISOString(),
+        paymentMethod: 'cash',
+        gpayAmountPaise: 0,
+        cashAmountPaise: active.finalBillPaise,
+        actor: empUser,
+      });
+      expect(completed.status).toBe('completed');
+
+      // Attempting to complete the same session a second time throws error
+      expect(() => {
+        db.completeSession({
+          sessionId: active.id,
+          endTimeISO: new Date().toISOString(),
+          paymentMethod: 'cash',
+          gpayAmountPaise: 0,
+          cashAmountPaise: active.finalBillPaise,
+          actor: empUser,
+        });
+      }).toThrow(/already been finalized/);
+    }
+  });
+
+  // Acceptance Test 16: Decimal paise prefill formatters never drop decimals (no silent ₹137.50 -> ₹138 rounding)
+  it('Scenario 16: formatPaiseToInputRupees preserves exact decimals without false rounding', () => {
+    expect(formatPaiseToInputRupees(13750)).toBe('137.50');
+    expect(formatPaiseToInputRupees(14000)).toBe('140');
+    expect(formatPaiseToInputRupees(250)).toBe('2.50');
+    expect(formatPaiseToInputRupees(50)).toBe('0.50');
+  });
+
+  // Acceptance Test 17: Dashboard metrics update accurately and release station occupancy
+  it('Scenario 17: Completing session releases station occupancy and updates sales metrics', () => {
+    const stationsBefore = db.getStations();
+    const occupiedBefore = stationsBefore.filter((s) => s.status === 'occupied').length;
+
+    // Start a new session
+    const station = stationsBefore.find((s) => s.status === 'available');
+    expect(station).toBeDefined();
+
+    if (station) {
+      const session = db.createSession({
+        customerName: 'Test Gamer',
+        gamingType: station.gamingType,
+        stationId: station.id,
+        billingType: 'hourly',
+        startTimeISO: new Date().toISOString(),
+        actor: empUser,
+      });
+
+      // Station must now be occupied
+      const stationsAfterStart = db.getStations();
+      const updatedStation = stationsAfterStart.find((s) => s.id === station.id);
+      expect(updatedStation?.status).toBe('occupied');
+
+      // Complete checkout
+      db.completeSession({
+        sessionId: session.id,
+        endTimeISO: new Date().toISOString(),
+        paymentMethod: 'cash',
+        gpayAmountPaise: 0,
+        cashAmountPaise: session.finalBillPaise,
+        actor: empUser,
+      });
+
+      // Station must now be released to available
+      const stationsAfterCheckout = db.getStations();
+      const releasedStation = stationsAfterCheckout.find((s) => s.id === station.id);
+      expect(releasedStation?.status).toBe('available');
+    }
   });
 });

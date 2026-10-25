@@ -45,6 +45,12 @@ export function paiseToRupees(paise: number): number {
   return paise / 100;
 }
 
+export function formatPaiseToInputRupees(paise: number): string {
+  if (!paise || isNaN(paise) || paise <= 0) return '0';
+  const rupees = paise / 100;
+  return rupees % 1 === 0 ? rupees.toFixed(0) : rupees.toFixed(2);
+}
+
 export function formatDateTime(isoString?: string | null, timezone = 'Asia/Kolkata'): string {
   if (!isoString) return '—';
   try {

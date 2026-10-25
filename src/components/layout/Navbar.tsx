@@ -23,23 +23,26 @@ interface NavbarProps {
 export const Navbar: React.FC<NavbarProps> = ({ onOpenNewEntry, stations }) => {
   const { currentUser, users, switchUser, isAdmin } = useAuth();
   const [showUserDropdown, setShowUserDropdown] = useState(false);
-  const [currentTime, setCurrentTime] = useState('');
   const [dbStatusModal, setDbStatusModal] = useState(false);
+
+  const formatIST = () => {
+    return new Intl.DateTimeFormat('en-IN', {
+      timeZone: 'Asia/Kolkata',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: true,
+    }).format(new Date());
+  };
+
+  const [currentTime, setCurrentTime] = useState<string>(formatIST);
 
   const supabaseStatus = getSupabaseStatus();
 
   // Live digital clock in Asia/Kolkata
   useEffect(() => {
     const updateTime = () => {
-      const now = new Date();
-      const formatted = new Intl.DateTimeFormat('en-IN', {
-        timeZone: 'Asia/Kolkata',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-        hour12: true,
-      }).format(now);
-      setCurrentTime(formatted);
+      setCurrentTime(formatIST());
     };
     updateTime();
     const interval = setInterval(updateTime, 1000);
@@ -50,49 +53,55 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenNewEntry, stations }) => {
   const totalStations = stations.length;
 
   return (
-    <header className="sticky top-0 z-30 flex items-center justify-between h-16 px-4 sm:px-6 bg-slate-900/95 border-b border-slate-800 backdrop-blur-md">
+    <header className="sticky top-0 z-30 flex items-center justify-between h-14 px-4 sm:px-6 bg-slate-900 border-b border-slate-800/80 select-none">
       {/* Brand & Center Info */}
       <div className="flex items-center gap-4 sm:gap-6">
         <div className="flex items-center gap-2.5">
-          <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-brand-600 text-white shadow-md shadow-brand-500/20">
-            <Gamepad2 className="w-5 h-5" />
+          <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-amber-500 text-slate-950 font-black shadow-sm">
+            <Gamepad2 className="w-4 h-4 stroke-[2.5]" />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <span className="text-base font-bold tracking-tight text-white">VAULT POS</span>
-              <span className="text-2xs font-semibold px-1.5 py-0.5 rounded bg-brand-900/60 text-brand-300 border border-brand-700/50">
-                v2.6
+              <span className="text-sm font-bold tracking-tight text-white">VAULT 147</span>
+              <span className="text-3xs font-semibold px-1.5 py-0.5 rounded bg-slate-800 text-amber-400 border border-slate-700">
+                POS
               </span>
             </div>
-            <p className="text-2xs text-slate-400 font-mono hidden sm:block">
-              PS5 & 8-Ball Operations
+            <p className="text-3xs text-slate-400 font-medium hidden sm:block">
+              PS5 & 8-Ball Snooker Lounge
             </p>
           </div>
         </div>
 
         {/* Live Station Occupancy */}
-        <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-800/80 border border-slate-700 text-xs">
-          <span className="relative flex h-2 w-2">
-            <span
-              className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${
-                occupiedCount > 0 ? 'bg-amber-400' : 'bg-emerald-400'
-              }`}
-            />
-            <span
-              className={`relative inline-flex rounded-full h-2 w-2 ${
-                occupiedCount > 0 ? 'bg-amber-500' : 'bg-emerald-500'
-              }`}
-            />
-          </span>
-          <span className="text-slate-300">
-            <strong className="text-white font-semibold">{occupiedCount}</strong> / {totalStations} Stations In Use
-          </span>
+        <div className="hidden md:flex items-center gap-2 px-2.5 py-1 rounded-md bg-slate-800/60 border border-slate-700/60 text-xs">
+          {totalStations > 0 ? (
+            <>
+              <span className="relative flex h-2 w-2">
+                <span
+                  className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${
+                    occupiedCount > 0 ? 'bg-amber-400' : 'bg-emerald-400'
+                  }`}
+                />
+                <span
+                  className={`relative inline-flex rounded-full h-2 w-2 ${
+                    occupiedCount > 0 ? 'bg-amber-500' : 'bg-emerald-500'
+                  }`}
+                />
+              </span>
+              <span className="text-slate-300">
+                <strong className="text-white font-semibold">{occupiedCount}</strong> / {totalStations} Stations In Use
+              </span>
+            </>
+          ) : (
+            <span className="text-slate-400 text-xs">Loading stations...</span>
+          )}
         </div>
 
         {/* Live Time */}
-        <div className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800/40 border border-slate-800 text-xs font-mono text-slate-300">
+        <div className="hidden lg:flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-800/40 border border-slate-800 text-xs font-mono text-slate-300">
           <Clock className="w-3.5 h-3.5 text-slate-400" />
-          <span>{currentTime || '12:00:00 PM'} IST</span>
+          <span>{currentTime} IST</span>
         </div>
       </div>
 
