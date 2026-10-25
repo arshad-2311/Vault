@@ -4,22 +4,16 @@ import {
   CreditCard,
   Banknote,
   AlertCircle,
-  Gamepad2,
-  CircleDot,
-  UtensilsCrossed,
-  Users,
-  Timer,
-  CheckCircle2,
-  Calendar,
+  Clock,
   ArrowUpRight,
   RefreshCw,
   Plus,
   Printer,
+  CheckCircle2,
+  ChevronRight,
 } from 'lucide-react';
 import { Station, Session, DashboardMetrics } from '../types';
 import { StationCard } from '../components/pos/StationCard';
-import { Badge } from '../components/common/Badge';
-import { Button } from '../components/common/Button';
 import { db, VAULT_DATA_CHANGED_EVENT } from '../services/storage';
 import { formatRupees, formatDateTime, getTodayDateString } from '../utils/formatters';
 
@@ -88,11 +82,8 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
 
   useEffect(() => {
     loadData();
-    const handleDataChanged = () => {
-      loadData();
-    };
+    const handleDataChanged = () => loadData();
     window.addEventListener(VAULT_DATA_CHANGED_EVENT, handleDataChanged);
-    // Auto-refresh every 30 seconds for live counter monitoring
     const interval = setInterval(loadData, 30000);
     return () => {
       window.removeEventListener(VAULT_DATA_CHANGED_EVENT, handleDataChanged);
@@ -112,215 +103,135 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     .filter((s) => s.status === 'completed' && !s.isVoided)
     .slice(0, 5);
 
+  const occupiedCount = stations.filter((s) => s.status === 'occupied').length;
+
   return (
-    <div className="space-y-6">
-      {/* Top Banner & Date Selector */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-3 border-b border-slate-800/80">
+    <div className="space-y-4 max-w-7xl mx-auto font-sans">
+      {/* 1. Header Toolbar & Period Selector */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-3 border-b border-white/[0.08]">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-white flex items-center gap-2">
-            <span>Gaming Operations Hub</span>
+          <h1 className="text-lg sm:text-xl font-bold tracking-tight text-white flex items-center gap-2">
+            <span>Operations Overview</span>
           </h1>
-          <p className="text-xs text-slate-400 mt-0.5">
-            Real-time station occupancy, counter financial accounting, and register monitoring.
+          <p className="text-3xs text-slate-400 font-mono mt-0.5">
+            Real-time station occupancy and register accounting • Asia/Kolkata
           </p>
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
-          {/* Preset buttons */}
-          <div className="flex items-center p-0.5 rounded-lg bg-slate-900 border border-slate-800 text-xs font-medium">
-            <button
-              onClick={() => setRangePreset('today')}
-              className={`px-3 py-1 rounded-md transition-colors ${
-                rangePreset === 'today'
-                  ? 'bg-amber-500 text-slate-950 font-bold'
-                  : 'text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              Today
-            </button>
-            <button
-              onClick={() => setRangePreset('yesterday')}
-              className={`px-3 py-1 rounded-md transition-colors ${
-                rangePreset === 'yesterday'
-                  ? 'bg-amber-500 text-slate-950 font-bold'
-                  : 'text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              Yesterday
-            </button>
-            <button
-              onClick={() => setRangePreset('week')}
-              className={`px-3 py-1 rounded-md transition-colors ${
-                rangePreset === 'week'
-                  ? 'bg-amber-500 text-slate-950 font-bold'
-                  : 'text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              This Week
-            </button>
-            <button
-              onClick={() => setRangePreset('month')}
-              className={`px-3 py-1 rounded-md transition-colors ${
-                rangePreset === 'month'
-                  ? 'bg-amber-500 text-slate-950 font-bold'
-                  : 'text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              This Month
-            </button>
+          {/* Period selector */}
+          <div className="flex items-center p-0.5 rounded bg-white/[0.04] border border-white/[0.06] text-xs font-mono">
+            {(['today', 'yesterday', 'week', 'month'] as const).map((period) => (
+              <button
+                key={period}
+                onClick={() => setRangePreset(period)}
+                className={`px-2.5 py-1 rounded text-2xs transition-colors ${
+                  rangePreset === period
+                    ? 'bg-amber-500 text-slate-950 font-bold'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                {period === 'today'
+                  ? 'Today'
+                  : period === 'yesterday'
+                  ? 'Yesterday'
+                  : period === 'week'
+                  ? 'This Week'
+                  : 'This Month'}
+              </button>
+            ))}
           </div>
 
-          <Button
-            variant="secondary"
-            size="sm"
+          <button
             onClick={loadData}
-            title="Refresh data"
-            isLoading={isLoading}
+            disabled={isLoading}
+            className="p-1.5 rounded bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.06] text-slate-400 hover:text-slate-200 transition-colors"
+            title="Refresh Ledger"
           >
-            <RefreshCw className="w-3.5 h-3.5 text-slate-400" />
-          </Button>
-
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={onOpenNewEntry}
-            leftIcon={<Plus className="w-4 h-4" />}
-            className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold border-amber-400"
-          >
-            New Entry (Alt+N)
-          </Button>
+            <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
+          </button>
         </div>
       </div>
 
-      {/* Real Financial Metrics Grid */}
-      <div className="space-y-3">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          {/* 1. Total Finalized Sales */}
-          <div className="p-4 rounded-xl bg-slate-900 border border-slate-800 shadow-sm relative overflow-hidden">
-            <div className="flex items-center justify-between text-slate-400 text-xs mb-1">
-              <span className="font-semibold uppercase tracking-wider text-3xs text-slate-400">
-                Total Finalized Sales
-              </span>
-              <TrendingUp className="w-4 h-4 text-emerald-400" />
-            </div>
-            <div className="text-2xl font-bold font-mono tracking-tight text-white tabular-nums">
-              {formatRupees(metrics.totalSalesPaise)}
-            </div>
-            <p className="text-2xs text-slate-400 mt-1 font-mono">
-              From {metrics.completedSessionsCount} closed sessions
-            </p>
+      {/* 2. Coherent Sales Summary Bar (4 Distinct Financial Pillars) */}
+      <div className="rounded-lg bg-[#121620] border border-white/[0.08] divide-y sm:divide-y-0 sm:divide-x divide-white/[0.06] grid grid-cols-2 md:grid-cols-4">
+        {/* Total Billed Sales */}
+        <div className="p-3.5 space-y-1">
+          <div className="flex items-center justify-between text-slate-400">
+            <span className="text-3xs font-mono uppercase tracking-wider text-slate-400">
+              Total Sales Billed
+            </span>
+            <TrendingUp className="w-3.5 h-3.5 text-slate-400" />
           </div>
-
-          {/* 2. GPay Collections */}
-          <div className="p-4 rounded-xl bg-slate-900 border border-blue-900/30 shadow-sm">
-            <div className="flex items-center justify-between text-blue-400 text-xs mb-1">
-              <span className="font-semibold uppercase tracking-wider text-3xs text-blue-300">
-                GPay / UPI Received
-              </span>
-              <CreditCard className="w-4 h-4 text-blue-400" />
-            </div>
-            <div className="text-2xl font-bold font-mono tracking-tight text-blue-100 tabular-nums">
-              {formatRupees(metrics.gpayCollectionsPaise)}
-            </div>
-            <p className="text-2xs text-slate-400 mt-1">Direct digital bank transfer</p>
+          <div className="text-xl sm:text-2xl font-bold font-mono tracking-tight text-white tabular-nums">
+            {formatRupees(metrics.totalSalesPaise)}
           </div>
-
-          {/* 3. Cash Collections */}
-          <div className="p-4 rounded-xl bg-slate-900 border border-emerald-900/30 shadow-sm">
-            <div className="flex items-center justify-between text-emerald-400 text-xs mb-1">
-              <span className="font-semibold uppercase tracking-wider text-3xs text-emerald-300">
-                Cash Collections
-              </span>
-              <Banknote className="w-4 h-4 text-emerald-400" />
-            </div>
-            <div className="text-2xl font-bold font-mono tracking-tight text-emerald-100 tabular-nums">
-              {formatRupees(metrics.cashCollectionsPaise)}
-            </div>
-            <p className="text-2xs text-slate-400 mt-1">Physical register currency</p>
-          </div>
-
-          {/* 4. Outstanding Balances */}
-          <div className="p-4 rounded-xl bg-slate-900 border border-amber-900/30 shadow-sm">
-            <div className="flex items-center justify-between text-amber-400 text-xs mb-1">
-              <span className="font-semibold uppercase tracking-wider text-3xs text-amber-300">
-                Outstanding Due
-              </span>
-              <AlertCircle className="w-4 h-4 text-amber-400" />
-            </div>
-            <div className="text-2xl font-bold font-mono tracking-tight text-amber-100 tabular-nums">
-              {formatRupees(metrics.outstandingBalancePaise)}
-            </div>
-            <p className="text-2xs text-slate-400 mt-1">Pending customer settlement</p>
-          </div>
+          <p className="text-3xs text-slate-500 font-mono">
+            {metrics.completedSessionsCount} closed session(s)
+          </p>
         </div>
 
-        {/* Secondary Metrics Bar: Revenue Streams & Average Value */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-3 rounded-xl bg-slate-950/70 border border-slate-800 text-xs">
-          <div className="flex items-center gap-2.5">
-            <div className="w-7 h-7 rounded-lg bg-blue-950/60 border border-blue-800/50 flex items-center justify-center text-blue-400">
-              <Gamepad2 className="w-3.5 h-3.5" />
-            </div>
-            <div>
-              <span className="text-3xs text-slate-400 uppercase font-semibold block">PS5 Revenue</span>
-              <span className="font-mono font-bold text-slate-100">
-                {formatRupees(metrics.ps5RevenuePaise)}
-              </span>
-            </div>
+        {/* GPay / UPI Collections */}
+        <div className="p-3.5 space-y-1">
+          <div className="flex items-center justify-between text-blue-400">
+            <span className="text-3xs font-mono uppercase tracking-wider text-blue-300/80">
+              GPay / UPI Collected
+            </span>
+            <CreditCard className="w-3.5 h-3.5 text-blue-400" />
           </div>
+          <div className="text-xl sm:text-2xl font-bold font-mono tracking-tight text-blue-100 tabular-nums">
+            {formatRupees(metrics.gpayCollectionsPaise)}
+          </div>
+          <p className="text-3xs text-slate-500 font-mono">Direct digital bank intake</p>
+        </div>
 
-          <div className="flex items-center gap-2.5">
-            <div className="w-7 h-7 rounded-lg bg-emerald-950/60 border border-emerald-800/50 flex items-center justify-center text-emerald-400">
-              <CircleDot className="w-3.5 h-3.5" />
-            </div>
-            <div>
-              <span className="text-3xs text-slate-400 uppercase font-semibold block">Pool Table Revenue</span>
-              <span className="font-mono font-bold text-slate-100">
-                {formatRupees(metrics.poolRevenuePaise)}
-              </span>
-            </div>
+        {/* Physical Cash Collections */}
+        <div className="p-3.5 space-y-1">
+          <div className="flex items-center justify-between text-emerald-400">
+            <span className="text-3xs font-mono uppercase tracking-wider text-emerald-300/80">
+              Cash Drawer Collected
+            </span>
+            <Banknote className="w-3.5 h-3.5 text-emerald-400" />
           </div>
+          <div className="text-xl sm:text-2xl font-bold font-mono tracking-tight text-emerald-100 tabular-nums">
+            {formatRupees(metrics.cashCollectionsPaise)}
+          </div>
+          <p className="text-3xs text-slate-500 font-mono">Net physical currency intake</p>
+        </div>
 
-          <div className="flex items-center gap-2.5">
-            <div className="w-7 h-7 rounded-lg bg-amber-950/60 border border-amber-800/50 flex items-center justify-center text-amber-400">
-              <UtensilsCrossed className="w-3.5 h-3.5" />
-            </div>
-            <div>
-              <span className="text-3xs text-slate-400 uppercase font-semibold block">Snack Concessions</span>
-              <span className="font-mono font-bold text-slate-100">
-                {formatRupees(metrics.snackRevenuePaise)}
-              </span>
-            </div>
+        {/* Outstanding Due */}
+        <div className="p-3.5 space-y-1">
+          <div className="flex items-center justify-between text-amber-400">
+            <span className="text-3xs font-mono uppercase tracking-wider text-amber-300/80">
+              Outstanding Due
+            </span>
+            <AlertCircle className="w-3.5 h-3.5 text-amber-400" />
           </div>
-
-          <div className="flex items-center gap-2.5">
-            <div className="w-7 h-7 rounded-lg bg-purple-950/60 border border-purple-800/50 flex items-center justify-center text-purple-400">
-              <Users className="w-3.5 h-3.5" />
-            </div>
-            <div>
-              <span className="text-3xs text-slate-400 uppercase font-semibold block">Avg Ticket Size</span>
-              <span className="font-mono font-bold text-slate-100">
-                {formatRupees(metrics.averageTransactionValuePaise)}
-              </span>
-            </div>
+          <div className="text-xl sm:text-2xl font-bold font-mono tracking-tight text-amber-200 tabular-nums">
+            {formatRupees(metrics.outstandingBalancePaise)}
           </div>
+          <p className="text-3xs text-slate-500 font-mono">Pending customer dues</p>
         </div>
       </div>
 
-      {/* Station Occupancy Matrix (6 Gaming Stations) */}
-      <div className="space-y-3">
+      {/* 3. Station Board (Compact, Responsive Grid) */}
+      <div className="space-y-2.5 pt-1">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <h2 className="text-base font-semibold text-slate-100">Station Occupancy Matrix</h2>
-            <Badge variant="neutral" size="sm">
-              {stations.filter((s) => s.status === 'occupied').length} active
-            </Badge>
+            <h2 className="text-xs font-bold uppercase tracking-wider text-slate-200 font-mono">
+              Station Board
+            </h2>
+            <span className="text-3xs font-mono px-1.5 py-0.5 rounded bg-white/[0.05] border border-white/[0.08] text-slate-300">
+              {occupiedCount} IN USE • {stations.length - occupiedCount} AVAILABLE
+            </span>
           </div>
-          <span className="text-xs text-slate-400 hidden sm:block">
-            Auto-refreshes every 30s • Real-time counter status
+          <span className="text-3xs text-slate-500 font-mono hidden sm:inline">
+            Real-time occupancy • 6 Gaming Stations
           </span>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {/* The 6 station cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
           {stations.map((station) => (
             <StationCard
               key={station.id}
@@ -334,65 +245,69 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         </div>
       </div>
 
-      {/* Recent Completed Transactions */}
-      <div className="space-y-3 pt-2">
+      {/* 4. Recent Completed Transactions Ledger */}
+      <div className="space-y-2.5 pt-2">
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="text-base font-semibold text-slate-100">Recent Completed Sessions</h3>
-            <p className="text-xs text-slate-400">Audited settlement history</p>
+            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-200 font-mono">
+              Recent Settlement Ledger
+            </h3>
+            <p className="text-3xs text-slate-400">
+              Last {recentCompleted.length} closed transactions in current session
+            </p>
           </div>
-          <Button
-            variant="ghost"
-            size="sm"
+
+          <button
             onClick={onViewAllTransactions}
-            rightIcon={<ArrowUpRight className="w-3.5 h-3.5" />}
+            className="flex items-center gap-1 text-2xs font-mono text-amber-400 hover:text-amber-300 transition-colors"
           >
-            View All Transactions
-          </Button>
+            <span>Full Ledger</span>
+            <ArrowUpRight className="w-3.5 h-3.5" />
+          </button>
         </div>
 
         {recentCompleted.length === 0 ? (
-          <div className="p-8 rounded-xl bg-slate-900 border border-slate-800 text-center">
-            <CheckCircle2 className="w-8 h-8 text-slate-600 mx-auto mb-2" />
-            <p className="text-sm font-medium text-slate-300">No completed sessions in this period</p>
-            <p className="text-xs text-slate-500 mt-1">
-              Active sessions will appear here once checked out.
+          <div className="p-6 rounded-lg bg-[#121620] border border-white/[0.08] text-center">
+            <CheckCircle2 className="w-6 h-6 text-slate-600 mx-auto mb-1.5" />
+            <p className="text-xs font-medium text-slate-300">No Completed Transactions</p>
+            <p className="text-3xs text-slate-500 mt-0.5">
+              Closed sessions and customer settlements will appear here.
             </p>
           </div>
         ) : (
-          <div className="overflow-x-auto rounded-xl border border-slate-800 bg-slate-900">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-slate-950 text-slate-400 font-semibold border-b border-slate-800">
+          <div className="overflow-x-auto rounded-lg border border-white/[0.08] bg-[#121620]">
+            <table className="w-full text-left text-xs font-mono">
+              <thead className="bg-[#0b0e14] text-slate-400 text-3xs uppercase border-b border-white/[0.06]">
                 <tr>
-                  <th className="px-4 py-3">Customer</th>
-                  <th className="px-4 py-3">Station</th>
-                  <th className="px-4 py-3">Billed Time</th>
-                  <th className="px-4 py-3">Bill Breakdown</th>
-                  <th className="px-4 py-3">Payment Split</th>
-                  <th className="px-4 py-3">Status</th>
-                  <th className="px-4 py-3 text-right">Settled Total</th>
-                  <th className="px-4 py-3 text-right">Receipt</th>
+                  <th className="px-3.5 py-2">Customer</th>
+                  <th className="px-3.5 py-2">Station</th>
+                  <th className="px-3.5 py-2">Duration</th>
+                  <th className="px-3.5 py-2">Breakdown</th>
+                  <th className="px-3.5 py-2">Payment</th>
+                  <th className="px-3.5 py-2">Status</th>
+                  <th className="px-3.5 py-2 text-right">Settled</th>
+                  <th className="px-3.5 py-2 text-right">Receipt</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800/80">
+              <tbody className="divide-y divide-white/[0.04]">
                 {recentCompleted.map((s) => (
-                  <tr key={s.id} className="hover:bg-slate-800/40 transition-colors">
-                    <td className="px-4 py-3 font-medium text-slate-100">
+                  <tr key={s.id} className="hover:bg-white/[0.02] transition-colors">
+                    <td className="px-3.5 py-2 font-sans font-medium text-slate-100">
                       <div>{s.customerName}</div>
                       <div className="text-3xs text-slate-500 font-mono">
                         {formatDateTime(s.endTime || s.createdAt)}
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-slate-300">
+                    <td className="px-3.5 py-2 text-slate-300">
                       <span className="font-semibold">{s.stationName}</span>
-                      <span className="text-2xs text-slate-500 block uppercase">
+                      <span className="text-3xs text-slate-500 block uppercase font-mono">
                         {s.gamingType}
                       </span>
                     </td>
-                    <td className="px-4 py-3 font-mono text-slate-300">
+                    <td className="px-3.5 py-2 text-slate-300">
                       {s.durationMinutes ? `${s.durationMinutes}m` : '—'}
                     </td>
-                    <td className="px-4 py-3 font-mono text-2xs text-slate-400">
+                    <td className="px-3.5 py-2 text-3xs text-slate-400">
                       <div>Game: {formatRupees(s.gamingChargePaise)}</div>
                       {s.snackSubtotalPaise > 0 && (
                         <div>Snacks: {formatRupees(s.snackSubtotalPaise)}</div>
@@ -401,7 +316,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                         <div className="text-rose-400">Disc: -{formatRupees(s.discountPaise)}</div>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-2xs font-mono text-slate-300">
+                    <td className="px-3.5 py-2 text-3xs text-slate-300">
                       {s.payment ? (
                         <div>
                           {s.payment.gpayAmountPaise > 0 && (
@@ -424,35 +339,32 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                         '—'
                       )}
                     </td>
-                    <td className="px-4 py-3">
-                      <Badge
-                        variant={
+                    <td className="px-3.5 py-2">
+                      <span
+                        className={`text-3xs font-mono uppercase px-1.5 py-0.5 rounded font-semibold ${
                           s.payment?.status === 'PAID' || s.payment?.status === 'OVERPAID_CHANGE_DUE'
-                            ? 'success'
+                            ? 'bg-emerald-950/60 text-emerald-400 border border-emerald-800/40'
                             : s.payment?.status === 'PARTIAL'
-                            ? 'warning'
-                            : 'neutral'
-                        }
-                        size="sm"
+                            ? 'bg-amber-950/60 text-amber-400 border border-amber-800/40'
+                            : 'bg-white/[0.05] text-slate-400'
+                        }`}
                       >
-                        {s.payment?.status === 'OVERPAID_CHANGE_DUE' ? 'PAID (CHANGE GIVEN)' : (s.payment?.status || 'UNPAID')}
-                      </Badge>
+                        {s.payment?.status === 'OVERPAID_CHANGE_DUE' ? 'PAID (CHANGE)' : (s.payment?.status || 'UNPAID')}
+                      </span>
                     </td>
-                    <td className="px-4 py-3 text-right font-mono font-bold text-sm text-slate-100">
+                    <td className="px-3.5 py-2 text-right font-bold text-sm text-slate-100 tabular-nums">
                       {formatRupees(s.finalBillPaise)}
                     </td>
-                    <td className="px-4 py-3 text-right">
+                    <td className="px-3.5 py-2 text-right">
                       {onPrintReceipt && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
+                        <button
                           type="button"
                           onClick={() => onPrintReceipt(s)}
-                          leftIcon={<Printer className="w-3.5 h-3.5 text-amber-400" />}
-                          className="text-2xs"
+                          className="px-2 py-1 rounded bg-white/[0.04] hover:bg-white/[0.08] text-2xs text-slate-300 hover:text-white border border-white/[0.06] transition-colors"
                         >
-                          Slip
-                        </Button>
+                          <Printer className="w-3 h-3 text-amber-400 inline mr-1" />
+                          <span>Slip</span>
+                        </button>
                       )}
                     </td>
                   </tr>

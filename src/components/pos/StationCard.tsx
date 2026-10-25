@@ -8,10 +8,9 @@ import {
   CreditCard,
   AlertCircle,
   Timer,
+  UtensilsCrossed,
 } from 'lucide-react';
 import { Station, Session } from '../../types';
-import { Badge } from '../common/Badge';
-import { Button } from '../common/Button';
 import {
   formatRupees,
   formatTimeOnly,
@@ -36,7 +35,7 @@ export const StationCard: React.FC<StationCardProps> = ({
   const isOccupied = station.status === 'occupied' && Boolean(activeSession);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
 
-  // Live timer tick for active session
+  // Live seconds ticker for active sessions
   useEffect(() => {
     if (!isOccupied || !activeSession?.startTime) return;
 
@@ -52,13 +51,16 @@ export const StationCard: React.FC<StationCardProps> = ({
     return () => clearInterval(timer);
   }, [isOccupied, activeSession?.startTime]);
 
-  // Compute live estimate
+  // Real-time live estimate calculation
   const estimatedGamingChargePaise = activeSession
     ? activeSession.billingType === 'fixed'
       ? activeSession.rateSnapshot.fixedPricePaise || activeSession.gamingChargePaise
       : Math.max(
           activeSession.rateSnapshot.hourlyRatePaise
-            ? Math.round((Math.max(15, Math.ceil(elapsedSeconds / 60)) / 60) * activeSession.rateSnapshot.hourlyRatePaise)
+            ? Math.round(
+                (Math.max(15, Math.ceil(elapsedSeconds / 60)) / 60) *
+                  activeSession.rateSnapshot.hourlyRatePaise
+              )
             : 0
         )
     : 0;
@@ -67,155 +69,155 @@ export const StationCard: React.FC<StationCardProps> = ({
     ? estimatedGamingChargePaise + activeSession.snackSubtotalPaise
     : 0;
 
-  return (
-    <div
-      className={`flex flex-col justify-between rounded-xl border transition-all duration-150 ${
-        isOccupied
-          ? 'bg-slate-900/90 border-amber-600/40 shadow-lg shadow-amber-950/10'
-          : station.status === 'maintenance'
-          ? 'bg-slate-950 border-slate-800 opacity-60'
-          : 'bg-slate-900/60 border-slate-800 hover:border-slate-700'
-      }`}
-    >
-      {/* Top Header */}
-      <div className="p-4 border-b border-slate-800/80">
-        <div className="flex items-start justify-between gap-2">
-          <div className="flex items-center gap-2.5">
-            <div
-              className={`w-8 h-8 rounded-lg flex items-center justify-center ${
-                station.gamingType === 'ps5'
-                  ? 'bg-blue-950/80 text-blue-400 border border-blue-800/40'
-                  : 'bg-emerald-950/80 text-emerald-400 border border-emerald-800/40'
-              }`}
-            >
-              {station.gamingType === 'ps5' ? (
-                <Gamepad2 className="w-4 h-4" />
-              ) : (
-                <CircleDot className="w-4 h-4" />
-              )}
-            </div>
+  const defaultHourlyPaise = station.gamingType === 'ps5' ? 15000 : 18000;
+
+  // 1. IN USE / OCCUPIED STATE (High Operational Visibility)
+  if (isOccupied && activeSession) {
+    return (
+      <div className="flex flex-col justify-between p-3.5 rounded-lg bg-[#141824] border border-amber-500/35 shadow-md shadow-black/20 transition-all duration-150 relative overflow-hidden group">
+        {/* Subtle accent line on top */}
+        <div className="absolute top-0 left-0 right-0 h-0.5 bg-amber-500" />
+
+        {/* Header: Station & Customer */}
+        <div className="flex items-start justify-between gap-2 pb-2 border-b border-white/[0.06]">
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-amber-400 ring-2 ring-amber-400/20 shrink-0" />
             <div>
-              <h4 className="text-sm font-semibold text-slate-100">{station.name}</h4>
-              <p className="text-2xs text-slate-400 uppercase tracking-wider font-mono">
-                {station.gamingType === 'ps5' ? 'PlayStation 5' : '8-Ball Pool'}
-              </p>
+              <div className="flex items-center gap-1.5">
+                <h4 className="text-xs font-bold font-mono text-white tracking-tight">
+                  {station.name}
+                </h4>
+                <span className="text-3xs uppercase font-mono px-1 py-0.2 rounded bg-white/[0.05] text-slate-400">
+                  {station.gamingType}
+                </span>
+              </div>
             </div>
           </div>
 
-          <Badge
-            variant={
-              isOccupied ? 'warning' : station.status === 'maintenance' ? 'neutral' : 'success'
-            }
-            size="sm"
+          <div className="text-right truncate max-w-[170px]">
+            <span className="text-xs font-semibold text-slate-100 block truncate">
+              {activeSession.customerName}
+            </span>
+            <span className="text-3xs text-slate-400 font-mono block">
+              Since {formatTimeOnly(activeSession.startTime)}
+            </span>
+          </div>
+        </div>
+
+        {/* Telemetry Hero: Live Timer & Live Estimated Charge */}
+        <div className="py-2.5 grid grid-cols-2 gap-2 items-center">
+          <div>
+            <span className="text-3xs font-mono uppercase tracking-wider text-slate-400 block">
+              Elapsed Time
+            </span>
+            <div className="text-lg font-bold font-mono text-amber-300 flex items-center gap-1.5 tabular-nums">
+              <Timer className="w-3.5 h-3.5 text-amber-400" />
+              <span>{formatSecondsToTime(elapsedSeconds)}</span>
+            </div>
+          </div>
+
+          <div className="text-right">
+            <span className="text-3xs font-mono uppercase tracking-wider text-slate-400 block">
+              Running Bill
+            </span>
+            <div className="text-lg font-bold font-mono text-emerald-400 tabular-nums">
+              {formatRupees(estimatedTotalPaise)}
+            </div>
+            {activeSession.items.length > 0 && (
+              <span className="text-3xs text-slate-400 font-mono block">
+                {activeSession.items.length} snack(s) included
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Action Toolbar */}
+        <div className="pt-2 border-t border-white/[0.06] flex items-center justify-between gap-2">
+          <button
+            type="button"
+            onClick={() => onAddSnack(activeSession.id)}
+            className="flex items-center gap-1 px-2.5 py-1 rounded bg-white/[0.05] hover:bg-white/[0.1] text-2xs font-medium text-slate-200 border border-white/[0.06] transition-colors"
           >
-            {isOccupied ? 'OCCUPIED' : station.status.toUpperCase()}
-          </Badge>
+            <UtensilsCrossed className="w-3 h-3 text-amber-400" />
+            <span>+ Snack</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => onEndSession(activeSession.id)}
+            className="flex items-center gap-1 px-3 py-1 rounded bg-emerald-600 hover:bg-emerald-500 text-white text-2xs font-bold transition-all shadow-sm active:scale-[0.98]"
+          >
+            <CreditCard className="w-3 h-3" />
+            <span>End & Pay</span>
+          </button>
         </div>
       </div>
+    );
+  }
 
-      {/* Middle Body */}
-      <div className="p-4 flex-1">
-        {isOccupied && activeSession ? (
-          <div className="space-y-3">
-            {/* Customer & Start Time */}
-            <div className="flex items-center justify-between text-xs">
-              <div className="flex items-center gap-1.5 text-slate-200 font-medium truncate max-w-[150px]">
-                <User className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                <span className="truncate">{activeSession.customerName}</span>
-              </div>
-              <div className="flex items-center gap-1 text-slate-400 text-2xs font-mono">
-                <Clock className="w-3 h-3" />
-                <span>Since {formatTimeOnly(activeSession.startTime)}</span>
-              </div>
-            </div>
+  // 2. MAINTENANCE STATE
+  if (station.status === 'maintenance') {
+    return (
+      <div className="p-3.5 rounded-lg bg-[#0e121a] border border-white/[0.04] opacity-60 flex flex-col justify-between">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-slate-600 shrink-0" />
+            <h4 className="text-xs font-bold font-mono text-slate-300">{station.name}</h4>
+          </div>
+          <span className="text-3xs uppercase font-mono px-1.5 py-0.5 rounded bg-white/[0.04] text-slate-400">
+            Maintenance
+          </span>
+        </div>
+        <div className="py-2 text-2xs text-slate-500 flex items-center gap-1.5 font-mono">
+          <AlertCircle className="w-3.5 h-3.5 text-amber-500/80" />
+          <span>Station temporarily disabled</span>
+        </div>
+        <div className="pt-2 border-t border-white/[0.04] text-right">
+          <span className="text-3xs text-slate-600 font-mono">Admin access only</span>
+        </div>
+      </div>
+    );
+  }
 
-            {/* Elapsed Timer Hero */}
-            <div className="p-3 rounded-lg bg-amber-950/30 border border-amber-800/40 flex items-center justify-between">
-              <div>
-                <span className="text-3xs uppercase tracking-wider text-amber-400/90 font-semibold block">
-                  Elapsed Time
-                </span>
-                <div className="text-xl font-bold font-mono tracking-tight text-amber-200 flex items-center gap-1.5 tabular-nums">
-                  <Timer className="w-4 h-4 text-amber-400 animate-pulse" />
-                  <span>{formatSecondsToTime(elapsedSeconds)}</span>
-                </div>
-              </div>
-              <div className="text-right">
-                <span className="text-3xs uppercase tracking-wider text-amber-400/90 font-semibold block">
-                  Est. Charge
-                </span>
-                <span className="text-base font-bold font-mono text-amber-100 tabular-nums">
-                  {formatRupees(estimatedTotalPaise)}
-                </span>
-              </div>
-            </div>
-
-            {/* Billing detail & Snacks pill */}
-            <div className="flex items-center justify-between text-2xs text-slate-400 border-t border-slate-800/60 pt-2">
-              <span className="truncate max-w-[140px] text-slate-300">
-                {activeSession.rateSnapshot.description}
-              </span>
-              <span>
-                {activeSession.items.length > 0 ? (
-                  <span className="text-blue-400 font-medium">
-                    {activeSession.items.length} snack item(s)
-                  </span>
-                ) : (
-                  'No snacks'
-                )}
+  // 3. AVAILABLE STATE (Compact, Calm, Zero Clutter)
+  return (
+    <div className="flex flex-col justify-between p-3.5 rounded-lg bg-[#10141e] border border-white/[0.06] hover:border-white/[0.12] transition-colors">
+      {/* Header Row */}
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+          <div>
+            <div className="flex items-center gap-1.5">
+              <h4 className="text-xs font-bold font-mono text-slate-200">{station.name}</h4>
+              <span className="text-3xs uppercase font-mono px-1 py-0.2 rounded bg-white/[0.04] text-slate-400">
+                {station.gamingType}
               </span>
             </div>
           </div>
-        ) : (
-          <div className="py-6 flex flex-col items-center justify-center text-center">
-            <div className="w-10 h-10 rounded-full bg-slate-800/80 flex items-center justify-center text-slate-400 mb-2">
-              <Clock className="w-5 h-5 text-emerald-400" />
-            </div>
-            <p className="text-xs font-medium text-slate-300">Station Ready</p>
-            <p className="text-2xs text-slate-500 mt-0.5">Available for immediate check-in</p>
-          </div>
-        )}
+        </div>
+
+        <span className="text-3xs font-mono uppercase text-emerald-400 font-semibold px-1.5 py-0.5 rounded bg-emerald-950/40 border border-emerald-800/40">
+          Ready
+        </span>
       </div>
 
-      {/* Card Action Footer */}
-      <div className="p-3 bg-slate-950/40 border-t border-slate-800/80">
-        {isOccupied && activeSession ? (
-          <div className="grid grid-cols-2 gap-2">
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => onAddSnack(activeSession.id)}
-              leftIcon={<Plus className="w-3.5 h-3.5 text-blue-400" />}
-              className="text-xs"
-            >
-              Add Snack
-            </Button>
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={() => onEndSession(activeSession.id)}
-              leftIcon={<CreditCard className="w-3.5 h-3.5" />}
-              className="text-xs bg-amber-600 hover:bg-amber-500 border-amber-500"
-            >
-              End & Pay
-            </Button>
-          </div>
-        ) : station.status === 'maintenance' ? (
-          <div className="text-center py-1 text-2xs text-slate-500 flex items-center justify-center gap-1 font-mono">
-            <AlertCircle className="w-3 h-3 text-amber-500" />
-            <span>Under Maintenance</span>
-          </div>
-        ) : (
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => onStartSession(station.id)}
-            leftIcon={<Plus className="w-3.5 h-3.5 text-emerald-400" />}
-            className="w-full text-xs font-semibold hover:border-emerald-600 hover:text-emerald-300"
-          >
-            Start Session
-          </Button>
-        )}
+      {/* Middle Specs */}
+      <div className="py-2 flex items-center justify-between text-2xs font-mono text-slate-400">
+        <span>Standard Rate:</span>
+        <span className="text-slate-200 font-semibold">{formatRupees(defaultHourlyPaise)}/hr</span>
+      </div>
+
+      {/* Action Row */}
+      <div className="pt-2 border-t border-white/[0.06] flex items-center justify-between">
+        <span className="text-3xs text-slate-500 font-mono">Immediate Check-in</span>
+        <button
+          type="button"
+          onClick={() => onStartSession(station.id)}
+          className="flex items-center gap-1 px-3 py-1 rounded bg-white/[0.06] hover:bg-white/[0.12] text-white text-2xs font-semibold border border-white/[0.08] transition-all active:scale-[0.98]"
+        >
+          <Plus className="w-3 h-3 text-emerald-400" />
+          <span>Start Session</span>
+        </button>
       </div>
     </div>
   );

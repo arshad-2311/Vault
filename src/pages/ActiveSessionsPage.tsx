@@ -7,14 +7,11 @@ import {
   CreditCard,
   UtensilsCrossed,
   Search,
-  Filter,
+  Timer,
   Gamepad2,
   CircleDot,
-  Timer,
 } from 'lucide-react';
-import { Session, Station } from '../types';
-import { Button } from '../components/common/Button';
-import { Badge } from '../components/common/Badge';
+import { Session } from '../types';
 import { db, VAULT_DATA_CHANGED_EVENT } from '../services/storage';
 import {
   formatRupees,
@@ -45,14 +42,9 @@ export const ActiveSessionsPage: React.FC<ActiveSessionsPageProps> = ({
 
   useEffect(() => {
     loadData();
-    const handleDataChanged = () => {
-      loadData();
-    };
+    const handleDataChanged = () => loadData();
     window.addEventListener(VAULT_DATA_CHANGED_EVENT, handleDataChanged);
-    // Update live clock every second
-    const interval = setInterval(() => {
-      setNowMs(Date.now());
-    }, 1000);
+    const interval = setInterval(() => setNowMs(Date.now()), 1000);
     return () => {
       window.removeEventListener(VAULT_DATA_CHANGED_EVENT, handleDataChanged);
       clearInterval(interval);
@@ -69,49 +61,47 @@ export const ActiveSessionsPage: React.FC<ActiveSessionsPageProps> = ({
   });
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 max-w-7xl mx-auto font-sans">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-2 border-b border-slate-800">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-3 border-b border-white/[0.08]">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-white flex items-center gap-2">
-            <PlayCircle className="w-6 h-6 text-amber-400" />
+          <h1 className="text-lg sm:text-xl font-bold tracking-tight text-white flex items-center gap-2">
+            <PlayCircle className="w-5 h-5 text-amber-400" />
             <span>Active Gaming Sessions</span>
           </h1>
-          <p className="text-xs text-slate-400 mt-0.5">
-            Live monitoring of ongoing PS5 sessions and pool tables with real-time charges.
+          <p className="text-3xs text-slate-400 font-mono mt-0.5">
+            Live operational monitoring of active PS5 consoles and pool tables
           </p>
         </div>
 
-        <Button
-          variant="primary"
-          size="md"
+        <button
           onClick={onOpenNewEntry}
-          leftIcon={<Plus className="w-4 h-4" />}
-          className="font-semibold"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs shadow-sm transition-all active:scale-[0.98]"
         >
-          New Entry
-        </Button>
+          <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
+          <span>New Entry</span>
+        </button>
       </div>
 
       {/* Filter and Search Bar */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 p-3 rounded-xl bg-slate-900 border border-slate-800">
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 p-2.5 rounded-lg bg-[#121620] border border-white/[0.08]">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-2.5 w-4 h-4 text-slate-500" />
+          <Search className="absolute left-2.5 top-2 w-3.5 h-3.5 text-slate-500" />
           <input
             type="text"
-            placeholder="Search by customer name, phone, or station..."
+            placeholder="Search customer, station, phone..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-9 pr-3 py-1.5 rounded-lg bg-slate-950 border border-slate-700 text-xs text-slate-100 placeholder:text-slate-600 focus:border-brand-500"
+            className="w-full pl-8 pr-3 py-1 rounded bg-[#0b0e14] border border-white/[0.06] text-xs text-slate-100 placeholder:text-slate-600 focus:border-amber-500 outline-none"
           />
         </div>
 
-        <div className="flex items-center gap-1.5 p-1 rounded-lg bg-slate-950 border border-slate-800 text-xs font-medium">
+        <div className="flex items-center gap-1 p-0.5 rounded bg-[#0b0e14] border border-white/[0.06] text-xs font-mono">
           <button
             onClick={() => setTypeFilter('all')}
-            className={`px-3 py-1 rounded-md transition-colors ${
+            className={`px-2.5 py-1 rounded text-2xs transition-colors ${
               typeFilter === 'all'
-                ? 'bg-slate-700 text-white font-semibold'
+                ? 'bg-white/[0.12] text-white font-bold'
                 : 'text-slate-400 hover:text-slate-200'
             }`}
           >
@@ -119,9 +109,9 @@ export const ActiveSessionsPage: React.FC<ActiveSessionsPageProps> = ({
           </button>
           <button
             onClick={() => setTypeFilter('ps5')}
-            className={`px-3 py-1 rounded-md transition-colors ${
+            className={`px-2.5 py-1 rounded text-2xs transition-colors ${
               typeFilter === 'ps5'
-                ? 'bg-blue-600 text-white font-semibold'
+                ? 'bg-blue-600/80 text-white font-bold'
                 : 'text-slate-400 hover:text-slate-200'
             }`}
           >
@@ -129,45 +119,42 @@ export const ActiveSessionsPage: React.FC<ActiveSessionsPageProps> = ({
           </button>
           <button
             onClick={() => setTypeFilter('pool')}
-            className={`px-3 py-1 rounded-md transition-colors ${
+            className={`px-2.5 py-1 rounded text-2xs transition-colors ${
               typeFilter === 'pool'
-                ? 'bg-emerald-600 text-white font-semibold'
+                ? 'bg-emerald-600/80 text-white font-bold'
                 : 'text-slate-400 hover:text-slate-200'
             }`}
           >
-            Pool Tables ({sessions.filter((s) => s.gamingType === 'pool').length})
+            Pool ({sessions.filter((s) => s.gamingType === 'pool').length})
           </button>
         </div>
       </div>
 
-      {/* Active Sessions List */}
+      {/* Active Sessions Grid */}
       {filteredSessions.length === 0 ? (
-        <div className="p-12 rounded-xl border border-dashed border-slate-800 text-center bg-slate-900/30">
-          <div className="w-12 h-12 rounded-full bg-slate-800 flex items-center justify-center text-slate-400 mx-auto mb-3">
-            <Clock className="w-6 h-6 text-slate-500" />
-          </div>
-          <h3 className="text-sm font-semibold text-slate-200">No Active Sessions</h3>
-          <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
-            All stations are currently available. Start a new entry to occupy a station.
+        <div className="p-8 rounded-lg border border-dashed border-white/[0.08] text-center bg-[#121620]/40">
+          <Clock className="w-8 h-8 text-slate-600 mx-auto mb-2" />
+          <h3 className="text-xs font-bold uppercase tracking-wider text-slate-300 font-mono">
+            No Active Gaming Sessions
+          </h3>
+          <p className="text-3xs text-slate-500 mt-1 max-w-sm mx-auto">
+            All stations are currently free and available. Click New Entry to check in a player.
           </p>
-          <Button
-            variant="primary"
-            size="sm"
+          <button
             onClick={onOpenNewEntry}
-            leftIcon={<Plus className="w-4 h-4" />}
-            className="mt-4"
+            className="mt-3 px-3 py-1.5 rounded bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs inline-flex items-center gap-1"
           >
-            Start New Session
-          </Button>
+            <Plus className="w-3.5 h-3.5" />
+            <span>Check In Player</span>
+          </button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
           {filteredSessions.map((s) => {
             const startMs = new Date(s.startTime).getTime();
             const elapsedSecs = Math.max(0, Math.floor((nowMs - startMs) / 1000));
             const elapsedMinutes = Math.max(1, Math.ceil(elapsedSecs / 60));
 
-            // Estimate
             const estGamingPaise =
               s.billingType === 'fixed'
                 ? s.rateSnapshot.fixedPricePaise || s.gamingChargePaise
@@ -180,126 +167,80 @@ export const ActiveSessionsPage: React.FC<ActiveSessionsPageProps> = ({
             return (
               <div
                 key={s.id}
-                className="p-5 rounded-xl bg-slate-900 border border-slate-700/80 shadow-lg space-y-4"
+                className="p-3.5 rounded-lg bg-[#141824] border border-amber-500/35 shadow-md space-y-3 flex flex-col justify-between"
               >
                 {/* Station and Customer Header */}
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-3">
-                    <div
-                      className={`w-9 h-9 rounded-lg flex items-center justify-center ${
-                        s.gamingType === 'ps5'
-                          ? 'bg-blue-950 text-blue-400 border border-blue-800/40'
-                          : 'bg-emerald-950 text-emerald-400 border border-emerald-800/40'
-                      }`}
-                    >
-                      {s.gamingType === 'ps5' ? (
-                        <Gamepad2 className="w-5 h-5" />
-                      ) : (
-                        <CircleDot className="w-5 h-5" />
-                      )}
-                    </div>
-                    <div>
-                      <h3 className="text-sm font-bold text-white">{s.stationName}</h3>
-                      <p className="text-xs font-medium text-slate-300 flex items-center gap-1.5 mt-0.5">
-                        <User className="w-3.5 h-3.5 text-slate-400" />
-                        <span>{s.customerName}</span>
-                        {s.customerPhone && (
-                          <span className="text-2xs font-mono text-slate-500">
-                            ({s.customerPhone})
-                          </span>
-                        )}
-                      </p>
-                    </div>
-                  </div>
-
-                  <Badge variant="warning" size="sm">
-                    LIVE
-                  </Badge>
-                </div>
-
-                {/* Timer Banner */}
-                <div className="p-3.5 rounded-lg bg-amber-950/20 border border-amber-800/40 flex items-center justify-between">
+                <div className="flex items-start justify-between gap-2 pb-2 border-b border-white/[0.06]">
                   <div>
-                    <span className="text-3xs uppercase tracking-wider text-amber-400/90 font-semibold block">
-                      Elapsed Duration
-                    </span>
-                    <div className="text-xl font-bold font-mono tracking-tight text-amber-200 flex items-center gap-2 tabular-nums">
-                      <Timer className="w-4 h-4 text-amber-400 animate-pulse" />
-                      <span>{formatSecondsToTime(elapsedSecs)}</span>
+                    <div className="flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-amber-400 shrink-0" />
+                      <h3 className="text-xs font-bold font-mono text-white">{s.stationName}</h3>
+                      <span className="text-3xs uppercase font-mono px-1 py-0.2 rounded bg-white/[0.05] text-slate-400">
+                        {s.gamingType}
+                      </span>
                     </div>
-                    <span className="text-3xs text-slate-500 font-mono">
-                      Started at {formatTimeOnly(s.startTime)}
-                    </span>
+                    <p className="text-xs font-semibold text-slate-200 mt-0.5 truncate max-w-[180px]">
+                      {s.customerName}
+                    </p>
                   </div>
 
                   <div className="text-right">
-                    <span className="text-3xs uppercase tracking-wider text-amber-400/90 font-semibold block">
-                      Current Estimate
+                    <span className="text-3xs text-amber-400 font-mono font-semibold px-1.5 py-0.5 rounded bg-amber-950/60 border border-amber-800/40">
+                      LIVE
                     </span>
-                    <span className="text-xl font-bold font-mono text-emerald-400 tabular-nums">
+                    <span className="text-3xs text-slate-400 font-mono block mt-1">
+                      {formatTimeOnly(s.startTime)}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Timer Banner */}
+                <div className="py-1 grid grid-cols-2 gap-2 items-center">
+                  <div>
+                    <span className="text-3xs font-mono uppercase tracking-wider text-slate-400 block">
+                      Duration
+                    </span>
+                    <div className="text-base font-bold font-mono text-amber-300 flex items-center gap-1.5 tabular-nums">
+                      <Timer className="w-3.5 h-3.5 text-amber-400 animate-pulse" />
+                      <span>{formatSecondsToTime(elapsedSecs)}</span>
+                    </div>
+                  </div>
+
+                  <div className="text-right">
+                    <span className="text-3xs font-mono uppercase tracking-wider text-slate-400 block">
+                      Estimated Bill
+                    </span>
+                    <span className="text-base font-bold font-mono text-emerald-400 tabular-nums">
                       {formatRupees(estTotalPaise)}
                     </span>
-                    <span className="text-3xs text-slate-400 font-mono block">
-                      Gaming: {formatRupees(estGamingPaise)} + Snacks: {formatRupees(s.snackSubtotalPaise)}
-                    </span>
                   </div>
                 </div>
 
-                {/* Snacks list preview */}
-                <div className="text-xs space-y-1">
-                  <div className="flex items-center justify-between text-2xs text-slate-400">
-                    <span className="font-semibold uppercase tracking-wider">
-                      Concessions on Bill ({s.items.length})
-                    </span>
-                    <button
-                      onClick={() => onAddSnack(s.id)}
-                      className="text-brand-400 hover:text-brand-300 font-medium flex items-center gap-1"
-                    >
-                      <Plus className="w-3 h-3" />
-                      <span>Add Snack</span>
-                    </button>
-                  </div>
-
-                  {s.items.length === 0 ? (
-                    <p className="text-2xs text-slate-500 italic">No snacks added yet.</p>
-                  ) : (
-                    <div className="flex flex-wrap gap-1.5 pt-1">
-                      {s.items.map((it) => (
-                        <span
-                          key={it.id}
-                          className="px-2 py-0.5 rounded bg-slate-800 border border-slate-700 text-slate-300 text-2xs font-mono"
-                        >
-                          {it.quantity}x {it.name} ({formatRupees(it.lineTotalPaise)})
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                {/* Footer Actions */}
-                <div className="flex items-center justify-between pt-2 border-t border-slate-800">
-                  <span className="text-2xs text-slate-500 font-mono">
-                    Staff: {s.createdByName}
+                {/* Snacks preview */}
+                <div className="pt-1 text-3xs font-mono text-slate-400 border-t border-white/[0.04] flex items-center justify-between">
+                  <span>
+                    {s.items.length > 0 ? `${s.items.length} snack item(s)` : 'No snacks added'}
                   </span>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      onClick={() => onAddSnack(s.id)}
-                      leftIcon={<UtensilsCrossed className="w-3.5 h-3.5 text-amber-400" />}
-                    >
-                      Add Snack
-                    </Button>
-                    <Button
-                      variant="primary"
-                      size="sm"
-                      onClick={() => onEndSession(s.id)}
-                      leftIcon={<CreditCard className="w-3.5 h-3.5" />}
-                      className="bg-emerald-600 hover:bg-emerald-500 border-emerald-500 font-semibold"
-                    >
-                      Checkout & Pay
-                    </Button>
-                  </div>
+                  <span className="text-slate-500">{s.rateSnapshot.description}</span>
+                </div>
+
+                {/* Actions */}
+                <div className="pt-2 border-t border-white/[0.06] flex items-center justify-between gap-2">
+                  <button
+                    onClick={() => onAddSnack(s.id)}
+                    className="flex items-center gap-1 px-2.5 py-1 rounded bg-white/[0.05] hover:bg-white/[0.1] text-2xs font-medium text-slate-200 border border-white/[0.06] transition-colors"
+                  >
+                    <UtensilsCrossed className="w-3 h-3 text-amber-400" />
+                    <span>+ Snack</span>
+                  </button>
+
+                  <button
+                    onClick={() => onEndSession(s.id)}
+                    className="flex items-center gap-1 px-3 py-1 rounded bg-emerald-600 hover:bg-emerald-500 text-white text-2xs font-bold transition-all shadow-sm active:scale-[0.98]"
+                  >
+                    <CreditCard className="w-3 h-3" />
+                    <span>Checkout & Pay</span>
+                  </button>
                 </div>
               </div>
             );

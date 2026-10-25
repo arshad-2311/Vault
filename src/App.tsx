@@ -12,6 +12,7 @@ import { ActiveSessionsPage } from './pages/ActiveSessionsPage';
 import { TransactionsPage } from './pages/TransactionsPage';
 import { SnacksPage } from './pages/SnacksPage';
 import { ReportsPage } from './pages/ReportsPage';
+import { CashClosingPage } from './pages/CashClosingPage';
 import { EmployeesPage } from './pages/EmployeesPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { AuditLogPage } from './pages/AuditLogPage';
@@ -32,6 +33,7 @@ const AppContent: React.FC = () => {
   // Modals state
   const [newEntryOpen, setNewEntryOpen] = useState(false);
   const [preselectedStationId, setPreselectedStationId] = useState<string | null>(null);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const [checkoutSession, setCheckoutSession] = useState<Session | null>(null);
   const [addSnackSession, setAddSnackSession] = useState<Session | null>(null);
@@ -118,7 +120,7 @@ const AppContent: React.FC = () => {
   const activeCount = sessions.filter((s) => s.status === 'active').length;
 
   return (
-    <div className="flex flex-col min-h-screen bg-slate-950 text-slate-100 font-sans">
+    <div className="flex flex-col min-h-screen bg-[#0b0e14] text-slate-100 font-sans antialiased">
       {/* Top Fixed Navbar */}
       <Navbar
         onOpenNewEntry={() => {
@@ -126,6 +128,8 @@ const AppContent: React.FC = () => {
           setNewEntryOpen(true);
         }}
         stations={stations}
+        mobileMenuOpen={mobileMenuOpen}
+        onToggleMobileMenu={() => setMobileMenuOpen(!mobileMenuOpen)}
       />
 
       {/* Main Workspace with Compact Sidebar */}
@@ -135,10 +139,12 @@ const AppContent: React.FC = () => {
           activeTab={activeTab}
           onSelectTab={setActiveTab}
           activeCount={activeCount}
+          isOpenOnMobile={mobileMenuOpen}
+          onCloseMobile={() => setMobileMenuOpen(false)}
         />
 
         {/* Content Viewport */}
-        <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 bg-slate-950/90">
+        <main className="flex-1 overflow-y-auto p-3.5 sm:p-5 lg:p-6 bg-[#0b0e14] pb-16 md:pb-6">
           <div className="max-w-7xl mx-auto">
             {activeTab === 'dashboard' && (
               <DashboardPage
@@ -170,6 +176,8 @@ const AppContent: React.FC = () => {
             {activeTab === 'snacks' && <SnacksPage />}
 
             {activeTab === 'reports' && <ReportsPage />}
+
+            {activeTab === 'closing' && <CashClosingPage />}
 
             {activeTab === 'employees' && <EmployeesPage />}
 

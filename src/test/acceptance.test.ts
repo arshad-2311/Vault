@@ -408,22 +408,33 @@ describe('VAULT POS Acceptance & Financial Correctness Test Suite', () => {
 
     const station = db.getStations().find((s) => s.status === 'available');
     if (station) {
+      const startTimeISO = new Date(Date.now() - 15 * 60 * 1000).toISOString();
+      const endTimeISO = new Date().toISOString();
+
       const session = db.createSession({
         customerName: 'Instant Gamer',
         gamingType: station.gamingType,
         stationId: station.id,
         billingType: 'hourly',
-        startTimeISO: new Date().toISOString(),
+        startTimeISO,
         actor: empUser,
+      });
+
+      const charge = calculateGamingCharge({
+        gamingType: station.gamingType,
+        billingType: 'hourly',
+        startTimeISO,
+        endTimeISO,
+        config: DEFAULT_PRICING_CONFIG,
       });
 
       changeFired = false;
       db.completeSession({
         sessionId: session.id,
-        endTimeISO: new Date().toISOString(),
-        paymentMethod: 'gpay',
-        gpayAmountPaise: session.finalBillPaise,
-        cashAmountPaise: 0,
+        endTimeISO,
+        paymentMethod: 'cash',
+        gpayAmountPaise: 0,
+        cashAmountPaise: charge.gamingChargePaise,
         actor: empUser,
       });
 

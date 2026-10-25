@@ -4,23 +4,30 @@ import {
   Plus,
   Clock,
   Database,
-  UserCheck,
   ChevronDown,
   Shield,
+  CheckCircle2,
+  Menu,
+  X,
   User as UserIcon,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
-import { Button } from '../common/Button';
-import { Badge } from '../common/Badge';
 import { getSupabaseStatus } from '../../services/supabase';
 import { Station } from '../../types';
 
 interface NavbarProps {
   onOpenNewEntry: () => void;
   stations: Station[];
+  mobileMenuOpen?: boolean;
+  onToggleMobileMenu?: () => void;
 }
 
-export const Navbar: React.FC<NavbarProps> = ({ onOpenNewEntry, stations }) => {
+export const Navbar: React.FC<NavbarProps> = ({
+  onOpenNewEntry,
+  stations,
+  mobileMenuOpen,
+  onToggleMobileMenu,
+}) => {
   const { currentUser, users, switchUser, isAdmin } = useAuth();
   const [showUserDropdown, setShowUserDropdown] = useState(false);
   const [dbStatusModal, setDbStatusModal] = useState(false);
@@ -36,14 +43,11 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenNewEntry, stations }) => {
   };
 
   const [currentTime, setCurrentTime] = useState<string>(formatIST);
-
   const supabaseStatus = getSupabaseStatus();
 
-  // Live digital clock in Asia/Kolkata
+  // Digital clock locked to Asia/Kolkata
   useEffect(() => {
-    const updateTime = () => {
-      setCurrentTime(formatIST());
-    };
+    const updateTime = () => setCurrentTime(formatIST());
     updateTime();
     const interval = setInterval(updateTime, 1000);
     return () => clearInterval(interval);
@@ -53,101 +57,99 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenNewEntry, stations }) => {
   const totalStations = stations.length;
 
   return (
-    <header className="sticky top-0 z-30 flex items-center justify-between h-14 px-4 sm:px-6 bg-slate-900 border-b border-slate-800/80 select-none">
-      {/* Brand & Center Info */}
-      <div className="flex items-center gap-4 sm:gap-6">
-        <div className="flex items-center gap-2.5">
-          <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-amber-500 text-slate-950 font-black shadow-sm">
+    <header className="sticky top-0 z-30 flex items-center justify-between h-12 px-4 sm:px-6 bg-[#0e121b] border-b border-white/[0.08] select-none text-slate-200">
+      {/* Brand & Telemetry */}
+      <div className="flex items-center gap-3 sm:gap-6">
+        {onToggleMobileMenu && (
+          <button
+            type="button"
+            onClick={onToggleMobileMenu}
+            className="md:hidden p-1 rounded text-slate-400 hover:text-white hover:bg-white/[0.08] transition-colors"
+            title="Toggle Navigation Menu"
+          >
+            {mobileMenuOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
+          </button>
+        )}
+        <div className="flex items-center gap-2">
+          <div className="flex items-center justify-center w-7 h-7 rounded bg-amber-500 text-slate-950 font-black shadow-sm">
             <Gamepad2 className="w-4 h-4 stroke-[2.5]" />
           </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-bold tracking-tight text-white">VAULT 147</span>
-              <span className="text-3xs font-semibold px-1.5 py-0.5 rounded bg-slate-800 text-amber-400 border border-slate-700">
-                POS
-              </span>
-            </div>
-            <p className="text-3xs text-slate-400 font-medium hidden sm:block">
-              PS5 & 8-Ball Snooker Lounge
-            </p>
+          <div className="flex items-baseline gap-1.5">
+            <span className="text-sm font-bold tracking-tight text-white font-mono">VAULT 147</span>
+            <span className="text-3xs text-amber-400/90 font-mono font-semibold tracking-wider">POS</span>
           </div>
         </div>
 
-        {/* Live Station Occupancy */}
-        <div className="hidden md:flex items-center gap-2 px-2.5 py-1 rounded-md bg-slate-800/60 border border-slate-700/60 text-xs">
-          {totalStations > 0 ? (
-            <>
-              <span className="relative flex h-2 w-2">
-                <span
-                  className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${
-                    occupiedCount > 0 ? 'bg-amber-400' : 'bg-emerald-400'
-                  }`}
-                />
-                <span
-                  className={`relative inline-flex rounded-full h-2 w-2 ${
-                    occupiedCount > 0 ? 'bg-amber-500' : 'bg-emerald-500'
-                  }`}
-                />
-              </span>
-              <span className="text-slate-300">
-                <strong className="text-white font-semibold">{occupiedCount}</strong> / {totalStations} Stations In Use
-              </span>
-            </>
-          ) : (
-            <span className="text-slate-400 text-xs">Loading stations...</span>
-          )}
+        {/* Live Station Occupancy Dot Matrix */}
+        <div className="hidden sm:flex items-center gap-2 px-2.5 py-1 rounded bg-white/[0.03] border border-white/[0.06] text-xs">
+          <div className="flex items-center gap-1.5" title="Station telemetry dots">
+            {stations.map((st) => (
+              <span
+                key={st.id}
+                title={`${st.name} • ${st.status.toUpperCase()}`}
+                className={`w-2 h-2 rounded-full transition-colors ${
+                  st.status === 'occupied'
+                    ? 'bg-amber-400 ring-1 ring-amber-400/30'
+                    : st.status === 'maintenance'
+                    ? 'bg-slate-600'
+                    : 'bg-emerald-500/90'
+                }`}
+              />
+            ))}
+          </div>
+          <span className="text-slate-400 text-2xs font-mono font-medium">
+            <strong className="text-slate-100">{occupiedCount}</strong>/{totalStations} Occupied
+          </span>
         </div>
 
-        {/* Live Time */}
-        <div className="hidden lg:flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-800/40 border border-slate-800 text-xs font-mono text-slate-300">
+        {/* Configured Local Business Time */}
+        <div className="hidden lg:flex items-center gap-1.5 px-2.5 py-1 rounded bg-white/[0.03] border border-white/[0.06] text-xs font-mono text-slate-300">
           <Clock className="w-3.5 h-3.5 text-slate-400" />
           <span>{currentTime} IST</span>
         </div>
       </div>
 
       {/* Right Actions */}
-      <div className="flex items-center gap-3">
-        {/* Database Status Indicator */}
+      <div className="flex items-center gap-2.5">
+        {/* Honest Architecture Label */}
         <button
           onClick={() => setDbStatusModal(true)}
-          className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-mono bg-slate-800/60 hover:bg-slate-800 border border-slate-700/60 text-slate-300 transition-colors"
-          title="Click to view Database & RLS status"
+          className="hidden md:flex items-center gap-1.5 px-2 py-1 rounded text-2xs font-mono text-slate-400 hover:text-slate-200 bg-white/[0.03] hover:bg-white/[0.06] border border-white/[0.06] transition-colors"
+          title="Storage architecture and sync state"
         >
-          <Database className="w-3.5 h-3.5 text-brand-400" />
-          <span>{supabaseStatus.configured ? 'Supabase Live' : 'Local Storage Engine'}</span>
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+          <span>{supabaseStatus.configured ? 'Supabase Sync' : 'Local Storage Engine'}</span>
         </button>
 
-        {/* Quick User Role Switcher */}
+        {/* User Identity Pill */}
         <div className="relative">
           <button
             onClick={() => setShowUserDropdown(!showUserDropdown)}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs text-left transition-colors"
+            className="flex items-center gap-2 px-2.5 py-1 rounded bg-white/[0.04] hover:bg-white/[0.07] border border-white/[0.06] text-xs transition-colors"
+            title="Switch User Role"
           >
-            <div className="w-6 h-6 rounded-full bg-slate-700 flex items-center justify-center text-slate-200">
+            <div className="w-5 h-5 rounded bg-slate-800 flex items-center justify-center text-slate-300">
               {isAdmin ? (
-                <Shield className="w-3.5 h-3.5 text-amber-400" />
+                <Shield className="w-3 h-3 text-amber-400" />
               ) : (
-                <UserIcon className="w-3.5 h-3.5 text-brand-400" />
+                <UserIcon className="w-3 h-3 text-slate-400" />
               )}
             </div>
-            <div className="hidden sm:block">
-              <p className="font-medium text-slate-200 leading-none">{currentUser.displayName.split(' ')[0]}</p>
-              <p className="text-2xs text-slate-400 uppercase tracking-wider font-semibold">
-                {currentUser.role}
-              </p>
-            </div>
-            <ChevronDown className="w-3.5 h-3.5 text-slate-400 ml-1" />
+            <span className="font-medium text-slate-200 text-xs hidden sm:inline">
+              {currentUser.displayName.split(' ')[0]}
+            </span>
+            <span className="text-3xs text-slate-400 uppercase font-mono hidden sm:inline font-semibold">
+              ({currentUser.role})
+            </span>
+            <ChevronDown className="w-3 h-3 text-slate-500" />
           </button>
 
-          {/* Dropdown Menu */}
+          {/* User Switch Dropdown */}
           {showUserDropdown && (
-            <div className="absolute right-0 mt-2 w-64 rounded-xl bg-slate-900 border border-slate-700 shadow-2xl py-2 z-50">
-              <div className="px-3 py-2 border-b border-slate-800">
-                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                  Test Role Switcher
-                </p>
-                <p className="text-2xs text-slate-500">
-                  Switch between Admin and Employees to verify permission enforcement.
+            <div className="absolute right-0 mt-2 w-60 rounded-lg bg-[#141824] border border-white/[0.1] shadow-2xl py-1 z-50">
+              <div className="px-3 py-1.5 border-b border-white/[0.06]">
+                <p className="text-3xs font-semibold text-slate-400 uppercase tracking-wider">
+                  Select Active Personnel
                 </p>
               </div>
 
@@ -159,17 +161,17 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenNewEntry, stations }) => {
                       switchUser(u);
                       setShowUserDropdown(false);
                     }}
-                    className={`w-full flex items-center justify-between px-3 py-2 text-left text-xs hover:bg-slate-800 transition-colors ${
-                      u.id === currentUser.id ? 'bg-slate-800/80 font-semibold' : ''
+                    className={`w-full flex items-center justify-between px-3 py-1.5 text-left text-xs hover:bg-white/[0.06] transition-colors ${
+                      u.id === currentUser.id ? 'bg-amber-500/10 text-amber-300 font-semibold' : 'text-slate-300'
                     }`}
                   >
                     <div>
-                      <p className="text-slate-200">{u.displayName}</p>
-                      <p className="text-2xs text-slate-400">{u.email}</p>
+                      <p className="leading-tight">{u.displayName}</p>
+                      <p className="text-3xs text-slate-500 font-mono">{u.email}</p>
                     </div>
-                    <Badge variant={u.role === 'admin' ? 'warning' : 'info'} size="sm">
-                      {u.role.toUpperCase()}
-                    </Badge>
+                    <span className="text-3xs font-mono uppercase px-1.5 py-0.5 rounded bg-white/[0.05] border border-white/[0.06] text-slate-400">
+                      {u.role}
+                    </span>
                   </button>
                 ))}
               </div>
@@ -177,72 +179,67 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenNewEntry, stations }) => {
           )}
         </div>
 
-        {/* Primary Action: New Digital Entry */}
-        <Button
-          variant="primary"
-          size="md"
+        {/* Primary CTA: New Entry */}
+        <button
           onClick={onOpenNewEntry}
-          leftIcon={<Plus className="w-4 h-4" />}
-          className="font-semibold shadow-lg shadow-brand-500/10"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs shadow-sm transition-all active:scale-[0.98]"
         >
-          <span className="hidden sm:inline">New Entry</span>
-          <span className="sm:hidden">Entry</span>
-          <span className="hidden lg:inline text-2xs opacity-75 font-mono ml-1 px-1 py-0.5 rounded bg-brand-700/80">
+          <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
+          <span>New Entry</span>
+          <kbd className="hidden sm:inline font-mono text-3xs bg-amber-600/70 text-slate-950 px-1 py-0.2 rounded font-bold">
             Alt+N
-          </span>
-        </Button>
+          </kbd>
+        </button>
       </div>
 
-      {/* Database Status Modal */}
+      {/* Storage Architecture Modal */}
       {dbStatusModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
-          <div className="bg-slate-900 border border-slate-700 rounded-xl max-w-md w-full p-6 shadow-2xl">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-lg bg-brand-950 border border-brand-800 flex items-center justify-center text-brand-400">
-                <Database className="w-5 h-5" />
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+          <div className="bg-[#121620] border border-white/[0.1] rounded-xl max-w-md w-full p-5 shadow-2xl font-sans">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-8 h-8 rounded bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-400">
+                <Database className="w-4 h-4" />
               </div>
               <div>
-                <h3 className="font-semibold text-slate-100">Database & Security Architecture</h3>
-                <p className="text-xs text-slate-400">PostgreSQL Schema & RLS Status</p>
+                <h3 className="font-bold text-sm text-white">System Architecture & Persistence</h3>
+                <p className="text-2xs text-slate-400 font-mono">Vault 147 Operational Storage</p>
               </div>
             </div>
 
-            <div className="space-y-3 text-xs bg-slate-950 p-4 rounded-lg border border-slate-800 font-mono mb-4">
+            <div className="space-y-2 text-xs bg-[#0b0e14] p-3 rounded-lg border border-white/[0.06] font-mono mb-3">
               <div className="flex justify-between">
-                <span className="text-slate-400">Persistence Mode:</span>
+                <span className="text-slate-400">Persistence Engine:</span>
                 <span className="text-emerald-400 font-semibold">
-                  {supabaseStatus.configured ? 'Live Supabase PostgreSQL' : 'Local Persistent Storage Engine'}
+                  {supabaseStatus.configured ? 'Supabase Live' : 'Local Storage Engine'}
                 </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-slate-400">Row Level Security (RLS):</span>
-                <span className="text-emerald-400 font-semibold">Enforced</span>
+                <span className="text-slate-400">Financial Storage:</span>
+                <span className="text-amber-400 font-semibold">Integer Paise (0.00 Float Free)</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-slate-400">Financial Type:</span>
-                <span className="text-amber-400 font-semibold">Exact Integer Paise (No Float)</span>
+                <span className="text-slate-400">Timezone Context:</span>
+                <span className="text-slate-200">Asia/Kolkata (IST UTC+5:30)</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-slate-400">Timezone:</span>
-                <span className="text-slate-200">Asia/Kolkata (IST)</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-400">Migration File:</span>
-                <span className="text-brand-300">supabase/migrations/</span>
+                <span className="text-slate-400">Audit Trail:</span>
+                <span className="text-emerald-400 font-semibold">Immutable Append-Only Log</span>
               </div>
             </div>
 
-            <p className="text-xs text-slate-400 leading-relaxed mb-4">
-              To connect this application to your free-tier Supabase project, set{' '}
-              <code className="text-brand-300 bg-slate-800 px-1 py-0.5 rounded">VITE_SUPABASE_URL</code> and{' '}
-              <code className="text-brand-300 bg-slate-800 px-1 py-0.5 rounded">VITE_SUPABASE_ANON_KEY</code> in your{' '}
-              <code className="text-brand-300 bg-slate-800 px-1 py-0.5 rounded">.env</code> file.
+            <p className="text-2xs text-slate-400 leading-relaxed mb-4">
+              {supabaseStatus.configured
+                ? 'Connected to configured remote PostgreSQL cluster with Row-Level Security.'
+                : 'Running on synchronous browser storage with event bus reactivity. All changes persist across tab closes and sessions.'}
             </p>
 
             <div className="flex justify-end">
-              <Button variant="secondary" size="sm" onClick={() => setDbStatusModal(false)}>
+              <button
+                onClick={() => setDbStatusModal(false)}
+                className="px-3 py-1.5 rounded bg-white/[0.08] hover:bg-white/[0.12] text-xs font-semibold text-slate-200 transition-colors"
+              >
                 Close
-              </Button>
+              </button>
             </div>
           </div>
         </div>
