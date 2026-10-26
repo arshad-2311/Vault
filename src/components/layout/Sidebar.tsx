@@ -8,7 +8,6 @@ import {
   Users,
   Settings,
   ShieldAlert,
-  Banknote,
   LogOut,
   X,
 } from 'lucide-react';
@@ -76,7 +75,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
     adminOnly?: boolean;
   }> = [
     { id: 'reports', label: 'Reports', icon: BarChart3 },
-    { id: 'closing', label: 'Cash Closing', icon: Banknote },
     { id: 'audit-log', label: 'Audit Trail', icon: ShieldAlert, adminOnly: true },
   ];
 
@@ -243,13 +241,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </button>
 
         <button
-          onClick={() => handleTabClick('closing')}
+          onClick={() => handleTabClick('reports')}
           className={`flex flex-col items-center py-1 px-2.5 text-2xs transition-colors ${
-            activeTab === 'closing' ? 'text-amber-400 font-bold' : 'text-slate-400'
+            activeTab === 'reports' ? 'text-amber-400 font-bold' : 'text-slate-400'
           }`}
         >
-          <Banknote className="w-4 h-4 mb-0.5" />
-          <span>Closing</span>
+          <BarChart3 className="w-4 h-4 mb-0.5" />
+          <span>Reports</span>
         </button>
       </div>
     </>
