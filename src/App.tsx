@@ -228,6 +228,7 @@ export const AppContent: React.FC = () => {
       />
 
       <CheckoutModal
+        key={checkoutSession?.id || 'none'}
         isOpen={Boolean(checkoutSession)}
         onClose={() => setCheckoutSession(null)}
         session={checkoutSession}

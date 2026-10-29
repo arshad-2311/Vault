@@ -66,6 +66,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
       const nowISO = new Date().toISOString();
       setEndTimeISO(nowISO);
       setError(null);
+      setIsSubmitting(false);
       setDiscountInput('0');
       setDiscountReason('');
       setNotes('');
@@ -206,6 +207,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
       }
     } catch (err: any) {
       setError(err.message || 'Failed to complete checkout.');
+    } finally {
       setIsSubmitting(false);
     }
   };
@@ -220,10 +222,16 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
     executeCheckout(true);
   };
 
+  const handleClose = () => {
+    setIsSubmitting(false);
+    setError(null);
+    onClose();
+  };
+
   return (
     <Modal
       isOpen={isOpen}
-      onClose={onClose}
+      onClose={handleClose}
       title="End Payment & Settle Session"
       description={`${session.customerName} • ${session.stationName} (${session.gamingType.toUpperCase()})`}
       maxWidth="2xl"
@@ -238,7 +246,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
               variant="secondary"
               size="md"
               type="button"
-              onClick={onClose}
+              onClick={handleClose}
               disabled={isSubmitting}
             >
               Cancel
