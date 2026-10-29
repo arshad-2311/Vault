@@ -249,8 +249,8 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
               type="button"
               disabled={isSubmitting}
               onClick={handleSubmitWithPrint}
-              leftIcon={<Printer className="w-4 h-4 text-amber-400" />}
-              className="hover:border-amber-500 hover:text-amber-300"
+              leftIcon={<Printer className="w-4 h-4 text-red-400" />}
+              className="hover:border-red-500 hover:text-red-300"
             >
               End & Print
             </Button>
@@ -260,7 +260,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
               type="submit"
               isLoading={isSubmitting}
               leftIcon={<CheckCircle className="w-4 h-4" />}
-              className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold border-emerald-500 shadow-sm shadow-emerald-950/40"
+              className="bg-red-600 hover:bg-red-500 text-white font-bold border-red-500 shadow-md shadow-red-950/60"
             >
               End Payment & Settle ({formatRupees(billBreakdown.finalBillPaise)})
             </Button>
@@ -270,7 +270,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
     >
       <div className="space-y-4">
         {error && (
-          <div className="p-3 rounded-lg bg-rose-950/70 border border-rose-800 text-rose-300 text-xs flex items-start gap-2">
+          <div className="p-3 rounded-lg bg-red-950/70 border border-red-800 text-red-300 text-xs flex items-start gap-2">
             <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
             <div className="flex-1">
               <p>{error}</p>
@@ -278,7 +278,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                 <button
                   type="button"
                   onClick={handleAdjustGpayToExact}
-                  className="mt-1.5 px-2 py-1 rounded bg-rose-900/80 hover:bg-rose-800 text-white text-2xs font-semibold flex items-center gap-1 transition-colors"
+                  className="mt-1.5 px-2 py-1 rounded bg-red-900/80 hover:bg-red-800 text-white text-2xs font-semibold flex items-center gap-1 transition-colors"
                 >
                   <span>Adjust GPay to Exact Bill ({formatRupees(billBreakdown.finalBillPaise)})</span>
                   <ArrowRight className="w-3 h-3" />
@@ -301,7 +301,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
             </div>
             <div>
               <span className="text-3xs text-slate-500 uppercase block">Billed Time</span>
-              <span className="text-amber-400 font-bold">
+              <span className="text-red-400 font-bold">
                 {formatDuration(chargeCalc.billedMinutes)} ({chargeCalc.actualMinutes}m actual)
               </span>
             </div>
@@ -312,7 +312,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
         </div>
 
         {/* Itemized Charges & Discounts */}
-        <div className="p-3.5 rounded-lg bg-slate-950/60 border border-slate-800 space-y-2 text-xs">
+        <div className="p-3.5 rounded-lg bg-[#08080c] border border-white/[0.08] space-y-2 text-xs">
           <div className="flex justify-between items-center py-0.5">
             <span className="text-slate-300">Gaming Session Charge:</span>
             <span className="font-mono font-semibold text-slate-100">
@@ -321,7 +321,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
           </div>
 
           {session.items.length > 0 && (
-            <div className="border-t border-slate-800/80 pt-1.5 space-y-1">
+            <div className="border-t border-white/[0.06] pt-1.5 space-y-1">
               <span className="text-3xs text-slate-500 uppercase font-semibold">Drinks & Snacks</span>
               {session.items.map((it) => (
                 <div key={it.id} className="flex justify-between text-slate-400 pl-2">
@@ -333,9 +333,9 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                   </span>
                 </div>
               ))}
-              <div className="flex justify-between font-medium text-slate-200 pt-1 border-t border-slate-800/40">
+              <div className="flex justify-between font-medium text-slate-200 pt-1 border-t border-white/[0.04]">
                 <span>Snack Subtotal:</span>
-                <span className="font-mono text-amber-400">
+                <span className="font-mono text-red-400 font-semibold">
                   {formatRupees(session.snackSubtotalPaise)}
                 </span>
               </div>
@@ -343,7 +343,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
           )}
 
           {/* Discount Inputs */}
-          <div className="border-t border-slate-800/80 pt-2 grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <div className="border-t border-white/[0.06] pt-2 grid grid-cols-1 sm:grid-cols-2 gap-2">
             <div>
               <label className="block text-2xs font-semibold text-slate-400 mb-1">
                 Discount (₹)
@@ -359,7 +359,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                 step="0.01"
                 value={discountInput}
                 onChange={(e) => setDiscountInput(e.target.value)}
-                className="w-full px-3 py-1.5 rounded-md bg-slate-900 border border-slate-700 text-xs font-mono text-slate-100 focus:border-amber-500 outline-none"
+                className="w-full px-3 py-1.5 rounded-md bg-[#050507] border border-white/[0.1] text-xs font-mono text-slate-100 focus:border-red-500 outline-none"
               />
             </div>
 
@@ -372,13 +372,13 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                 placeholder="e.g. Regular tournament offer"
                 value={discountReason}
                 onChange={(e) => setDiscountReason(e.target.value)}
-                className="w-full px-3 py-1.5 rounded-md bg-slate-900 border border-slate-700 text-xs text-slate-100 focus:border-amber-500 outline-none"
+                className="w-full px-3 py-1.5 rounded-md bg-[#050507] border border-white/[0.1] text-xs text-slate-100 focus:border-red-500 outline-none"
               />
             </div>
           </div>
 
           {/* Final Bill Highlight */}
-          <div className="mt-2 p-3 rounded-lg bg-slate-900 border border-slate-800 flex items-center justify-between">
+          <div className="mt-2 p-3 rounded-lg bg-[#0e0e14] border border-red-950/50 flex items-center justify-between">
             <div>
               <span className="text-2xs font-semibold uppercase text-slate-400 block">
                 Final Amount Due
@@ -388,7 +388,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                 {billBreakdown.discountPaise > 0 && ` | Disc: -${formatRupees(billBreakdown.discountPaise)}`}
               </span>
             </div>
-            <span className="text-2xl font-bold font-mono text-amber-400 tabular-nums">
+            <span className="text-2xl font-black font-mono text-white tabular-nums">
               {formatRupees(billBreakdown.finalBillPaise)}
             </span>
           </div>
@@ -397,17 +397,17 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
         {/* Payment Method & Allocation */}
         <div className="p-3.5 rounded-lg bg-slate-950/60 border border-slate-800 space-y-3">
           <div className="flex items-center justify-between">
-            <label className="text-xs font-medium text-slate-300">
+            <label className="text-xs font-medium text-zinc-300">
               Payment Method
             </label>
-            <div className="flex items-center gap-1 bg-slate-900 p-0.5 rounded-lg border border-slate-800 text-xs">
+            <div className="flex items-center gap-1 bg-zinc-900 p-0.5 rounded-lg border border-zinc-800 text-xs">
               <button
                 type="button"
                 onClick={() => handleSetMethod('gpay')}
-                className={`px-3 py-1 rounded-md font-semibold transition-all flex items-center gap-1.5 ${
+                className={`px-3 py-1.5 rounded-md font-semibold transition-all flex items-center gap-1.5 ${
                   paymentMethod === 'gpay'
-                    ? 'bg-blue-600 text-white shadow-sm'
-                    : 'text-slate-400 hover:text-slate-200'
+                    ? 'bg-red-600 text-white font-bold shadow-sm'
+                    : 'text-zinc-400 hover:text-white'
                 }`}
               >
                 <QrCode className="w-3.5 h-3.5" />
@@ -417,10 +417,10 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
               <button
                 type="button"
                 onClick={() => handleSetMethod('cash')}
-                className={`px-3 py-1 rounded-md font-semibold transition-all flex items-center gap-1.5 ${
+                className={`px-3 py-1.5 rounded-md font-semibold transition-all flex items-center gap-1.5 ${
                   paymentMethod === 'cash'
-                    ? 'bg-emerald-600 text-white shadow-sm'
-                    : 'text-slate-400 hover:text-slate-200'
+                    ? 'bg-red-600 text-white font-bold shadow-sm'
+                    : 'text-zinc-400 hover:text-white'
                 }`}
               >
                 <Banknote className="w-3.5 h-3.5" />
@@ -430,10 +430,10 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
               <button
                 type="button"
                 onClick={() => handleSetMethod('split')}
-                className={`px-3 py-1 rounded-md font-semibold transition-all flex items-center gap-1.5 ${
+                className={`px-3 py-1.5 rounded-md font-semibold transition-all flex items-center gap-1.5 ${
                   paymentMethod === 'split'
-                    ? 'bg-amber-500 text-slate-950 font-bold shadow-sm'
-                    : 'text-slate-400 hover:text-slate-200'
+                    ? 'bg-red-600 text-white font-bold shadow-sm'
+                    : 'text-zinc-400 hover:text-white'
                 }`}
               >
                 <CreditCard className="w-3.5 h-3.5" />
@@ -443,10 +443,10 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
           </div>
 
           {/* Payment Inputs */}
-          <div className="grid grid-cols-2 gap-3 p-3 rounded-lg bg-slate-900/60 border border-slate-800">
+          <div className="grid grid-cols-2 gap-3 p-3 rounded-lg bg-[#08080c] border border-zinc-800">
             <div>
               <div className="flex items-center justify-between mb-1">
-                <label className="block text-2xs font-semibold text-slate-400">
+                <label className="block text-2xs font-semibold text-zinc-400">
                   UPI / GPay Received (₹)
                 </label>
                 {paymentMethod === 'split' && (
@@ -456,7 +456,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                       const remPaise = Math.max(0, billBreakdown.finalBillPaise - cashPaise);
                       setGpayInput(formatPaiseToInputRupees(remPaise));
                     }}
-                    className="text-3xs text-blue-400 hover:text-blue-300 underline font-mono"
+                    className="text-3xs text-red-400 hover:text-red-300 underline font-mono"
                   >
                     Fill Balance
                   </button>
@@ -469,13 +469,13 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                 value={gpayInput}
                 disabled={paymentMethod === 'cash'}
                 onChange={(e) => setGpayInput(e.target.value)}
-                className="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-sm font-mono text-slate-100 disabled:opacity-40 focus:border-amber-500 outline-none"
+                className="w-full px-3 py-2 rounded-lg bg-[#050507] border border-zinc-800 text-sm font-mono text-white disabled:opacity-40 focus:border-red-500 outline-none"
               />
             </div>
 
             <div>
               <div className="flex items-center justify-between mb-1">
-                <label className="block text-2xs font-semibold text-slate-400">
+                <label className="block text-2xs font-semibold text-zinc-400">
                   Cash Tendered (₹)
                 </label>
                 {paymentMethod === 'split' && (
@@ -485,7 +485,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                       const remPaise = Math.max(0, billBreakdown.finalBillPaise - gpayPaise);
                       setCashInput(formatPaiseToInputRupees(remPaise));
                     }}
-                    className="text-3xs text-emerald-400 hover:text-emerald-300 underline font-mono"
+                    className="text-3xs text-red-400 hover:text-red-300 underline font-mono"
                   >
                     Fill Balance
                   </button>
@@ -498,37 +498,37 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                 value={cashInput}
                 disabled={paymentMethod === 'gpay'}
                 onChange={(e) => setCashInput(e.target.value)}
-                className="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-sm font-mono text-slate-100 disabled:opacity-40 focus:border-amber-500 outline-none"
+                className="w-full px-3 py-2 rounded-lg bg-[#050507] border border-zinc-800 text-sm font-mono text-white disabled:opacity-40 focus:border-red-500 outline-none"
               />
             </div>
           </div>
 
           {/* Settlement Status & Math Reconciliation */}
-          <div className="p-3 rounded-lg bg-slate-900 border border-slate-800 space-y-1.5">
+          <div className="p-3 rounded-lg bg-[#08080c] border border-zinc-800 space-y-1.5">
             <div className="flex items-center justify-between text-xs font-mono">
-              <span className="text-slate-400">
+              <span className="text-zinc-400">
                 Total Collected: <strong className="text-white">{formatRupees(totalReceivedPaise)}</strong>
               </span>
 
               {changeDuePaise > 0 ? (
-                <span className="text-emerald-400 font-bold flex items-center gap-1.5">
-                  <CheckCircle className="w-3.5 h-3.5" />
+                <span className="text-zinc-200 font-bold flex items-center gap-1.5">
+                  <CheckCircle className="w-3.5 h-3.5 text-zinc-400" />
                   <span>Cash Change Due: {formatRupees(changeDuePaise)}</span>
                 </span>
               ) : balancePaise > 0 ? (
-                <span className="text-amber-400 font-bold">
+                <span className="text-red-400 font-bold">
                   Outstanding Due: {formatRupees(balancePaise)}
                 </span>
               ) : (
-                <span className="text-emerald-400 font-semibold flex items-center gap-1">
-                  <CheckCircle className="w-3.5 h-3.5" />
+                <span className="text-zinc-200 font-semibold flex items-center gap-1">
+                  <CheckCircle className="w-3.5 h-3.5 text-zinc-400" />
                   <span>Paid in Full</span>
                 </span>
               )}
             </div>
 
             {changeDuePaise > 0 && (
-              <div className="p-2 rounded bg-emerald-950/40 border border-emerald-800/50 text-2xs text-emerald-300 font-mono">
+              <div className="p-2 rounded bg-zinc-900 border border-zinc-800 text-2xs text-zinc-300 font-mono">
                 Cash drawer transaction: Tendered {formatRupees(cashPaise)} - Return {formatRupees(changeDuePaise)} change = Net {formatRupees(cashPaise - changeDuePaise)} drawer cash.
               </div>
             )}

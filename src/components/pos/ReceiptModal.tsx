@@ -61,7 +61,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
             type="button"
             onClick={handlePrint}
             leftIcon={<Printer className="w-4 h-4" />}
-            className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold border-amber-400"
+            className="bg-red-600 hover:bg-red-500 text-white font-bold border-red-500 shadow-md shadow-red-950/60"
           >
             Print Thermal Receipt
           </Button>
@@ -133,7 +133,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
               </div>
             ))}
             {session.discountPaise > 0 && (
-              <div className="flex justify-between text-2xs text-rose-400 font-semibold">
+              <div className="flex justify-between text-2xs text-red-400 font-semibold">
                 <span>Discount ({session.discountReason || 'Promo'})</span>
                 <span>-{formatRupees(session.discountPaise)}</span>
               </div>
@@ -144,7 +144,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
           <div className="space-y-1 text-2xs">
             <div className="flex justify-between text-base font-extrabold text-white pt-1">
               <span>FINAL BILL:</span>
-              <span className="text-amber-400 font-mono">{formatRupees(session.finalBillPaise)}</span>
+              <span className="text-red-400 font-mono">{formatRupees(session.finalBillPaise)}</span>
             </div>
 
             <div className="pt-2 border-t border-slate-800 space-y-1">
@@ -157,7 +157,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
               {session.payment?.gpayAmountPaise! > 0 && (
                 <div className="flex justify-between text-slate-400">
                   <span>UPI / GPay Received:</span>
-                  <span className="text-blue-400 font-mono">
+                  <span className="text-zinc-200 font-mono">
                     {formatRupees(session.payment?.gpayAmountPaise)}
                   </span>
                 </div>
@@ -165,19 +165,19 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
               {session.payment?.cashAmountPaise! > 0 && (
                 <div className="flex justify-between text-slate-400">
                   <span>Cash Tendered:</span>
-                  <span className="text-emerald-400 font-mono">
+                  <span className="text-zinc-200 font-mono">
                     {formatRupees(session.payment?.cashAmountPaise)}
                   </span>
                 </div>
               )}
               {session.payment?.changeDuePaise! > 0 && (
-                <div className="flex justify-between text-emerald-300 font-bold">
+                <div className="flex justify-between text-zinc-300 font-bold">
                   <span>Cash Change Returned:</span>
                   <span className="font-mono">{formatRupees(session.payment?.changeDuePaise)}</span>
                 </div>
               )}
               {session.payment?.outstandingBalancePaise! > 0 && (
-                <div className="flex justify-between text-amber-400 font-bold">
+                <div className="flex justify-between text-red-400 font-bold">
                   <span>Outstanding Balance:</span>
                   <span className="font-mono">
                     {formatRupees(session.payment?.outstandingBalancePaise)}
@@ -186,8 +186,8 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
               )}
               <div className="flex justify-between text-slate-300 font-bold pt-1">
                 <span>Settlement Status:</span>
-                <span className="text-emerald-400 flex items-center gap-1">
-                  <CheckCircle className="w-3 h-3" />
+                <span className="text-white flex items-center gap-1">
+                  <CheckCircle className="w-3 h-3 text-red-500" />
                   <span>{session.payment?.status || 'SETTLED'}</span>
                 </span>
               </div>

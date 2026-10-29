@@ -53,8 +53,8 @@ export const SettingsPage: React.FC = () => {
 
   if (!isAdmin) {
     return (
-      <div className="p-12 text-center rounded-xl border border-rose-900/40 bg-rose-950/20 max-w-lg mx-auto mt-10">
-        <Lock className="w-12 h-12 text-rose-500 mx-auto mb-3" />
+      <div className="p-12 text-center rounded-xl border border-red-900/40 bg-red-950/20 max-w-lg mx-auto mt-10">
+        <Lock className="w-12 h-12 text-red-500 mx-auto mb-3" />
         <h2 className="text-base font-bold text-white">Access Denied: Administrator Only</h2>
         <p className="text-xs text-slate-400 mt-2">
           Pricing configurations, session rounding rules, and discount policies can only be adjusted
@@ -133,7 +133,7 @@ export const SettingsPage: React.FC = () => {
           variant="secondary"
           size="sm"
           onClick={handleResetDemo}
-          leftIcon={<RotateCcw className="w-3.5 h-3.5 text-amber-400" />}
+          leftIcon={<RotateCcw className="w-3.5 h-3.5 text-red-400" />}
           className="text-xs"
         >
           Reset Demo Data
@@ -141,15 +141,15 @@ export const SettingsPage: React.FC = () => {
       </div>
 
       {successMessage && (
-        <div className="p-4 rounded-xl bg-emerald-950/80 border border-emerald-800 text-emerald-300 text-xs flex items-center gap-2 font-medium">
-          <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
+        <div className="p-4 rounded-xl bg-zinc-900 border border-zinc-700 text-zinc-200 text-xs flex items-center gap-2 font-medium">
+          <CheckCircle2 className="w-5 h-5 text-red-500 shrink-0" />
           <span>{successMessage}</span>
         </div>
       )}
 
       {error && (
-        <div className="p-4 rounded-xl bg-rose-950/80 border border-rose-800 text-rose-300 text-xs flex items-center gap-2 font-medium">
-          <AlertTriangle className="w-5 h-5 text-rose-400 shrink-0" />
+        <div className="p-4 rounded-xl bg-red-950/80 border border-red-800 text-red-300 text-xs flex items-center gap-2 font-medium">
+          <AlertTriangle className="w-5 h-5 text-red-400 shrink-0" />
           <span>{error}</span>
         </div>
       )}
@@ -169,7 +169,7 @@ export const SettingsPage: React.FC = () => {
                 required
                 value={businessName}
                 onChange={(e) => setBusinessName(e.target.value)}
-                className="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-xs text-slate-100 focus:border-brand-500"
+                className="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-xs text-slate-100 focus:border-red-500"
               />
             </div>
 
@@ -182,7 +182,7 @@ export const SettingsPage: React.FC = () => {
                 required
                 value={businessTimezone}
                 onChange={(e) => setBusinessTimezone(e.target.value)}
-                className="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-xs font-mono text-slate-100 focus:border-brand-500"
+                className="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-xs font-mono text-slate-100 focus:border-red-500"
               />
             </div>
           </div>
@@ -191,7 +191,7 @@ export const SettingsPage: React.FC = () => {
         {/* Section 2: PS5 Rates */}
         <div className="p-5 rounded-xl bg-slate-900 border border-slate-800 space-y-4">
           <div className="flex items-center gap-2">
-            <Gamepad2 className="w-4 h-4 text-blue-400" />
+            <Gamepad2 className="w-4 h-4 text-red-500" />
             <h3 className="text-sm font-semibold text-slate-200">PlayStation 5 Rates</h3>
           </div>
 
@@ -207,7 +207,7 @@ export const SettingsPage: React.FC = () => {
                 step="1"
                 value={ps5HourlyRupees}
                 onChange={(e) => setPs5HourlyRupees(e.target.value)}
-                className="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-xs font-mono text-slate-100 focus:border-brand-500"
+                className="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-xs font-mono text-slate-100 focus:border-red-500"
               />
               <p className="text-3xs text-slate-500 mt-1">Default: ₹150 / hr</p>
             </div>
@@ -223,7 +223,7 @@ export const SettingsPage: React.FC = () => {
                 step="1"
                 value={ps5MultiplayerRupees}
                 onChange={(e) => setPs5MultiplayerRupees(e.target.value)}
-                className="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-xs font-mono text-slate-100 focus:border-brand-500"
+                className="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-xs font-mono text-slate-100 focus:border-red-500"
               />
               <p className="text-3xs text-slate-500 mt-1">Default: ₹220 / hr</p>
             </div>
@@ -233,7 +233,7 @@ export const SettingsPage: React.FC = () => {
         {/* Section 3: 8-Ball Pool Rates */}
         <div className="p-5 rounded-xl bg-slate-900 border border-slate-800 space-y-4">
           <div className="flex items-center gap-2">
-            <CircleDot className="w-4 h-4 text-emerald-400" />
+            <CircleDot className="w-4 h-4 text-zinc-400" />
             <h3 className="text-sm font-semibold text-slate-200">8-Ball Pool Rates</h3>
           </div>
 
@@ -275,7 +275,7 @@ export const SettingsPage: React.FC = () => {
         {/* Section 4: Rounding Policy & Permission Controls */}
         <div className="p-5 rounded-xl bg-slate-900 border border-slate-800 space-y-4">
           <div className="flex items-center gap-2">
-            <Clock className="w-4 h-4 text-amber-400" />
+            <Clock className="w-4 h-4 text-red-400" />
             <h3 className="text-sm font-semibold text-slate-200">
               Session Rounding & Permission Safeguards
             </h3>
@@ -289,7 +289,7 @@ export const SettingsPage: React.FC = () => {
               <select
                 value={roundingRule}
                 onChange={(e) => setRoundingRule(e.target.value as any)}
-                className="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-xs text-slate-100 focus:border-brand-500"
+                className="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-xs text-slate-100 focus:border-red-500 outline-none"
               >
                 <option value="nearest_5">Nearest 5 Minutes (Recommended)</option>
                 <option value="exact">Exact Minute-by-Minute</option>
@@ -312,7 +312,7 @@ export const SettingsPage: React.FC = () => {
                 step="1"
                 value={maxEmployeeDiscountRupees}
                 onChange={(e) => setMaxEmployeeDiscountRupees(e.target.value)}
-                className="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-xs font-mono text-slate-100 focus:border-brand-500"
+                className="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-xs font-mono text-slate-100 focus:border-red-500 outline-none"
               />
               <p className="text-3xs text-slate-500 mt-1">
                 Discounts greater than this amount require Administrator permission.
@@ -326,7 +326,7 @@ export const SettingsPage: React.FC = () => {
                 type="checkbox"
                 checked={allowCustomSnacks}
                 onChange={(e) => setAllowCustomSnacks(e.target.checked)}
-                className="w-4 h-4 rounded bg-slate-950 border-slate-700 text-brand-600 focus:ring-brand-500"
+                className="w-4 h-4 rounded bg-slate-950 border-slate-700 text-red-600 focus:ring-red-500"
               />
               <span>Allow employees to bill quick Custom Snacks (e.g. sandwiches, drinks not in catalogue)</span>
             </label>
@@ -336,7 +336,7 @@ export const SettingsPage: React.FC = () => {
                 type="checkbox"
                 checked={allowPartialPayments}
                 onChange={(e) => setAllowPartialPayments(e.target.checked)}
-                className="w-4 h-4 rounded bg-slate-950 border-slate-700 text-brand-600 focus:ring-brand-500"
+                className="w-4 h-4 rounded bg-slate-950 border-slate-700 text-red-600 focus:ring-red-500"
               />
               <span>Allow Partial Payments (Tracks outstanding customer debt explicitly)</span>
             </label>

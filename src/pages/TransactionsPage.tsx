@@ -19,9 +19,9 @@ import { Button } from '../components/common/Button';
 import { Badge } from '../components/common/Badge';
 import { Modal } from '../components/common/Modal';
 import { ReceiptModal } from '../components/pos/ReceiptModal';
-import { useAuth } from '../../src/context/AuthContext';
+import { useAuth } from '../context/AuthContext';
 import { db, VAULT_DATA_CHANGED_EVENT } from '../services/storage';
-import { formatRupees, formatDateTime, formatDuration } from '../utils/formatters';
+import { formatRupees, formatDateTime, formatDuration, maskPhoneNumber } from '../utils/formatters';
 
 export const TransactionsPage: React.FC = () => {
   const { currentUser, isAdmin } = useAuth();
@@ -33,8 +33,6 @@ export const TransactionsPage: React.FC = () => {
   const [paymentMethodFilter, setPaymentMethodFilter] = useState<'all' | 'gpay' | 'cash' | 'split'>('all');
   const [statusFilter, setStatusFilter] = useState<'all' | 'completed' | 'active' | 'cancelled'>('all');
   const [employeeFilter, setEmployeeFilter] = useState<string>('all');
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
 
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
@@ -89,19 +87,12 @@ export const TransactionsPage: React.FC = () => {
       s.createdBy === employeeFilter ||
       s.completedBy === employeeFilter;
 
-    // Date range
-    const sDate = s.startTime.split('T')[0];
-    const matchStart = !startDate || sDate >= startDate;
-    const matchEnd = !endDate || sDate <= endDate;
-
     return (
       matchSearch &&
       matchGaming &&
       matchPayment &&
       matchStatus &&
-      matchEmployee &&
-      matchStart &&
-      matchEnd
+      matchEmployee
     );
   });
 
@@ -141,15 +132,15 @@ export const TransactionsPage: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 sm:space-y-8">
       {/* Page Header */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-2 border-b border-slate-800">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-3 border-b border-zinc-800">
         <div>
           <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-white flex items-center gap-2">
-            <ReceiptText className="w-6 h-6 text-brand-400" />
+            <ReceiptText className="w-6 h-6 text-red-500" />
             <span>All Entries & Transaction History</span>
           </h1>
-          <p className="text-xs text-slate-400 mt-0.5">
+          <p className="text-xs text-zinc-400 mt-1">
             Audited financial register of all sessions, collections, line items, and voids.
           </p>
         </div>
@@ -158,25 +149,25 @@ export const TransactionsPage: React.FC = () => {
           variant="secondary"
           size="md"
           onClick={handleExportCSV}
-          leftIcon={<Download className="w-4 h-4 text-emerald-400" />}
+          leftIcon={<Download className="w-4 h-4 text-zinc-300" />}
           className="font-medium"
         >
           Export Filtered CSV ({filtered.length})
         </Button>
       </div>
 
-      {/* Filter Toolbar */}
-      <div className="p-4 rounded-xl bg-slate-900 border border-slate-800 space-y-3">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+      {/* Filter Toolbar with generous touch targets and spacing */}
+      <div className="p-4 sm:p-5 rounded-xl bg-zinc-900/90 border border-zinc-800">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-3.5">
           {/* Search */}
-          <div className="relative">
-            <Search className="absolute left-3 top-2.5 w-4 h-4 text-slate-500" />
+          <div className="relative sm:col-span-2 lg:col-span-1">
+            <Search className="absolute left-3 top-3 w-4 h-4 text-zinc-500" />
             <input
               type="text"
               placeholder="Search customer, ID, phone..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-9 pr-3 py-1.5 rounded-lg bg-slate-950 border border-slate-700 text-xs text-slate-100 placeholder:text-slate-600 focus:border-brand-500"
+              className="w-full pl-9 pr-3 py-2 sm:py-2.5 rounded-lg bg-zinc-950 border border-zinc-700 text-xs text-zinc-100 placeholder:text-zinc-600 focus:border-red-500 outline-none"
             />
           </div>
 
@@ -184,7 +175,7 @@ export const TransactionsPage: React.FC = () => {
           <select
             value={gamingTypeFilter}
             onChange={(e) => setGamingTypeFilter(e.target.value as any)}
-            className="px-3 py-1.5 rounded-lg bg-slate-950 border border-slate-700 text-xs text-slate-200 focus:border-brand-500"
+            className="px-3 py-2 sm:py-2.5 rounded-lg bg-zinc-950 border border-zinc-700 text-xs text-zinc-200 focus:border-red-500 outline-none"
           >
             <option value="all">All Gaming Categories</option>
             <option value="ps5">PlayStation 5</option>
@@ -195,7 +186,7 @@ export const TransactionsPage: React.FC = () => {
           <select
             value={paymentMethodFilter}
             onChange={(e) => setPaymentMethodFilter(e.target.value as any)}
-            className="px-3 py-1.5 rounded-lg bg-slate-950 border border-slate-700 text-xs text-slate-200 focus:border-brand-500"
+            className="px-3 py-2 sm:py-2.5 rounded-lg bg-zinc-950 border border-zinc-700 text-xs text-zinc-200 focus:border-red-500 outline-none"
           >
             <option value="all">All Payment Methods</option>
             <option value="gpay">GPay / UPI</option>
@@ -207,64 +198,113 @@ export const TransactionsPage: React.FC = () => {
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value as any)}
-            className="px-3 py-1.5 rounded-lg bg-slate-950 border border-slate-700 text-xs text-slate-200 focus:border-brand-500"
+            className="px-3 py-2 sm:py-2.5 rounded-lg bg-zinc-950 border border-zinc-700 text-xs text-zinc-200 focus:border-red-500 outline-none"
           >
             <option value="all">All Statuses</option>
             <option value="completed">Completed & Paid</option>
             <option value="active">Active Sessions</option>
             <option value="cancelled">Voided / Cancelled</option>
           </select>
-        </div>
 
-        {/* Date Range & Employee filter row */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 border-t border-slate-800/80">
-          <div>
-            <label className="block text-3xs font-semibold text-slate-500 uppercase mb-1">
-              Start Date
-            </label>
-            <input
-              type="date"
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-              className="w-full px-3 py-1.5 rounded-lg bg-slate-950 border border-slate-700 text-xs text-slate-200 focus:border-brand-500 font-mono"
-            />
-          </div>
-
-          <div>
-            <label className="block text-3xs font-semibold text-slate-500 uppercase mb-1">
-              End Date
-            </label>
-            <input
-              type="date"
-              value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
-              className="w-full px-3 py-1.5 rounded-lg bg-slate-950 border border-slate-700 text-xs text-slate-200 focus:border-brand-500 font-mono"
-            />
-          </div>
-
-          <div>
-            <label className="block text-3xs font-semibold text-slate-500 uppercase mb-1">
-              Staff Member
-            </label>
-            <select
-              value={employeeFilter}
-              onChange={(e) => setEmployeeFilter(e.target.value)}
-              className="w-full px-3 py-1.5 rounded-lg bg-slate-950 border border-slate-700 text-xs text-slate-200 focus:border-brand-500"
-            >
-              <option value="all">All Staff Members</option>
-              {employees.map((u) => (
-                <option key={u.id} value={u.id}>
-                  {u.displayName}
-                </option>
-              ))}
-            </select>
-          </div>
+          {/* Staff Member */}
+          <select
+            value={employeeFilter}
+            onChange={(e) => setEmployeeFilter(e.target.value)}
+            className="px-3 py-2 sm:py-2.5 rounded-lg bg-zinc-950 border border-zinc-700 text-xs text-zinc-200 focus:border-red-500 outline-none"
+          >
+            <option value="all">All Staff Members</option>
+            {employees.map((u) => (
+              <option key={u.id} value={u.id}>
+                {u.displayName}
+              </option>
+            ))}
+          </select>
         </div>
       </div>
 
-      {/* Transaction Table */}
-      <div className="rounded-xl border border-slate-800 bg-slate-900/60 overflow-hidden shadow-sm">
-        <div className="overflow-x-auto">
+      {/* Transaction Table / Mobile Cards */}
+      <div className="rounded-xl border border-zinc-800 bg-zinc-900/60 overflow-hidden shadow-sm">
+        {/* Mobile Cards (md:hidden) */}
+        <div className="md:hidden divide-y divide-zinc-800/80 font-sans">
+          {paginatedSessions.length === 0 ? (
+            <div className="p-8 text-center text-zinc-500 text-xs font-mono">
+              No transactions match the selected filters.
+            </div>
+          ) : (
+            paginatedSessions.map((s) => (
+              <div
+                key={s.id}
+                className={`p-4 space-y-3 transition-colors ${
+                  s.isVoided ? 'bg-red-950/20 opacity-75' : 'hover:bg-zinc-850/30'
+                }`}
+              >
+                <div className="flex items-start justify-between gap-2.5">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-white text-sm">{s.customerName}</span>
+                      {s.isVoided ? (
+                        <Badge variant="danger" size="sm">VOIDED</Badge>
+                      ) : s.status === 'completed' ? (
+                        <Badge variant="success" size="sm">PAID</Badge>
+                      ) : (
+                        <Badge variant="warning" size="sm">ACTIVE</Badge>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2 text-2xs text-zinc-400 font-mono mt-1">
+                      <span className="font-semibold text-zinc-300">{s.stationName}</span>
+                      <span>•</span>
+                      <span className="uppercase">{s.gamingType}</span>
+                      <span>•</span>
+                      <span>{s.durationMinutes ? `${s.durationMinutes}m` : 'In Progress'}</span>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-base font-bold font-mono text-white block tabular-nums">
+                      {formatRupees(s.finalBillPaise)}
+                    </span>
+                    {s.payment && (
+                      <span className="text-3xs font-mono uppercase px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-300 inline-block mt-0.5 font-semibold">
+                        {s.payment.method}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between pt-2 border-t border-zinc-800/60 text-2xs font-mono text-zinc-400">
+                  <span className="text-3xs text-zinc-500">{s.id} • {formatDateTime(s.startTime)}</span>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      type="button"
+                      onClick={() => {
+                        setReceiptSession(s);
+                        setAutoPrintReceipt(false);
+                      }}
+                      leftIcon={<Printer className="w-3.5 h-3.5 text-red-400" />}
+                      className="text-xs text-red-400 hover:text-red-300 px-2.5 py-1.5 h-8"
+                    >
+                      Receipt
+                    </Button>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      type="button"
+                      onClick={() => setSelectedSession(s)}
+                      leftIcon={<Eye className="w-3.5 h-3.5" />}
+                      className="text-xs px-3 py-1.5 h-8"
+                    >
+                      Details
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+
+        {/* Desktop Table (hidden md:block) */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-left text-xs">
             <thead className="bg-slate-950/80 border-b border-slate-800 text-slate-400 uppercase font-mono text-3xs">
               <tr>
@@ -292,7 +332,7 @@ export const TransactionsPage: React.FC = () => {
                   <tr
                     key={s.id}
                     className={`hover:bg-slate-850/50 transition-colors ${
-                      s.isVoided ? 'bg-rose-950/10 opacity-70' : ''
+                      s.isVoided ? 'bg-red-950/15 opacity-70' : ''
                     }`}
                   >
                     <td className="px-4 py-3">
@@ -303,7 +343,9 @@ export const TransactionsPage: React.FC = () => {
                     <td className="px-4 py-3 font-sans">
                       <span className="font-medium text-slate-200 block">{s.customerName}</span>
                       {s.customerPhone && (
-                        <span className="text-3xs text-slate-500 font-mono">{s.customerPhone}</span>
+                        <span className="text-3xs text-slate-500 font-mono">
+                          {isAdmin ? s.customerPhone : maskPhoneNumber(s.customerPhone)}
+                        </span>
                       )}
                     </td>
 
@@ -322,7 +364,7 @@ export const TransactionsPage: React.FC = () => {
                       {formatRupees(s.gamingChargePaise)}
                     </td>
 
-                    <td className="px-4 py-3 text-amber-400">
+                    <td className="px-4 py-3 text-red-400">
                       {s.snackSubtotalPaise > 0 ? formatRupees(s.snackSubtotalPaise) : '—'}
                     </td>
 
@@ -340,7 +382,7 @@ export const TransactionsPage: React.FC = () => {
                                   ? 'info'
                                   : s.payment.method === 'cash'
                                   ? 'success'
-                                  : 'purple'
+                                  : 'neutral'
                               }
                               size="sm"
                             >
@@ -384,7 +426,7 @@ export const TransactionsPage: React.FC = () => {
                             setReceiptSession(s);
                             setAutoPrintReceipt(false);
                           }}
-                          leftIcon={<Printer className="w-3.5 h-3.5 text-amber-400" />}
+                          leftIcon={<Printer className="w-3.5 h-3.5 text-red-400" />}
                           className="text-2xs"
                         >
                           Receipt
@@ -452,15 +494,15 @@ export const TransactionsPage: React.FC = () => {
         >
           <div className="space-y-4 text-xs">
             {selectedSession.isVoided && (
-              <div className="p-3 rounded-lg bg-rose-950/70 border border-rose-800 text-rose-300">
+              <div className="p-3 rounded-lg bg-red-950/70 border border-red-800 text-red-300">
                 <p className="font-semibold flex items-center gap-1.5">
-                  <ShieldAlert className="w-4 h-4 text-rose-400" />
+                  <ShieldAlert className="w-4 h-4 text-red-400" />
                   <span>TRANSACTION VOIDED</span>
                 </p>
                 <p className="mt-1 text-2xs">
                   Reason: <strong>{selectedSession.voidReason}</strong>
                 </p>
-                <p className="text-3xs text-rose-400 font-mono mt-0.5">
+                <p className="text-3xs text-red-400 font-mono mt-0.5">
                   Voided at {formatDateTime(selectedSession.voidedAt)}
                 </p>
               </div>
@@ -472,7 +514,9 @@ export const TransactionsPage: React.FC = () => {
                 <span className="text-slate-500 text-3xs uppercase block">Customer</span>
                 <span className="text-slate-200 font-semibold">{selectedSession.customerName}</span>
                 {selectedSession.customerPhone && (
-                  <span className="text-slate-400 text-3xs block">{selectedSession.customerPhone}</span>
+                  <span className="text-slate-400 text-3xs block">
+                    {isAdmin ? selectedSession.customerPhone : maskPhoneNumber(selectedSession.customerPhone)}
+                  </span>
                 )}
               </div>
               <div>
@@ -488,7 +532,7 @@ export const TransactionsPage: React.FC = () => {
               </div>
               <div>
                 <span className="text-slate-500 text-3xs uppercase block">Duration Billed</span>
-                <span className="text-amber-400 font-bold">
+                <span className="text-red-400 font-bold">
                   {formatDuration(selectedSession.durationMinutes)}
                 </span>
               </div>
@@ -519,7 +563,7 @@ export const TransactionsPage: React.FC = () => {
               ))}
 
               {selectedSession.discountPaise > 0 && (
-                <div className="flex justify-between py-1 text-emerald-400 font-mono font-semibold">
+                <div className="flex justify-between py-1 text-red-400 font-mono font-semibold">
                   <span>Discount ({selectedSession.discountReason || 'Promo'}):</span>
                   <span>-{formatRupees(selectedSession.discountPaise)}</span>
                 </div>
@@ -527,7 +571,7 @@ export const TransactionsPage: React.FC = () => {
 
               <div className="flex justify-between pt-2 border-t border-slate-800 font-mono text-sm font-bold text-white">
                 <span>Final Bill:</span>
-                <span className="text-emerald-400">
+                <span className="text-white font-black">
                   {formatRupees(selectedSession.finalBillPaise)}
                 </span>
               </div>
@@ -547,13 +591,13 @@ export const TransactionsPage: React.FC = () => {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-slate-400">GPay Received:</span>
-                  <span className="text-blue-400">
+                  <span className="text-zinc-200 font-semibold">
                     {formatRupees(selectedSession.payment.gpayAmountPaise)}
                   </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-slate-400">Cash Received:</span>
-                  <span className="text-emerald-400">
+                  <span className="text-zinc-200 font-semibold">
                     {formatRupees(selectedSession.payment.cashAmountPaise)}
                   </span>
                 </div>
@@ -564,7 +608,7 @@ export const TransactionsPage: React.FC = () => {
                   </span>
                 </div>
                 {selectedSession.payment.outstandingBalancePaise > 0 && (
-                  <div className="flex justify-between text-amber-400 font-bold">
+                  <div className="flex justify-between text-red-400 font-bold">
                     <span>Outstanding Due:</span>
                     <span>{formatRupees(selectedSession.payment.outstandingBalancePaise)}</span>
                   </div>
@@ -608,7 +652,7 @@ export const TransactionsPage: React.FC = () => {
                     setReceiptSession(selectedSession);
                     setAutoPrintReceipt(false);
                   }}
-                  leftIcon={<Printer className="w-3.5 h-3.5 text-amber-400" />}
+                  leftIcon={<Printer className="w-3.5 h-3.5 text-red-400" />}
                 >
                   Print Receipt
                 </Button>
@@ -634,14 +678,14 @@ export const TransactionsPage: React.FC = () => {
         >
           <div className="space-y-4">
             {voidError && (
-              <div className="p-3 rounded-lg bg-rose-950/60 border border-rose-800 text-rose-300 text-xs">
+              <div className="p-3 rounded-lg bg-red-950/60 border border-red-800 text-red-300 text-xs">
                 {voidError}
               </div>
             )}
 
             <div>
               <label className="block text-xs font-semibold text-slate-300 mb-1">
-                Mandatory Void Reason <span className="text-rose-400">*</span>
+                Mandatory Void Reason <span className="text-red-400">*</span>
               </label>
               <textarea
                 rows={3}
@@ -649,7 +693,7 @@ export const TransactionsPage: React.FC = () => {
                 value={voidReason}
                 onChange={(e) => setVoidReason(e.target.value)}
                 placeholder="e.g. Accidental double entry / power outage mid-session"
-                className="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-xs text-slate-100 placeholder:text-slate-600 focus:border-rose-500"
+                className="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-xs text-slate-100 placeholder:text-slate-600 focus:border-red-500"
               />
               <p className="text-3xs text-slate-500 mt-1">
                 A valid reason of at least 5 characters is required for auditor verification.

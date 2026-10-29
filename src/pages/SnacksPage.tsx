@@ -20,7 +20,7 @@ import { formatRupees, rupeesToPaise, paiseToRupees } from '../utils/formatters'
 
 export const SnacksPage: React.FC = () => {
   const { currentUser, isAdmin } = useAuth();
-  const [snacks, setSnacks] = useState<SnackItem[]>([]);
+  const [snacks, setSnacks] = useState<SnackItem[]>(() => db.getSnacks());
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('All');
 
@@ -129,7 +129,7 @@ export const SnacksPage: React.FC = () => {
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-2 border-b border-slate-800">
         <div>
           <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-white flex items-center gap-2">
-            <UtensilsCrossed className="w-6 h-6 text-amber-400" />
+            <UtensilsCrossed className="w-6 h-6 text-red-500" />
             <span>Snacks & Concessions Catalogue</span>
           </h1>
           <p className="text-xs text-slate-400 mt-0.5">
@@ -163,7 +163,7 @@ export const SnacksPage: React.FC = () => {
             placeholder="Search catalogue by item name..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-9 pr-3 py-1.5 rounded-lg bg-slate-950 border border-slate-700 text-xs text-slate-100 placeholder:text-slate-600 focus:border-brand-500"
+            className="w-full pl-9 pr-3 py-1.5 rounded-lg bg-slate-950 border border-slate-700 text-xs text-slate-100 placeholder:text-slate-600 focus:border-red-500 outline-none"
           />
         </div>
 
@@ -174,7 +174,7 @@ export const SnacksPage: React.FC = () => {
               onClick={() => setCategoryFilter(cat)}
               className={`px-3 py-1 rounded-md whitespace-nowrap transition-colors ${
                 categoryFilter === cat
-                  ? 'bg-slate-700 text-white font-semibold'
+                  ? 'bg-red-600 text-white font-semibold'
                   : 'text-slate-400 hover:text-slate-200'
               }`}
             >
@@ -191,7 +191,7 @@ export const SnacksPage: React.FC = () => {
             key={item.id}
             className={`p-4 rounded-xl border flex flex-col justify-between transition-all ${
               item.isActive
-                ? 'bg-slate-900/90 border-slate-800 hover:border-slate-700 shadow-sm'
+                ? 'bg-slate-900/90 border-slate-800 hover:border-red-900/50 shadow-sm'
                 : 'bg-slate-950 border-slate-850 opacity-50'
             }`}
           >
@@ -215,7 +215,7 @@ export const SnacksPage: React.FC = () => {
                 <span className="text-3xs text-slate-500 uppercase block font-mono">
                   Selling Price
                 </span>
-                <span className="text-base font-bold font-mono text-emerald-400 tabular-nums">
+                <span className="text-base font-bold font-mono text-white tabular-nums">
                   {formatRupees(item.pricePaise)}
                 </span>
               </div>
@@ -225,7 +225,7 @@ export const SnacksPage: React.FC = () => {
                   variant="secondary"
                   size="sm"
                   onClick={() => handleOpenEdit(item)}
-                  leftIcon={<Edit2 className="w-3 h-3 text-brand-400" />}
+                  leftIcon={<Edit2 className="w-3 h-3 text-red-400" />}
                   className="text-xs"
                 >
                   Edit
@@ -247,14 +247,14 @@ export const SnacksPage: React.FC = () => {
         >
           <form onSubmit={handleSave} className="space-y-4">
             {error && (
-              <div className="p-3 rounded-lg bg-rose-950/60 border border-rose-800 text-rose-300 text-xs">
+              <div className="p-3 rounded-lg bg-red-950/60 border border-red-800 text-red-300 text-xs">
                 {error}
               </div>
             )}
 
             <div>
               <label className="block text-xs font-semibold text-slate-300 mb-1">
-                Item Name <span className="text-rose-400">*</span>
+                Item Name <span className="text-red-400">*</span>
               </label>
               <input
                 type="text"
@@ -262,7 +262,7 @@ export const SnacksPage: React.FC = () => {
                 value={nameInput}
                 onChange={(e) => setNameInput(e.target.value)}
                 placeholder="e.g. Red Bull Energy Drink (250ml)"
-                className="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-xs text-slate-100 focus:border-brand-500"
+                className="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-xs text-slate-100 focus:border-red-500 outline-none"
               />
             </div>
 
@@ -274,7 +274,7 @@ export const SnacksPage: React.FC = () => {
                 <select
                   value={categoryInput}
                   onChange={(e) => setCategoryInput(e.target.value)}
-                  className="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-xs text-slate-200 focus:border-brand-500"
+                  className="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-xs text-slate-200 focus:border-red-500 outline-none"
                 >
                   <option value="Beverages">Beverages</option>
                   <option value="Chips & Savouries">Chips & Savouries</option>
@@ -286,7 +286,7 @@ export const SnacksPage: React.FC = () => {
 
               <div>
                 <label className="block text-xs font-semibold text-slate-300 mb-1">
-                  Selling Price (₹) <span className="text-rose-400">*</span>
+                  Selling Price (₹) <span className="text-red-400">*</span>
                 </label>
                 <input
                   type="number"
@@ -295,7 +295,7 @@ export const SnacksPage: React.FC = () => {
                   step="1"
                   value={priceInput}
                   onChange={(e) => setPriceInput(e.target.value)}
-                  className="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-xs font-mono text-slate-100 focus:border-brand-500"
+                  className="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-xs font-mono text-slate-100 focus:border-red-500 outline-none"
                 />
               </div>
             </div>
@@ -306,7 +306,7 @@ export const SnacksPage: React.FC = () => {
                   type="checkbox"
                   checked={isActiveInput}
                   onChange={(e) => setIsActiveInput(e.target.checked)}
-                  className="w-4 h-4 rounded bg-slate-950 border-slate-700 text-brand-600 focus:ring-brand-500"
+                  className="w-4 h-4 rounded bg-slate-950 border-slate-700 text-red-600 focus:ring-red-500"
                 />
                 <span>Active item (Available for billing)</span>
               </label>

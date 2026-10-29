@@ -4,16 +4,17 @@
 
 @layer base {
   :root {
-    --color-bg-base: #0b0e14;
-    --color-surface-card: #121620;
-    --color-surface-elevated: #181d2a;
-    --color-surface-border: rgba(255, 255, 255, 0.07);
-    --color-surface-border-strong: rgba(255, 255, 255, 0.12);
+    --color-bg-base: #060608;
+    --color-surface-card: #0d0d12;
+    --color-surface-elevated: #14141b;
+    --color-surface-border: rgba(255, 255, 255, 0.08);
+    --color-surface-border-strong: rgba(255, 255, 255, 0.15);
+    --color-primary-red: #ef4444;
   }
 
   body {
-    background-color: #0b0e14;
-    color: #f1f5f9;
+    background-color: #060608;
+    color: #f3f4f6;
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
@@ -26,23 +27,23 @@
   }
 }
 
-/* Custom smooth dark scrollbar */
+/* Custom smooth dark red/black scrollbar */
 ::-webkit-scrollbar {
   width: 5px;
   height: 5px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #0b0e14;
+  background: #060608;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #232a3b;
+  background: #2a1215;
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #333d54;
+  background: #471419;
 }
 
 /* Focus styles for keyboard accessibility */
@@ -50,7 +51,7 @@ button:focus-visible,
 input:focus-visible,
 select:focus-visible,
 textarea:focus-visible {
-  outline: 2px solid #d97706;
+  outline: 2px solid #ef4444;
   outline-offset: 1px;
 }
 

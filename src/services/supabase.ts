@@ -24,3 +24,31 @@ export function getSupabaseStatus(): SupabaseConfigStatus {
     hasKey: Boolean(supabaseAnonKey),
   };
 }
+
+export async function supabaseSignIn(email: string, password: string) {
+  if (!supabase) throw new Error('Supabase is not configured.');
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email,
+    password,
+  });
+  if (error) throw error;
+  return data;
+}
+
+export async function supabaseSignOut() {
+  if (!supabase) return;
+  try {
+    await supabase.auth.signOut();
+  } catch {}
+}
+
+export async function supabaseGetUserProfile(userId: string) {
+  if (!supabase) return null;
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('id', userId)
+    .single();
+  if (error) return null;
+  return data;
+}

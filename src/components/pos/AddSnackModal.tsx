@@ -133,7 +133,7 @@ export const AddSnackModal: React.FC<AddSnackModalProps> = ({
       onSubmit={handleSubmit}
       footer={
         <div className="w-full flex items-center justify-between">
-          <div className="text-xs font-mono font-bold text-amber-400">
+          <div className="text-xs font-mono font-bold text-red-400">
             Total to add: {formatRupees(totalPaise)}
           </div>
           <div className="flex items-center gap-2">
@@ -145,7 +145,7 @@ export const AddSnackModal: React.FC<AddSnackModalProps> = ({
               size="md"
               type="submit"
               leftIcon={<UtensilsCrossed className="w-4 h-4" />}
-              className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold border-amber-400"
+              className="bg-red-600 hover:bg-red-500 text-white font-bold border-red-500 shadow-md shadow-red-950/60"
             >
               Add to Bill
             </Button>
@@ -154,19 +154,19 @@ export const AddSnackModal: React.FC<AddSnackModalProps> = ({
       }
     >
       {error && (
-        <div className="p-3 rounded-lg bg-rose-950/60 border border-rose-800 text-rose-300 text-xs flex items-center gap-2">
+        <div className="p-3 rounded-lg bg-red-950/60 border border-red-800 text-red-300 text-xs flex items-center gap-2">
           <AlertCircle className="w-4 h-4 shrink-0" />
           <span>{error}</span>
         </div>
       )}
 
       {/* Switch: Standard Catalogue vs Custom Item */}
-      <div className="flex items-center justify-between p-1 rounded-lg bg-slate-950 border border-slate-800 text-xs font-medium">
+      <div className="flex items-center justify-between p-1 rounded-lg bg-[#060608] border border-white/[0.08] text-xs font-medium">
         <button
           type="button"
           onClick={() => setIsCustom(false)}
           className={`flex-1 py-1.5 rounded-md transition-colors ${
-            !isCustom ? 'bg-amber-500 text-slate-950 font-bold' : 'text-slate-400 hover:text-slate-200'
+            !isCustom ? 'bg-red-600 text-white font-bold shadow-sm shadow-red-950/50' : 'text-slate-400 hover:text-slate-200'
           }`}
         >
           Snack Catalogue ({snacks.length})
@@ -176,7 +176,7 @@ export const AddSnackModal: React.FC<AddSnackModalProps> = ({
             type="button"
             onClick={() => setIsCustom(true)}
             className={`flex-1 py-1.5 rounded-md transition-colors ${
-              isCustom ? 'bg-amber-500 text-slate-950 font-bold' : 'text-slate-400 hover:text-slate-200'
+              isCustom ? 'bg-red-600 text-white font-bold shadow-sm shadow-red-950/50' : 'text-slate-400 hover:text-slate-200'
             }`}
           >
             Custom Off-Menu Item
@@ -186,10 +186,10 @@ export const AddSnackModal: React.FC<AddSnackModalProps> = ({
 
       {isCustom ? (
         /* Custom Item Form */
-        <div className="space-y-3 p-4 rounded-xl bg-slate-950/70 border border-slate-800">
+        <div className="space-y-3 p-4 rounded-xl bg-[#08080c] border border-white/[0.08]">
           <div>
             <label className="block text-xs font-semibold text-slate-300 mb-1">
-              Custom Item Name <span className="text-rose-400">*</span>
+              Custom Item Name <span className="text-red-400">*</span>
             </label>
             <input
               type="text"
@@ -198,13 +198,13 @@ export const AddSnackModal: React.FC<AddSnackModalProps> = ({
               value={customName}
               onChange={(e) => setCustomName(e.target.value)}
               placeholder="e.g. Special Sandwich / Juice"
-              className="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-slate-100 text-xs focus:border-amber-500 outline-none"
+              className="w-full px-3 py-2 rounded-lg bg-[#050507] border border-white/[0.1] text-slate-100 text-xs focus:border-red-500 outline-none"
             />
           </div>
 
           <div>
             <label className="block text-xs font-semibold text-slate-300 mb-1">
-              Unit Price (₹) <span className="text-rose-400">*</span>
+              Unit Price (₹) <span className="text-red-400">*</span>
             </label>
             <input
               type="number"
@@ -213,7 +213,7 @@ export const AddSnackModal: React.FC<AddSnackModalProps> = ({
               required
               value={customPriceRupees}
               onChange={(e) => setCustomPriceRupees(e.target.value)}
-              className="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-slate-100 text-xs font-mono focus:border-amber-500 outline-none"
+              className="w-full px-3 py-2 rounded-lg bg-[#050507] border border-white/[0.1] text-slate-100 text-xs font-mono focus:border-red-500 outline-none"
             />
           </div>
         </div>
@@ -228,7 +228,7 @@ export const AddSnackModal: React.FC<AddSnackModalProps> = ({
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search snack or beverage..."
-                className="w-full pl-8 pr-3 py-1.5 rounded-lg bg-slate-950 border border-slate-800 text-slate-100 text-xs placeholder:text-slate-600 focus:border-amber-500 outline-none"
+                className="w-full pl-8 pr-3 py-1.5 rounded-lg bg-[#050507] border border-white/[0.08] text-slate-100 text-xs placeholder:text-slate-600 focus:border-red-500 outline-none"
               />
             </div>
           </div>
@@ -242,8 +242,8 @@ export const AddSnackModal: React.FC<AddSnackModalProps> = ({
                 onClick={() => setCategory(cat)}
                 className={`px-2.5 py-1 rounded-md whitespace-nowrap transition-colors ${
                   category === cat
-                    ? 'bg-slate-700 text-white font-semibold'
-                    : 'bg-slate-900 text-slate-400 hover:text-slate-200'
+                    ? 'bg-red-600 text-white font-bold shadow-sm shadow-red-950/50'
+                    : 'bg-[#0e0e14] text-slate-400 hover:text-slate-200 border border-white/[0.06]'
                 }`}
               >
                 {cat}
@@ -260,14 +260,14 @@ export const AddSnackModal: React.FC<AddSnackModalProps> = ({
                   key={snk.id}
                   type="button"
                   onClick={() => setSelectedSnackId(snk.id)}
-                  className={`p-2 rounded-lg border text-left transition-all ${
+                  className={`p-2.5 rounded-xl border text-left transition-all ${
                     isSelected
-                      ? 'bg-amber-950/40 border-amber-500 text-white shadow-sm'
-                      : 'bg-slate-900/80 border-slate-800 text-slate-300 hover:text-white hover:border-slate-700'
+                      ? 'bg-red-950/50 border-red-500 text-white shadow-md shadow-red-950/40'
+                      : 'bg-[#08080c] border-white/[0.08] text-slate-300 hover:text-white hover:border-red-500/30'
                   }`}
                 >
-                  <p className="text-xs font-medium truncate">{snk.name}</p>
-                  <p className="text-2xs font-mono font-bold text-amber-400 mt-0.5">
+                  <p className="text-xs font-semibold truncate">{snk.name}</p>
+                  <p className="text-2xs font-mono font-bold text-red-400 mt-0.5">
                     {formatRupees(snk.pricePaise)}
                   </p>
                 </button>

@@ -4,25 +4,19 @@ import {
   CreditCard,
   Banknote,
   AlertCircle,
-  Clock,
-  ArrowUpRight,
   RefreshCw,
-  Plus,
-  Printer,
-  CheckCircle2,
-  ChevronRight,
 } from 'lucide-react';
 import { Station, Session, DashboardMetrics } from '../types';
 import { StationCard } from '../components/pos/StationCard';
 import { db, VAULT_DATA_CHANGED_EVENT } from '../services/storage';
-import { formatRupees, formatDateTime, getTodayDateString } from '../utils/formatters';
+import { formatRupees, getTodayDateString } from '../utils/formatters';
 
 interface DashboardPageProps {
   onStartSession: (stationId: string) => void;
   onAddSnack: (sessionId: string) => void;
   onEndSession: (sessionId: string) => void;
-  onViewAllTransactions: () => void;
-  onOpenNewEntry: () => void;
+  onViewAllTransactions?: () => void;
+  onOpenNewEntry?: () => void;
   onPrintReceipt?: (session: Session) => void;
 }
 
@@ -30,9 +24,6 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   onStartSession,
   onAddSnack,
   onEndSession,
-  onViewAllTransactions,
-  onOpenNewEntry,
-  onPrintReceipt,
 }) => {
   // Synchronous initial state guarantees no 0/0 stations or missing cards flicker on mount
   const [stations, setStations] = useState<Station[]>(() => db.getStations());
@@ -99,36 +90,41 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     }
   });
 
-  const recentCompleted = sessions
-    .filter((s) => s.status === 'completed' && !s.isVoided)
-    .slice(0, 5);
-
+  const [stationFilter, setStationFilter] = useState<'all' | 'occupied' | 'available'>('all');
   const occupiedCount = stations.filter((s) => s.status === 'occupied').length;
+  const availableCount = stations.length - occupiedCount;
+
+  const filteredStations = stations.filter((st) => {
+    if (stationFilter === 'occupied') return st.status === 'occupied';
+    if (stationFilter === 'available') return st.status === 'available';
+    return true;
+  });
 
   return (
-    <div className="space-y-4 max-w-7xl mx-auto font-sans">
+    <div className="space-y-6 sm:space-y-8 max-w-7xl mx-auto font-sans">
       {/* 1. Header Toolbar & Period Selector */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-3 border-b border-white/[0.08]">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4 pb-4 border-b border-white/[0.08]">
         <div>
-          <h1 className="text-lg sm:text-xl font-bold tracking-tight text-white flex items-center gap-2">
-            <span>Operations Overview</span>
+          <h1 className="text-xl sm:text-2xl font-black tracking-tight text-white flex items-center gap-2.5">
+            <span className="w-2.5 h-2.5 rounded-full bg-red-600 shadow-sm shadow-red-500/50" />
+            <span>Operations Dashboard</span>
           </h1>
-          <p className="text-3xs text-slate-400 font-mono mt-0.5">
+          <p className="text-xs text-zinc-400 font-mono mt-1">
             Real-time station occupancy and register accounting • Asia/Kolkata
           </p>
         </div>
 
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex items-center gap-2.5 w-full sm:w-auto justify-between sm:justify-end">
           {/* Period selector */}
-          <div className="flex items-center p-0.5 rounded bg-white/[0.04] border border-white/[0.06] text-xs font-mono">
+          <div className="flex items-center p-1 rounded-xl bg-black/60 border border-white/[0.08] text-xs font-mono overflow-x-auto gap-1">
             {(['today', 'yesterday', 'week', 'month'] as const).map((period) => (
               <button
                 key={period}
                 onClick={() => setRangePreset(period)}
-                className={`px-2.5 py-1 rounded text-2xs transition-colors ${
+                className={`px-3 py-1.5 rounded-lg text-xs transition-colors shrink-0 ${
                   rangePreset === period
-                    ? 'bg-amber-500 text-slate-950 font-bold'
-                    : 'text-slate-400 hover:text-slate-200'
+                    ? 'bg-red-600 text-white font-bold shadow-sm shadow-red-950/60'
+                    : 'text-zinc-400 hover:text-zinc-200'
                 }`}
               >
                 {period === 'today'
@@ -145,94 +141,129 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           <button
             onClick={loadData}
             disabled={isLoading}
-            className="p-1.5 rounded bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.06] text-slate-400 hover:text-slate-200 transition-colors"
+            className="p-2 rounded-xl bg-black/40 hover:bg-white/[0.08] border border-white/[0.08] text-zinc-400 hover:text-white transition-colors shrink-0"
             title="Refresh Ledger"
           >
-            <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin text-red-500' : ''}`} />
           </button>
         </div>
       </div>
 
-      {/* 2. Coherent Sales Summary Bar (4 Distinct Financial Pillars) */}
-      <div className="rounded-lg bg-[#121620] border border-white/[0.08] divide-y sm:divide-y-0 sm:divide-x divide-white/[0.06] grid grid-cols-2 md:grid-cols-4">
+      {/* 2. Coherent Sales Summary Bar (4 Distinct Financial Pillars with generous spacing) */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-4.5">
         {/* Total Billed Sales */}
-        <div className="p-3.5 space-y-1">
-          <div className="flex items-center justify-between text-slate-400">
-            <span className="text-3xs font-mono uppercase tracking-wider text-slate-400">
-              Total Sales Billed
+        <div className="p-4 sm:p-5 rounded-xl bg-[#0c0c12] border border-zinc-800/80 shadow-lg shadow-black/40 space-y-1.5">
+          <div className="flex items-center justify-between text-zinc-400">
+            <span className="text-3xs sm:text-2xs font-mono uppercase tracking-wider text-zinc-400 font-bold">
+              Total Sales
             </span>
-            <TrendingUp className="w-3.5 h-3.5 text-slate-400" />
+            <TrendingUp className="w-4 h-4 text-red-500" />
           </div>
-          <div className="text-xl sm:text-2xl font-bold font-mono tracking-tight text-white tabular-nums">
+          <div className="text-xl sm:text-2xl font-black font-mono tracking-tight text-white tabular-nums">
             {formatRupees(metrics.totalSalesPaise)}
           </div>
-          <p className="text-3xs text-slate-500 font-mono">
+          <p className="text-3xs text-zinc-500 font-mono">
             {metrics.completedSessionsCount} closed session(s)
           </p>
         </div>
 
         {/* GPay / UPI Collections */}
-        <div className="p-3.5 space-y-1">
-          <div className="flex items-center justify-between text-blue-400">
-            <span className="text-3xs font-mono uppercase tracking-wider text-blue-300/80">
-              GPay / UPI Collected
+        <div className="p-4 sm:p-5 rounded-xl bg-[#0c0c12] border border-zinc-800/80 shadow-lg shadow-black/40 space-y-1.5">
+          <div className="flex items-center justify-between text-zinc-400">
+            <span className="text-3xs sm:text-2xs font-mono uppercase tracking-wider text-zinc-400 font-bold">
+              GPay / UPI
             </span>
-            <CreditCard className="w-3.5 h-3.5 text-blue-400" />
+            <CreditCard className="w-4 h-4 text-zinc-400" />
           </div>
-          <div className="text-xl sm:text-2xl font-bold font-mono tracking-tight text-blue-100 tabular-nums">
+          <div className="text-xl sm:text-2xl font-black font-mono tracking-tight text-white tabular-nums">
             {formatRupees(metrics.gpayCollectionsPaise)}
           </div>
-          <p className="text-3xs text-slate-500 font-mono">Direct digital bank intake</p>
+          <p className="text-3xs text-zinc-500 font-mono">Digital bank intake</p>
         </div>
 
         {/* Physical Cash Collections */}
-        <div className="p-3.5 space-y-1">
-          <div className="flex items-center justify-between text-emerald-400">
-            <span className="text-3xs font-mono uppercase tracking-wider text-emerald-300/80">
-              Cash Drawer Collected
+        <div className="p-4 sm:p-5 rounded-xl bg-[#0c0c12] border border-zinc-800/80 shadow-lg shadow-black/40 space-y-1.5">
+          <div className="flex items-center justify-between text-zinc-400">
+            <span className="text-3xs sm:text-2xs font-mono uppercase tracking-wider text-zinc-400 font-bold">
+              Cash Drawer
             </span>
-            <Banknote className="w-3.5 h-3.5 text-emerald-400" />
+            <Banknote className="w-4 h-4 text-zinc-400" />
           </div>
-          <div className="text-xl sm:text-2xl font-bold font-mono tracking-tight text-emerald-100 tabular-nums">
+          <div className="text-xl sm:text-2xl font-black font-mono tracking-tight text-white tabular-nums">
             {formatRupees(metrics.cashCollectionsPaise)}
           </div>
-          <p className="text-3xs text-slate-500 font-mono">Net physical currency intake</p>
+          <p className="text-3xs text-zinc-500 font-mono">Cash in register</p>
         </div>
 
         {/* Outstanding Due */}
-        <div className="p-3.5 space-y-1">
-          <div className="flex items-center justify-between text-amber-400">
-            <span className="text-3xs font-mono uppercase tracking-wider text-amber-300/80">
-              Outstanding Due
+        <div className="p-4 sm:p-5 rounded-xl bg-[#0c0c12] border border-red-950/60 shadow-lg shadow-black/40 space-y-1.5">
+          <div className="flex items-center justify-between text-red-500">
+            <span className="text-3xs sm:text-2xs font-mono uppercase tracking-wider text-red-400 font-bold">
+              Pending Dues
             </span>
-            <AlertCircle className="w-3.5 h-3.5 text-amber-400" />
+            <AlertCircle className="w-4 h-4 text-red-500" />
           </div>
-          <div className="text-xl sm:text-2xl font-bold font-mono tracking-tight text-amber-200 tabular-nums">
+          <div className="text-xl sm:text-2xl font-black font-mono tracking-tight text-red-400 tabular-nums">
             {formatRupees(metrics.outstandingBalancePaise)}
           </div>
-          <p className="text-3xs text-slate-500 font-mono">Pending customer dues</p>
+          <p className="text-3xs text-zinc-500 font-mono">Unsettled balance</p>
         </div>
       </div>
 
-      {/* 3. Station Board (Compact, Responsive Grid) */}
-      <div className="space-y-2.5 pt-1">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <h2 className="text-xs font-bold uppercase tracking-wider text-slate-200 font-mono">
-              Station Board
+      {/* 3. Station Board (Compact, Responsive Grid with Mobile Quick Filter) */}
+      <div className="space-y-4 pt-1">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <h2 className="text-xs sm:text-sm font-bold uppercase tracking-wider text-zinc-200 font-mono">
+              Gaming Stations
             </h2>
-            <span className="text-3xs font-mono px-1.5 py-0.5 rounded bg-white/[0.05] border border-white/[0.08] text-slate-300">
-              {occupiedCount} IN USE • {stations.length - occupiedCount} AVAILABLE
-            </span>
+            {/* Filter pills - Super easy on phone! */}
+            <div className="flex items-center p-1 rounded-xl bg-black/60 border border-white/[0.08] text-xs font-mono gap-1">
+              <button
+                type="button"
+                onClick={() => setStationFilter('all')}
+                className={`px-3 py-1 rounded-lg transition-colors ${
+                  stationFilter === 'all'
+                    ? 'bg-red-600 text-white font-bold'
+                    : 'text-zinc-400 hover:text-white'
+                }`}
+              >
+                All ({stations.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setStationFilter('occupied')}
+                className={`px-3 py-1 rounded-lg transition-colors flex items-center gap-1.5 ${
+                  stationFilter === 'occupied'
+                    ? 'bg-red-600 text-white font-bold'
+                    : 'text-zinc-400 hover:text-white'
+                }`}
+              >
+                <span className="w-2 h-2 rounded-full bg-red-400" />
+                <span>In Use ({occupiedCount})</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setStationFilter('available')}
+                className={`px-3 py-1 rounded-lg transition-colors flex items-center gap-1.5 ${
+                  stationFilter === 'available'
+                    ? 'bg-red-600 text-white font-bold'
+                    : 'text-zinc-400 hover:text-white'
+                }`}
+              >
+                <span className="w-2 h-2 rounded-full bg-zinc-500" />
+                <span>Ready ({availableCount})</span>
+              </button>
+            </div>
           </div>
-          <span className="text-3xs text-slate-500 font-mono hidden sm:inline">
-            Real-time occupancy • 6 Gaming Stations
+          <span className="text-xs text-zinc-500 font-mono hidden sm:inline">
+            Tap 'In Use' or 'Ready' to filter
           </span>
         </div>
 
-        {/* The 6 station cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-          {stations.map((station) => (
+        {/* The station cards with generous spacing */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
+          {filteredStations.map((station) => (
             <StationCard
               key={station.id}
               station={station}
@@ -243,136 +274,6 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             />
           ))}
         </div>
-      </div>
-
-      {/* 4. Recent Completed Transactions Ledger */}
-      <div className="space-y-2.5 pt-2">
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-200 font-mono">
-              Recent Settlement Ledger
-            </h3>
-            <p className="text-3xs text-slate-400">
-              Last {recentCompleted.length} closed transactions in current session
-            </p>
-          </div>
-
-          <button
-            onClick={onViewAllTransactions}
-            className="flex items-center gap-1 text-2xs font-mono text-amber-400 hover:text-amber-300 transition-colors"
-          >
-            <span>Full Ledger</span>
-            <ArrowUpRight className="w-3.5 h-3.5" />
-          </button>
-        </div>
-
-        {recentCompleted.length === 0 ? (
-          <div className="p-6 rounded-lg bg-[#121620] border border-white/[0.08] text-center">
-            <CheckCircle2 className="w-6 h-6 text-slate-600 mx-auto mb-1.5" />
-            <p className="text-xs font-medium text-slate-300">No Completed Transactions</p>
-            <p className="text-3xs text-slate-500 mt-0.5">
-              Closed sessions and customer settlements will appear here.
-            </p>
-          </div>
-        ) : (
-          <div className="overflow-x-auto rounded-lg border border-white/[0.08] bg-[#121620]">
-            <table className="w-full text-left text-xs font-mono">
-              <thead className="bg-[#0b0e14] text-slate-400 text-3xs uppercase border-b border-white/[0.06]">
-                <tr>
-                  <th className="px-3.5 py-2">Customer</th>
-                  <th className="px-3.5 py-2">Station</th>
-                  <th className="px-3.5 py-2">Duration</th>
-                  <th className="px-3.5 py-2">Breakdown</th>
-                  <th className="px-3.5 py-2">Payment</th>
-                  <th className="px-3.5 py-2">Status</th>
-                  <th className="px-3.5 py-2 text-right">Settled</th>
-                  <th className="px-3.5 py-2 text-right">Receipt</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-white/[0.04]">
-                {recentCompleted.map((s) => (
-                  <tr key={s.id} className="hover:bg-white/[0.02] transition-colors">
-                    <td className="px-3.5 py-2 font-sans font-medium text-slate-100">
-                      <div>{s.customerName}</div>
-                      <div className="text-3xs text-slate-500 font-mono">
-                        {formatDateTime(s.endTime || s.createdAt)}
-                      </div>
-                    </td>
-                    <td className="px-3.5 py-2 text-slate-300">
-                      <span className="font-semibold">{s.stationName}</span>
-                      <span className="text-3xs text-slate-500 block uppercase font-mono">
-                        {s.gamingType}
-                      </span>
-                    </td>
-                    <td className="px-3.5 py-2 text-slate-300">
-                      {s.durationMinutes ? `${s.durationMinutes}m` : '—'}
-                    </td>
-                    <td className="px-3.5 py-2 text-3xs text-slate-400">
-                      <div>Game: {formatRupees(s.gamingChargePaise)}</div>
-                      {s.snackSubtotalPaise > 0 && (
-                        <div>Snacks: {formatRupees(s.snackSubtotalPaise)}</div>
-                      )}
-                      {s.discountPaise > 0 && (
-                        <div className="text-rose-400">Disc: -{formatRupees(s.discountPaise)}</div>
-                      )}
-                    </td>
-                    <td className="px-3.5 py-2 text-3xs text-slate-300">
-                      {s.payment ? (
-                        <div>
-                          {s.payment.gpayAmountPaise > 0 && (
-                            <span className="text-blue-400 block">
-                              GPay: {formatRupees(s.payment.gpayAmountPaise)}
-                            </span>
-                          )}
-                          {s.payment.cashAmountPaise > 0 && (
-                            <span className="text-emerald-400 block">
-                              Cash: {formatRupees(s.payment.cashAmountPaise)}
-                            </span>
-                          )}
-                          {s.payment.changeDuePaise! > 0 && (
-                            <span className="text-emerald-300 block">
-                              Change: {formatRupees(s.payment.changeDuePaise)}
-                            </span>
-                          )}
-                        </div>
-                      ) : (
-                        '—'
-                      )}
-                    </td>
-                    <td className="px-3.5 py-2">
-                      <span
-                        className={`text-3xs font-mono uppercase px-1.5 py-0.5 rounded font-semibold ${
-                          s.payment?.status === 'PAID' || s.payment?.status === 'OVERPAID_CHANGE_DUE'
-                            ? 'bg-emerald-950/60 text-emerald-400 border border-emerald-800/40'
-                            : s.payment?.status === 'PARTIAL'
-                            ? 'bg-amber-950/60 text-amber-400 border border-amber-800/40'
-                            : 'bg-white/[0.05] text-slate-400'
-                        }`}
-                      >
-                        {s.payment?.status === 'OVERPAID_CHANGE_DUE' ? 'PAID (CHANGE)' : (s.payment?.status || 'UNPAID')}
-                      </span>
-                    </td>
-                    <td className="px-3.5 py-2 text-right font-bold text-sm text-slate-100 tabular-nums">
-                      {formatRupees(s.finalBillPaise)}
-                    </td>
-                    <td className="px-3.5 py-2 text-right">
-                      {onPrintReceipt && (
-                        <button
-                          type="button"
-                          onClick={() => onPrintReceipt(s)}
-                          className="px-2 py-1 rounded bg-white/[0.04] hover:bg-white/[0.08] text-2xs text-slate-300 hover:text-white border border-white/[0.06] transition-colors"
-                        >
-                          <Printer className="w-3 h-3 text-amber-400 inline mr-1" />
-                          <span>Slip</span>
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
       </div>
     </div>
   );

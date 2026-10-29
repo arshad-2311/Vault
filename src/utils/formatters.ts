@@ -144,3 +144,13 @@ export function getTodayDateString(): string {
   const day = String(now.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
 }
+
+/**
+ * Masks a phone number for privacy compliance (shows first 2 and last 4 digits)
+ */
+export function maskPhoneNumber(phone?: string | null): string {
+  if (!phone) return '—';
+  const clean = phone.trim();
+  if (clean.length < 6) return clean;
+  return clean.slice(0, 2) + '••••' + clean.slice(-4);
+}

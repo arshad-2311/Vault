@@ -236,7 +236,7 @@ export const NewEntryModal: React.FC<NewEntryModalProps> = ({
               Staff: <strong className="text-slate-200">{currentUser.displayName}</strong>
             </span>
             <span className="hidden sm:inline-block text-slate-700">|</span>
-            <span className="text-xs font-mono font-bold text-amber-400">
+            <span className="text-xs font-mono font-bold text-red-400">
               Est. Total: {formatRupees(previewTotalPaise)}
             </span>
           </div>
@@ -250,7 +250,7 @@ export const NewEntryModal: React.FC<NewEntryModalProps> = ({
               type="submit"
               isLoading={isSubmitting}
               leftIcon={<Sparkles className="w-4 h-4" />}
-              className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold border-amber-400"
+              className="bg-red-600 hover:bg-red-500 text-white font-bold border-red-500 shadow-md shadow-red-950/50"
             >
               Start Session
             </Button>
@@ -259,7 +259,7 @@ export const NewEntryModal: React.FC<NewEntryModalProps> = ({
       }
     >
       {error && (
-        <div className="p-3 rounded-lg bg-rose-950/60 border border-rose-800 text-rose-300 text-xs flex items-center gap-2">
+        <div className="p-3 rounded-lg bg-red-950/60 border border-red-800 text-red-300 text-xs flex items-center gap-2">
           <Info className="w-4 h-4 shrink-0" />
           <span>{error}</span>
         </div>
@@ -269,7 +269,7 @@ export const NewEntryModal: React.FC<NewEntryModalProps> = ({
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
           <label className="block text-xs font-medium text-slate-300 mb-1">
-            Customer Name <span className="text-rose-400">*</span>
+            Customer Name <span className="text-red-400">*</span>
           </label>
           <div className="relative">
             <User className="absolute left-3 top-2.5 w-4 h-4 text-slate-500" />
@@ -280,7 +280,7 @@ export const NewEntryModal: React.FC<NewEntryModalProps> = ({
               value={customerName}
               onChange={(e) => setCustomerName(e.target.value)}
               placeholder="e.g. Aryan Sharma"
-              className="w-full pl-9 pr-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-slate-100 placeholder:text-slate-600 text-sm focus:border-amber-500 outline-none"
+              className="w-full pl-9 pr-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-slate-100 placeholder:text-slate-600 text-sm focus:border-red-500 outline-none"
             />
           </div>
         </div>
@@ -296,7 +296,7 @@ export const NewEntryModal: React.FC<NewEntryModalProps> = ({
               value={customerPhone}
               onChange={(e) => setCustomerPhone(e.target.value)}
               placeholder="e.g. 9876543210"
-              className="w-full pl-9 pr-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-slate-100 placeholder:text-slate-600 text-sm focus:border-amber-500 outline-none font-mono"
+              className="w-full pl-9 pr-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-slate-100 placeholder:text-slate-600 text-sm focus:border-red-500 outline-none font-mono"
             />
           </div>
         </div>
@@ -314,11 +314,11 @@ export const NewEntryModal: React.FC<NewEntryModalProps> = ({
               onClick={() => handleGamingTypeChange('ps5')}
               className={`flex items-center justify-center gap-2 py-2 px-3 rounded-lg border text-xs font-semibold transition-all ${
                 gamingType === 'ps5'
-                  ? 'bg-blue-600/20 text-blue-300 border-blue-500/60 shadow-sm'
+                  ? 'bg-red-600/20 text-red-300 border-red-500/60 shadow-sm'
                   : 'bg-slate-900 text-slate-400 border-slate-800 hover:text-slate-200'
               }`}
             >
-              <Gamepad2 className="w-4 h-4 text-blue-400" />
+              <Gamepad2 className="w-4 h-4 text-red-400" />
               <span>PS5 Lounge</span>
             </button>
 
@@ -327,11 +327,11 @@ export const NewEntryModal: React.FC<NewEntryModalProps> = ({
               onClick={() => handleGamingTypeChange('pool')}
               className={`flex items-center justify-center gap-2 py-2 px-3 rounded-lg border text-xs font-semibold transition-all ${
                 gamingType === 'pool'
-                  ? 'bg-emerald-600/20 text-emerald-300 border-emerald-500/60 shadow-sm'
+                  ? 'bg-red-600/20 text-red-300 border-red-500/60 shadow-sm'
                   : 'bg-slate-900 text-slate-400 border-slate-800 hover:text-slate-200'
               }`}
             >
-              <CircleDot className="w-4 h-4 text-emerald-400" />
+              <CircleDot className="w-4 h-4 text-red-400" />
               <span>8-Ball Pool</span>
             </button>
           </div>
@@ -339,12 +339,12 @@ export const NewEntryModal: React.FC<NewEntryModalProps> = ({
 
         <div>
           <label className="block text-xs font-medium text-slate-300 mb-1.5">
-            Station / Table <span className="text-rose-400">*</span>
+            Station / Table <span className="text-red-400">*</span>
           </label>
           <select
             value={stationId}
             onChange={(e) => setStationId(e.target.value)}
-            className="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-slate-100 text-sm focus:border-amber-500 outline-none"
+            className="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-slate-100 text-sm focus:border-red-500 outline-none"
           >
             {availableStationsOfType.length === 0 ? (
               <option value="">No {gamingType.toUpperCase()} stations available</option>
@@ -369,7 +369,7 @@ export const NewEntryModal: React.FC<NewEntryModalProps> = ({
               onClick={() => setBillingType('hourly')}
               className={`px-3 py-1 rounded-md font-medium transition-colors ${
                 billingType === 'hourly'
-                  ? 'bg-amber-500 text-slate-950 font-bold'
+                  ? 'bg-red-600 text-white font-bold'
                   : 'text-slate-400 hover:text-slate-200'
               }`}
             >
@@ -380,7 +380,7 @@ export const NewEntryModal: React.FC<NewEntryModalProps> = ({
               onClick={() => setBillingType('fixed')}
               className={`px-3 py-1 rounded-md font-medium transition-colors ${
                 billingType === 'fixed'
-                  ? 'bg-amber-500 text-slate-950 font-bold'
+                  ? 'bg-red-600 text-white font-bold'
                   : 'text-slate-400 hover:text-slate-200'
               }`}
             >
@@ -407,7 +407,7 @@ export const NewEntryModal: React.FC<NewEntryModalProps> = ({
                     type="checkbox"
                     checked={isMultiplayer}
                     onChange={(e) => setIsMultiplayer(e.target.checked)}
-                    className="w-4 h-4 rounded bg-slate-900 border-slate-700 text-amber-500 focus:ring-amber-400"
+                    className="w-4 h-4 rounded bg-slate-900 border-slate-700 text-red-600 focus:ring-red-500"
                   />
                   <span>Multiplayer (+₹70/hr)</span>
                 </label>
@@ -415,7 +415,7 @@ export const NewEntryModal: React.FC<NewEntryModalProps> = ({
             ) : (
               <div className="flex items-center justify-between text-xs">
                 <span className="text-slate-300">Standard Pool Table Rate</span>
-                <span className="font-semibold text-emerald-400 font-mono">
+                <span className="font-semibold text-red-400 font-mono">
                   {formatRupees(pricingConfig.poolHourlyRatePaise)} / hour
                 </span>
               </div>
@@ -439,12 +439,12 @@ export const NewEntryModal: React.FC<NewEntryModalProps> = ({
                       onClick={() => setFixedPlanId(plan.id)}
                       className={`p-2 rounded-lg border text-left transition-all ${
                         fixedPlanId === plan.id
-                          ? 'bg-amber-950/40 border-amber-500 text-white'
+                          ? 'bg-red-950/40 border-red-500 text-white'
                           : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-200'
                       }`}
                     >
                       <p className="text-xs font-semibold">{plan.name}</p>
-                      <p className="text-2xs font-mono text-amber-400 font-bold mt-0.5">
+                      <p className="text-2xs font-mono text-red-400 font-bold mt-0.5">
                         {formatRupees(plan.pricePaise)}
                       </p>
                     </button>
@@ -496,7 +496,7 @@ export const NewEntryModal: React.FC<NewEntryModalProps> = ({
               type="datetime-local"
               value={startTimeLocal}
               onChange={(e) => setStartTimeLocal(e.target.value)}
-              className="w-full pl-9 pr-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-slate-100 text-xs focus:border-amber-500 font-mono outline-none"
+              className="w-full pl-9 pr-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-slate-100 text-xs focus:border-red-500 font-mono outline-none"
             />
           </div>
         </div>
@@ -510,7 +510,7 @@ export const NewEntryModal: React.FC<NewEntryModalProps> = ({
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
             placeholder="e.g. VIP tournament / Group"
-            className="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-slate-100 text-xs placeholder:text-slate-600 focus:border-amber-500 outline-none"
+            className="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-slate-100 text-xs placeholder:text-slate-600 focus:border-red-500 outline-none"
           />
         </div>
       </div>
@@ -521,12 +521,12 @@ export const NewEntryModal: React.FC<NewEntryModalProps> = ({
           <button
             type="button"
             onClick={() => setIsSnacksExpanded(!isSnacksExpanded)}
-            className="flex items-center gap-2 text-xs font-medium text-slate-200 hover:text-amber-400 transition-colors"
+            className="flex items-center gap-2 text-xs font-medium text-slate-200 hover:text-red-400 transition-colors"
           >
-            <UtensilsCrossed className="w-4 h-4 text-amber-400" />
+            <UtensilsCrossed className="w-4 h-4 text-red-400" />
             <span>Add Drinks & Snacks</span>
             {totalSnackItemsCount > 0 && (
-              <span className="px-1.5 py-0.2 rounded-full bg-amber-500 text-slate-950 text-3xs font-bold font-mono">
+              <span className="px-1.5 py-0.2 rounded-full bg-red-600 text-white text-3xs font-bold font-mono">
                 {totalSnackItemsCount} items
               </span>
             )}
@@ -537,7 +537,7 @@ export const NewEntryModal: React.FC<NewEntryModalProps> = ({
             )}
           </button>
           {snackTotalPaise > 0 && (
-            <span className="text-xs font-mono font-bold text-amber-400">
+            <span className="text-xs font-mono font-bold text-red-400">
               Snacks: {formatRupees(snackTotalPaise)}
             </span>
           )}
@@ -564,7 +564,7 @@ export const NewEntryModal: React.FC<NewEntryModalProps> = ({
                   onClick={() => setActiveSnackCategory(cat)}
                   className={`px-2 py-0.5 rounded transition-colors whitespace-nowrap ${
                     activeSnackCategory === cat
-                      ? 'bg-slate-700 text-white font-semibold'
+                      ? 'bg-red-600 text-white font-semibold'
                       : 'bg-slate-900 text-slate-400 hover:text-slate-200'
                   }`}
                 >
@@ -582,7 +582,7 @@ export const NewEntryModal: React.FC<NewEntryModalProps> = ({
                     key={snk.id}
                     className={`p-2 rounded-lg border text-left flex flex-col justify-between ${
                       qty > 0
-                        ? 'bg-amber-950/30 border-amber-600/50'
+                        ? 'bg-red-950/30 border-red-600/50'
                         : 'bg-slate-900 border-slate-800'
                     }`}
                   >
@@ -597,17 +597,17 @@ export const NewEntryModal: React.FC<NewEntryModalProps> = ({
                         type="button"
                         onClick={() => handleSnackQtyChange(snk.id, -1)}
                         disabled={qty === 0}
-                        className="w-5 h-5 rounded bg-slate-800 flex items-center justify-center text-slate-400 hover:text-white disabled:opacity-30"
+                        className="w-7 h-7 sm:w-6 sm:h-6 rounded bg-slate-800 flex items-center justify-center text-slate-400 hover:text-white disabled:opacity-30"
                       >
-                        <Minus className="w-3 h-3" />
+                        <Minus className="w-3.5 h-3.5" />
                       </button>
                       <span className="text-xs font-bold font-mono text-white">{qty}</span>
                       <button
                         type="button"
                         onClick={() => handleSnackQtyChange(snk.id, 1)}
-                        className="w-5 h-5 rounded bg-slate-800 flex items-center justify-center text-slate-400 hover:text-white"
+                        className="w-7 h-7 sm:w-6 sm:h-6 rounded bg-slate-800 flex items-center justify-center text-slate-400 hover:text-white"
                       >
-                        <Plus className="w-3 h-3" />
+                        <Plus className="w-3.5 h-3.5" />
                       </button>
                     </div>
                   </div>

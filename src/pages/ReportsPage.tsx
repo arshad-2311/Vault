@@ -92,7 +92,7 @@ export const ReportsPage: React.FC = () => {
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-2 border-b border-slate-800">
         <div>
           <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-white flex items-center gap-2">
-            <BarChart3 className="w-6 h-6 text-brand-400" />
+            <BarChart3 className="w-6 h-6 text-red-500" />
             <span>Financial Accounting & Settlement Reports</span>
           </h1>
           <p className="text-xs text-slate-400 mt-0.5">
@@ -104,7 +104,7 @@ export const ReportsPage: React.FC = () => {
           variant="secondary"
           size="md"
           onClick={handleExportCSV}
-          leftIcon={<Download className="w-4 h-4 text-emerald-400" />}
+          leftIcon={<Download className="w-4 h-4 text-zinc-300" />}
           className="font-medium"
         >
           Export Report to CSV
@@ -119,7 +119,7 @@ export const ReportsPage: React.FC = () => {
               onClick={() => setRangeMode('daily')}
               className={`px-3 py-1.5 rounded-md transition-colors ${
                 rangeMode === 'daily'
-                  ? 'bg-brand-600 text-white font-semibold'
+                  ? 'bg-red-600 text-white font-semibold'
                   : 'text-slate-400 hover:text-slate-200'
               }`}
             >
@@ -129,7 +129,7 @@ export const ReportsPage: React.FC = () => {
               onClick={() => setRangeMode('weekly')}
               className={`px-3 py-1.5 rounded-md transition-colors ${
                 rangeMode === 'weekly'
-                  ? 'bg-brand-600 text-white font-semibold'
+                  ? 'bg-red-600 text-white font-semibold'
                   : 'text-slate-400 hover:text-slate-200'
               }`}
             >
@@ -139,7 +139,7 @@ export const ReportsPage: React.FC = () => {
               onClick={() => setRangeMode('monthly')}
               className={`px-3 py-1.5 rounded-md transition-colors ${
                 rangeMode === 'monthly'
-                  ? 'bg-brand-600 text-white font-semibold'
+                  ? 'bg-red-600 text-white font-semibold'
                   : 'text-slate-400 hover:text-slate-200'
               }`}
             >
@@ -149,7 +149,7 @@ export const ReportsPage: React.FC = () => {
               onClick={() => setRangeMode('custom')}
               className={`px-3 py-1.5 rounded-md transition-colors ${
                 rangeMode === 'custom'
-                  ? 'bg-brand-600 text-white font-semibold'
+                  ? 'bg-red-600 text-white font-semibold'
                   : 'text-slate-400 hover:text-slate-200'
               }`}
             >
@@ -165,14 +165,14 @@ export const ReportsPage: React.FC = () => {
                   type="date"
                   value={customStart}
                   onChange={(e) => setCustomStart(e.target.value)}
-                  className="px-2.5 py-1.5 rounded-lg bg-slate-950 border border-slate-700 text-slate-200 font-mono"
+                  className="px-2.5 py-1.5 rounded-lg bg-slate-950 border border-slate-700 text-slate-200 font-mono focus:border-red-500 outline-none"
                 />
                 <span className="text-slate-500">to</span>
                 <input
                   type="date"
                   value={customEnd}
                   onChange={(e) => setCustomEnd(e.target.value)}
-                  className="px-2.5 py-1.5 rounded-lg bg-slate-950 border border-slate-700 text-slate-200 font-mono"
+                  className="px-2.5 py-1.5 rounded-lg bg-slate-950 border border-slate-700 text-slate-200 font-mono focus:border-red-500 outline-none"
                 />
               </div>
             ) : rangeMode === 'monthly' ? (
@@ -180,14 +180,14 @@ export const ReportsPage: React.FC = () => {
                 type="month"
                 value={selectedDate.substring(0, 7)}
                 onChange={(e) => setSelectedDate(`${e.target.value}-01`)}
-                className="px-3 py-1.5 rounded-lg bg-slate-950 border border-slate-700 text-xs text-slate-200 font-mono"
+                className="px-3 py-1.5 rounded-lg bg-slate-950 border border-slate-700 text-xs text-slate-200 font-mono focus:border-red-500 outline-none"
               />
             ) : (
               <input
                 type="date"
                 value={selectedDate}
                 onChange={(e) => setSelectedDate(e.target.value)}
-                className="px-3 py-1.5 rounded-lg bg-slate-950 border border-slate-700 text-xs text-slate-200 font-mono"
+                className="px-3 py-1.5 rounded-lg bg-slate-950 border border-slate-700 text-xs text-slate-200 font-mono focus:border-red-500 outline-none"
               />
             )}
           </div>
@@ -210,31 +210,31 @@ export const ReportsPage: React.FC = () => {
               </p>
             </div>
 
-            <div className="p-4 rounded-xl bg-slate-900 border border-blue-900/30">
-              <span className="text-3xs uppercase tracking-wider text-blue-300 font-semibold block">
+            <div className="p-4 rounded-xl bg-slate-900 border border-slate-800">
+              <span className="text-3xs uppercase tracking-wider text-zinc-400 font-semibold block">
                 GPay / UPI Collections
               </span>
-              <div className="text-2xl font-bold font-mono text-blue-100 mt-1 tabular-nums">
+              <div className="text-2xl font-bold font-mono text-white mt-1 tabular-nums">
                 {formatRupees(metrics.gpayCollectionsPaise)}
               </div>
               <p className="text-2xs text-slate-400 mt-1">Bank verified digital total</p>
             </div>
 
-            <div className="p-4 rounded-xl bg-slate-900 border border-emerald-900/30">
-              <span className="text-3xs uppercase tracking-wider text-emerald-300 font-semibold block">
+            <div className="p-4 rounded-xl bg-slate-900 border border-slate-800">
+              <span className="text-3xs uppercase tracking-wider text-zinc-400 font-semibold block">
                 Physical Cash Collections
               </span>
-              <div className="text-2xl font-bold font-mono text-emerald-100 mt-1 tabular-nums">
+              <div className="text-2xl font-bold font-mono text-white mt-1 tabular-nums">
                 {formatRupees(metrics.cashCollectionsPaise)}
               </div>
               <p className="text-2xs text-slate-400 mt-1">Physical currency received in register</p>
             </div>
 
-            <div className="p-4 rounded-xl bg-slate-900 border border-amber-900/30">
-              <span className="text-3xs uppercase tracking-wider text-amber-300 font-semibold block">
+            <div className="p-4 rounded-xl bg-slate-900 border border-red-900/40">
+              <span className="text-3xs uppercase tracking-wider text-red-400 font-semibold block">
                 Outstanding Balance Due
               </span>
-              <div className="text-2xl font-bold font-mono text-amber-100 mt-1 tabular-nums">
+              <div className="text-2xl font-bold font-mono text-red-400 mt-1 tabular-nums">
                 {formatRupees(metrics.outstandingBalancePaise)}
               </div>
               <p className="text-2xs text-slate-400 mt-1">Unpaid customer balances</p>
@@ -244,7 +244,7 @@ export const ReportsPage: React.FC = () => {
           {/* Mathematical Reconciliation Box */}
           <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-2">
             <div className="flex items-center gap-2 text-xs font-semibold text-slate-300">
-              <HelpCircle className="w-4 h-4 text-brand-400" />
+              <HelpCircle className="w-4 h-4 text-red-400" />
               <span>Mathematical Integrity & Derivation Breakdown</span>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs font-mono pt-1 text-slate-400">
@@ -262,7 +262,7 @@ export const ReportsPage: React.FC = () => {
                   Total Collections:
                 </span>
                 <span className="text-slate-200">
-                  GPay ({formatRupees(metrics.gpayCollectionsPaise)}) + Cash ({formatRupees(metrics.cashCollectionsPaise)}) = <strong className="text-emerald-400">{formatRupees(metrics.gpayCollectionsPaise + metrics.cashCollectionsPaise)}</strong>
+                  GPay ({formatRupees(metrics.gpayCollectionsPaise)}) + Cash ({formatRupees(metrics.cashCollectionsPaise)}) = <strong className="text-white">{formatRupees(metrics.gpayCollectionsPaise + metrics.cashCollectionsPaise)}</strong>
                 </span>
               </div>
 
@@ -271,7 +271,7 @@ export const ReportsPage: React.FC = () => {
                   Net Outstanding Check:
                 </span>
                 <span className="text-slate-200">
-                  Sales ({formatRupees(metrics.totalSalesPaise)}) - Collections ({formatRupees(metrics.gpayCollectionsPaise + metrics.cashCollectionsPaise)}) = <strong className="text-amber-400">{formatRupees(metrics.outstandingBalancePaise)}</strong>
+                  Sales ({formatRupees(metrics.totalSalesPaise)}) - Collections ({formatRupees(metrics.gpayCollectionsPaise + metrics.cashCollectionsPaise)}) = <strong className="text-red-400">{formatRupees(metrics.outstandingBalancePaise)}</strong>
                 </span>
               </div>
             </div>
@@ -293,7 +293,7 @@ export const ReportsPage: React.FC = () => {
                   </div>
                   <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
                     <div
-                      className="bg-blue-500 h-full rounded-full"
+                      className="bg-red-600 h-full rounded-full"
                       style={{
                         width: `${metrics.totalSalesPaise > 0 ? (metrics.ps5RevenuePaise / metrics.totalSalesPaise) * 100 : 0}%`,
                       }}
@@ -308,7 +308,7 @@ export const ReportsPage: React.FC = () => {
                   </div>
                   <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
                     <div
-                      className="bg-emerald-500 h-full rounded-full"
+                      className="bg-zinc-600 h-full rounded-full"
                       style={{
                         width: `${metrics.totalSalesPaise > 0 ? (metrics.poolRevenuePaise / metrics.totalSalesPaise) * 100 : 0}%`,
                       }}
@@ -323,7 +323,7 @@ export const ReportsPage: React.FC = () => {
                   </div>
                   <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
                     <div
-                      className="bg-amber-500 h-full rounded-full"
+                      className="bg-zinc-500 h-full rounded-full"
                       style={{
                         width: `${metrics.totalSalesPaise > 0 ? (metrics.snackRevenuePaise / metrics.totalSalesPaise) * 100 : 0}%`,
                       }}
@@ -343,13 +343,13 @@ export const ReportsPage: React.FC = () => {
                 <div>
                   <div className="flex justify-between font-mono mb-1">
                     <span className="text-slate-300">GPay / UPI (Digital):</span>
-                    <span className="text-blue-300 font-bold">
+                    <span className="text-white font-bold">
                       {formatRupees(metrics.gpayCollectionsPaise)}
                     </span>
                   </div>
                   <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
                     <div
-                      className="bg-blue-500 h-full rounded-full"
+                      className="bg-red-600 h-full rounded-full"
                       style={{
                         width: `${
                           metrics.gpayCollectionsPaise + metrics.cashCollectionsPaise > 0
@@ -366,13 +366,13 @@ export const ReportsPage: React.FC = () => {
                 <div>
                   <div className="flex justify-between font-mono mb-1">
                     <span className="text-slate-300">Physical Cash:</span>
-                    <span className="text-emerald-300 font-bold">
+                    <span className="text-white font-bold">
                       {formatRupees(metrics.cashCollectionsPaise)}
                     </span>
                   </div>
                   <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
                     <div
-                      className="bg-emerald-500 h-full rounded-full"
+                      className="bg-zinc-600 h-full rounded-full"
                       style={{
                         width: `${
                           metrics.gpayCollectionsPaise + metrics.cashCollectionsPaise > 0
@@ -396,44 +396,81 @@ export const ReportsPage: React.FC = () => {
             </h3>
 
             <div className="rounded-xl border border-slate-800 bg-slate-900/60 overflow-hidden shadow-sm">
-              <table className="w-full text-left text-xs">
-                <thead className="bg-slate-950/80 border-b border-slate-800 text-slate-400 uppercase font-mono text-3xs">
-                  <tr>
-                    <th className="px-4 py-3">Staff Member</th>
-                    <th className="px-4 py-3">Closed Sessions</th>
-                    <th className="px-4 py-3">Total Sales Settled</th>
-                    <th className="px-4 py-3">Cash Handled</th>
-                    <th className="px-4 py-3">GPay Handled</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-800/60 font-mono">
-                  {metrics.salesByEmployee.length === 0 ? (
+              {/* Mobile Staff Cards (md:hidden) */}
+              <div className="md:hidden divide-y divide-slate-800/60">
+                {metrics.salesByEmployee.length === 0 ? (
+                  <div className="px-4 py-6 text-center text-slate-500 font-sans text-xs">
+                    No transactions found for the selected period.
+                  </div>
+                ) : (
+                  metrics.salesByEmployee.map((emp) => (
+                    <div key={emp.employeeId} className="p-3.5 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-slate-100 text-sm">{emp.employeeName}</span>
+                        <span className="text-2xs font-mono text-slate-400 bg-slate-800 px-2 py-0.5 rounded">
+                          {emp.sessionCount} sessions
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-3 gap-2 text-2xs font-mono pt-1">
+                        <div>
+                          <span className="text-3xs text-slate-500 block uppercase font-sans">Total Sales</span>
+                          <span className="text-slate-100 font-bold">{formatRupees(emp.totalSalesPaise)}</span>
+                        </div>
+                        <div>
+                          <span className="text-3xs text-slate-500 block uppercase font-sans">Cash Handled</span>
+                          <span className="text-zinc-200 font-semibold">{formatRupees(emp.cashCollectedPaise)}</span>
+                        </div>
+                        <div>
+                          <span className="text-3xs text-slate-500 block uppercase font-sans">GPay Handled</span>
+                          <span className="text-zinc-200 font-semibold">{formatRupees(emp.gpayCollectedPaise)}</span>
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+
+              {/* Desktop Table (hidden md:block) */}
+              <div className="hidden md:block overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-slate-950/80 border-b border-slate-800 text-slate-400 uppercase font-mono text-3xs">
                     <tr>
-                      <td colSpan={5} className="px-4 py-6 text-center text-slate-500 font-sans">
-                        No transactions found for the selected period.
-                      </td>
+                      <th className="px-4 py-3">Staff Member</th>
+                      <th className="px-4 py-3">Closed Sessions</th>
+                      <th className="px-4 py-3">Total Sales Settled</th>
+                      <th className="px-4 py-3">Cash Handled</th>
+                      <th className="px-4 py-3">GPay Handled</th>
                     </tr>
-                  ) : (
-                    metrics.salesByEmployee.map((emp) => (
-                      <tr key={emp.employeeId} className="hover:bg-slate-850/50">
-                        <td className="px-4 py-3 font-sans font-medium text-slate-200">
-                          {emp.employeeName}
-                        </td>
-                        <td className="px-4 py-3 text-slate-300">{emp.sessionCount}</td>
-                        <td className="px-4 py-3 font-bold text-slate-100">
-                          {formatRupees(emp.totalSalesPaise)}
-                        </td>
-                        <td className="px-4 py-3 text-emerald-400">
-                          {formatRupees(emp.cashCollectedPaise)}
-                        </td>
-                        <td className="px-4 py-3 text-blue-400">
-                          {formatRupees(emp.gpayCollectedPaise)}
+                  </thead>
+                  <tbody className="divide-y divide-slate-800/60 font-mono">
+                    {metrics.salesByEmployee.length === 0 ? (
+                      <tr>
+                        <td colSpan={5} className="px-4 py-6 text-center text-slate-500 font-sans">
+                          No transactions found for the selected period.
                         </td>
                       </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
+                    ) : (
+                      metrics.salesByEmployee.map((emp) => (
+                        <tr key={emp.employeeId} className="hover:bg-slate-850/50">
+                          <td className="px-4 py-3 font-sans font-medium text-slate-200">
+                            {emp.employeeName}
+                          </td>
+                          <td className="px-4 py-3 text-slate-300">{emp.sessionCount}</td>
+                          <td className="px-4 py-3 font-bold text-slate-100">
+                            {formatRupees(emp.totalSalesPaise)}
+                          </td>
+                          <td className="px-4 py-3 text-zinc-200">
+                            {formatRupees(emp.cashCollectedPaise)}
+                          </td>
+                          <td className="px-4 py-3 text-zinc-200">
+                            {formatRupees(emp.gpayCollectedPaise)}
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         </div>

@@ -18,7 +18,7 @@ import { formatDateTime } from '../utils/formatters';
 
 export const AuditLogPage: React.FC = () => {
   const { isAdmin } = useAuth();
-  const [logs, setLogs] = useState<AuditLog[]>([]);
+  const [logs, setLogs] = useState<AuditLog[]>(() => db.getAuditLogs());
   const [search, setSearch] = useState('');
   const [entityFilter, setEntityFilter] = useState<string>('all');
   const [selectedLog, setSelectedLog] = useState<AuditLog | null>(null);
@@ -29,8 +29,8 @@ export const AuditLogPage: React.FC = () => {
 
   if (!isAdmin) {
     return (
-      <div className="p-12 text-center rounded-xl border border-rose-900/40 bg-rose-950/20 max-w-lg mx-auto mt-10">
-        <Lock className="w-12 h-12 text-rose-500 mx-auto mb-3" />
+      <div className="p-12 text-center rounded-xl border border-red-900/40 bg-red-950/20 max-w-lg mx-auto mt-10">
+        <Lock className="w-12 h-12 text-red-500 mx-auto mb-3" />
         <h2 className="text-base font-bold text-white">Access Denied: Administrator Only</h2>
         <p className="text-xs text-slate-400 mt-2">
           The forensic audit trail is strictly confidential and accessible only to system administrators.
@@ -99,80 +99,128 @@ export const AuditLogPage: React.FC = () => {
         </select>
       </div>
 
-      {/* Logs Timeline Table */}
+      {/* Logs Timeline Table / Mobile Cards */}
       <div className="rounded-xl border border-slate-800 bg-slate-900/60 overflow-hidden shadow-sm">
-        <table className="w-full text-left text-xs">
-          <thead className="bg-slate-950/80 border-b border-slate-800 text-slate-400 uppercase font-mono text-3xs">
-            <tr>
-              <th className="px-4 py-3">Timestamp</th>
-              <th className="px-4 py-3">Actor</th>
-              <th className="px-4 py-3">Action</th>
-              <th className="px-4 py-3">Entity</th>
-              <th className="px-4 py-3">Audit Details</th>
-              <th className="px-4 py-3 text-right">State</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-800/60 font-mono">
-            {filteredLogs.length === 0 ? (
-              <tr>
-                <td colSpan={6} className="px-4 py-8 text-center text-slate-500 font-sans">
-                  No audit logs match the current filter criteria.
-                </td>
-              </tr>
-            ) : (
-              filteredLogs.map((log) => (
-                <tr key={log.id} className="hover:bg-slate-850/50">
-                  <td className="px-4 py-3 text-3xs text-slate-400 whitespace-nowrap">
-                    {formatDateTime(log.timestamp)}
-                  </td>
-
-                  <td className="px-4 py-3 font-sans">
-                    <span className="font-medium text-slate-200 block">{log.actorName}</span>
-                    <Badge variant={log.actorRole === 'admin' ? 'warning' : 'info'} size="sm">
-                      {log.actorRole.toUpperCase()}
-                    </Badge>
-                  </td>
-
-                  <td className="px-4 py-3">
-                    <span
-                      className={`text-2xs font-bold px-2 py-0.5 rounded ${
-                        log.action.includes('VOID')
-                          ? 'bg-rose-950 text-rose-400 border border-rose-800'
-                          : log.action.includes('CLOSING')
-                          ? 'bg-emerald-950 text-emerald-400 border border-emerald-800'
-                          : log.action.includes('PRICING')
-                          ? 'bg-amber-950 text-amber-400 border border-amber-800'
-                          : 'bg-slate-800 text-slate-300'
-                      }`}
+        {/* Mobile Cards (md:hidden) */}
+        <div className="md:hidden divide-y divide-slate-800/60 font-sans">
+          {filteredLogs.length === 0 ? (
+            <div className="p-6 text-center text-slate-500 text-xs">
+              No audit logs match the current filter criteria.
+            </div>
+          ) : (
+            filteredLogs.map((log) => (
+              <div key={log.id} className="p-3.5 space-y-2">
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <span className="font-bold text-slate-200 text-xs block">{log.actorName}</span>
+                    <span className="text-3xs text-slate-500 font-mono">{formatDateTime(log.timestamp)}</span>
+                  </div>
+                  <span
+                    className={`text-3xs font-bold px-2 py-0.5 rounded font-mono ${
+                      log.action.includes('VOID')
+                        ? 'bg-red-950 text-red-400 border border-red-800'
+                        : log.action.includes('CLOSING')
+                        ? 'bg-zinc-800 text-zinc-200 border border-zinc-700'
+                        : log.action.includes('PRICING')
+                        ? 'bg-red-950 text-red-400 border border-red-800'
+                        : 'bg-zinc-800 text-zinc-300 border border-zinc-700'
+                    }`}
+                  >
+                    {log.action}
+                  </span>
+                </div>
+                <p className="text-xs text-slate-300">{log.details}</p>
+                <div className="flex items-center justify-between pt-1 border-t border-slate-800/40 text-3xs font-mono text-slate-500">
+                  <span>{log.entityType}: {log.entityId}</span>
+                  {(log.previousState || log.newState) && (
+                    <button
+                      onClick={() => setSelectedLog(log)}
+                      className="text-red-400 hover:text-red-300 underline font-mono font-semibold"
                     >
-                      {log.action}
-                    </span>
-                  </td>
+                      Inspect Diff
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))
+          )}
+        </div>
 
-                  <td className="px-4 py-3 uppercase text-3xs text-slate-400">
-                    <span className="block font-semibold text-slate-300">{log.entityType}</span>
-                    <span className="text-slate-500">{log.entityId}</span>
-                  </td>
-
-                  <td className="px-4 py-3 font-sans text-xs text-slate-300 max-w-md">
-                    {log.details}
-                  </td>
-
-                  <td className="px-4 py-3 text-right">
-                    {(log.previousState || log.newState) && (
-                      <button
-                        onClick={() => setSelectedLog(log)}
-                        className="text-2xs text-brand-400 hover:text-brand-300 font-mono underline"
-                      >
-                        Inspect Diff
-                      </button>
-                    )}
+        {/* Desktop Table (hidden md:block) */}
+        <div className="hidden md:block overflow-x-auto">
+          <table className="w-full text-left text-xs">
+            <thead className="bg-slate-950/80 border-b border-slate-800 text-slate-400 uppercase font-mono text-3xs">
+              <tr>
+                <th className="px-4 py-3">Timestamp</th>
+                <th className="px-4 py-3">Actor</th>
+                <th className="px-4 py-3">Action</th>
+                <th className="px-4 py-3">Entity</th>
+                <th className="px-4 py-3">Audit Details</th>
+                <th className="px-4 py-3 text-right">State</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-800/60 font-mono">
+              {filteredLogs.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="px-4 py-8 text-center text-slate-500 font-sans">
+                    No audit logs match the current filter criteria.
                   </td>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+              ) : (
+                filteredLogs.map((log) => (
+                  <tr key={log.id} className="hover:bg-slate-850/50">
+                    <td className="px-4 py-3 text-3xs text-slate-400 whitespace-nowrap">
+                      {formatDateTime(log.timestamp)}
+                    </td>
+
+                    <td className="px-4 py-3 font-sans">
+                      <span className="font-medium text-slate-200 block">{log.actorName}</span>
+                      <Badge variant={log.actorRole === 'admin' ? 'danger' : 'info'} size="sm">
+                        {log.actorRole.toUpperCase()}
+                      </Badge>
+                    </td>
+
+                    <td className="px-4 py-3">
+                      <span
+                        className={`text-2xs font-bold px-2 py-0.5 rounded ${
+                          log.action.includes('VOID')
+                            ? 'bg-red-950 text-red-400 border border-red-800'
+                            : log.action.includes('CLOSING')
+                            ? 'bg-zinc-800 text-zinc-200 border border-zinc-700'
+                            : log.action.includes('PRICING')
+                            ? 'bg-red-950 text-red-400 border border-red-800'
+                            : 'bg-zinc-800 text-zinc-300 border border-zinc-700'
+                        }`}
+                      >
+                        {log.action}
+                      </span>
+                    </td>
+
+                    <td className="px-4 py-3 uppercase text-3xs text-slate-400">
+                      <span className="block font-semibold text-slate-300">{log.entityType}</span>
+                      <span className="text-slate-500">{log.entityId}</span>
+                    </td>
+
+                    <td className="px-4 py-3 font-sans text-xs text-slate-300 max-w-md">
+                      {log.details}
+                    </td>
+
+                    <td className="px-4 py-3 text-right">
+                      {(log.previousState || log.newState) && (
+                        <button
+                          onClick={() => setSelectedLog(log)}
+                          className="text-2xs text-red-400 hover:text-red-300 font-mono underline"
+                        >
+                          Inspect Diff
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {/* State Inspector Modal */}
@@ -189,10 +237,10 @@ export const AuditLogPage: React.FC = () => {
 
             {selectedLog.previousState && (
               <div>
-                <span className="text-3xs uppercase tracking-wider text-rose-400 font-bold block mb-1">
+                <span className="text-3xs uppercase tracking-wider text-red-400 font-bold block mb-1">
                   Previous State
                 </span>
-                <pre className="p-3 rounded-lg bg-slate-950 border border-slate-800 text-rose-300 text-2xs overflow-x-auto">
+                <pre className="p-3 rounded-lg bg-zinc-950 border border-zinc-800 text-red-300 text-2xs overflow-x-auto">
                   {JSON.stringify(selectedLog.previousState, null, 2)}
                 </pre>
               </div>
@@ -200,10 +248,10 @@ export const AuditLogPage: React.FC = () => {
 
             {selectedLog.newState && (
               <div>
-                <span className="text-3xs uppercase tracking-wider text-emerald-400 font-bold block mb-1">
+                <span className="text-3xs uppercase tracking-wider text-zinc-300 font-bold block mb-1">
                   New State
                 </span>
-                <pre className="p-3 rounded-lg bg-slate-950 border border-slate-800 text-emerald-300 text-2xs overflow-x-auto">
+                <pre className="p-3 rounded-lg bg-zinc-950 border border-zinc-800 text-zinc-200 text-2xs overflow-x-auto">
                   {JSON.stringify(selectedLog.newState, null, 2)}
                 </pre>
               </div>

@@ -81,7 +81,7 @@ export const Modal: React.FC<ModalProps> = ({
     >
       {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm transition-opacity"
+        className="fixed inset-0 bg-black/85 backdrop-blur-sm transition-opacity"
         onClick={onClose}
         aria-hidden="true"
       />
@@ -90,13 +90,14 @@ export const Modal: React.FC<ModalProps> = ({
       <div
         ref={modalContainerRef}
         tabIndex={-1}
-        className={`relative w-full ${maxWidths[maxWidth]} flex flex-col max-h-[min(90dvh,900px)] bg-slate-900 border border-slate-700/80 rounded-xl shadow-2xl z-10 animate-in fade-in zoom-in-95 duration-150 outline-none`}
+        className={`relative w-full ${maxWidths[maxWidth]} flex flex-col max-h-[min(92dvh,920px)] bg-[#0c0c12] border border-red-950/50 rounded-2xl shadow-2xl shadow-black/80 z-10 animate-in fade-in zoom-in-95 duration-150 outline-none overflow-hidden`}
       >
         {/* Header - Fixed & Always Visible */}
-        <div className="flex shrink-0 items-start justify-between px-5 sm:px-6 py-3.5 sm:py-4 border-b border-slate-800 bg-slate-900">
+        <div className="flex shrink-0 items-start justify-between px-4 sm:px-6 py-3.5 sm:py-4 border-b border-white/[0.08] bg-[#0c0c12]">
           <div className="pr-4">
-            <h3 id="modal-title" className="text-base sm:text-lg font-semibold text-slate-100">
-              {title}
+            <h3 id="modal-title" className="text-base sm:text-lg font-bold text-white flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-red-500" />
+              <span>{title}</span>
             </h3>
             {description && (
               <p className="mt-0.5 text-xs text-slate-400">{description}</p>
@@ -105,7 +106,7 @@ export const Modal: React.FC<ModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="text-slate-400 hover:text-slate-200 p-1.5 rounded-lg hover:bg-slate-800 transition-colors shrink-0"
+            className="text-slate-400 hover:text-white p-1.5 rounded-lg hover:bg-white/[0.06] transition-colors shrink-0"
             title="Close (Esc)"
             aria-label="Close dialog"
           >
@@ -116,13 +117,13 @@ export const Modal: React.FC<ModalProps> = ({
         {/* Content Wrapper (Form or Div) */}
         <ContentWrapper {...(wrapperProps as any)}>
           {/* Body - Independently Scrollable */}
-          <div className="flex-1 min-h-0 overflow-y-auto px-5 sm:px-6 py-4 space-y-4">
+          <div className="flex-1 min-h-0 overflow-y-auto px-4 sm:px-6 py-4 space-y-4">
             {children}
           </div>
 
           {/* Footer - Fixed, Permanently Visible */}
           {footer && (
-            <div className="shrink-0 flex items-center justify-between gap-3 px-5 sm:px-6 py-3.5 border-t border-slate-800 bg-slate-950/95">
+            <div className="shrink-0 flex items-center justify-between gap-3 px-4 sm:px-6 py-3 border-t border-white/[0.08] bg-[#08080c]">
               {footer}
             </div>
           )}

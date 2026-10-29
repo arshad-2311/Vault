@@ -20,14 +20,14 @@ export const Button: React.FC<ButtonProps> = ({
   ...props
 }) => {
   const baseStyles =
-    'inline-flex items-center justify-center font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 disabled:opacity-50 disabled:cursor-not-allowed select-none active:scale-[0.98]';
+    'inline-flex items-center justify-center font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed select-none active:scale-[0.98]';
 
   const variants = {
-    primary: 'bg-brand-600 hover:bg-brand-500 text-white shadow-sm border border-brand-500',
-    secondary: 'bg-slate-800 hover:bg-slate-700 text-slate-100 border border-slate-700',
-    danger: 'bg-rose-900/40 hover:bg-rose-900/70 text-rose-300 border border-rose-800/60',
-    ghost: 'hover:bg-slate-800 text-slate-300 hover:text-white',
-    success: 'bg-emerald-700 hover:bg-emerald-600 text-white border border-emerald-600',
+    primary: 'bg-red-600 hover:bg-red-500 text-white font-bold shadow-md shadow-red-950/60 border border-red-500',
+    secondary: 'bg-zinc-900 hover:bg-zinc-800 text-zinc-100 border border-zinc-800',
+    danger: 'bg-red-950/80 hover:bg-red-900 text-red-300 border border-red-800/80',
+    ghost: 'hover:bg-zinc-800 text-zinc-300 hover:text-white',
+    success: 'bg-zinc-800 hover:bg-zinc-700 text-white border border-zinc-600',
   };
 
   const sizes = {

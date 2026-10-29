@@ -159,7 +159,7 @@ export interface AuditLog {
   actorName: string;
   actorRole: UserRole;
   action: string;
-  entityType: 'session' | 'payment' | 'pricing' | 'snack' | 'closing' | 'user';
+  entityType: 'session' | 'payment' | 'pricing' | 'snack' | 'closing' | 'user' | 'auth' | 'audit_log';
   entityId: string;
   details: string;
   timestamp: string;

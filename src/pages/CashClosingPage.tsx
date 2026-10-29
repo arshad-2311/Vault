@@ -149,7 +149,7 @@ export const CashClosingPage: React.FC = () => {
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-3 border-b border-white/[0.08]">
         <div>
           <h1 className="text-xl font-bold tracking-tight text-white flex items-center gap-2">
-            <Banknote className="w-5 h-5 text-emerald-400" />
+            <Banknote className="w-5 h-5 text-red-500" />
             <span>Cash Drawer Reconciliation</span>
           </h1>
           <p className="text-2xs text-slate-400 mt-0.5">
@@ -163,20 +163,20 @@ export const CashClosingPage: React.FC = () => {
             type="date"
             value={selectedDate}
             onChange={(e) => setSelectedDate(e.target.value)}
-            className="px-2.5 py-1 rounded bg-[#131722] border border-white/[0.08] text-xs font-mono text-slate-200 outline-none focus:border-amber-500"
+            className="px-2.5 py-1 rounded bg-[#131722] border border-white/[0.08] text-xs font-mono text-slate-200 outline-none focus:border-red-500"
           />
         </div>
       </div>
 
       {successMsg && (
-        <div className="p-3 rounded-lg bg-emerald-950/50 border border-emerald-800/60 text-emerald-300 text-xs flex items-center gap-2">
-          <CheckCircle className="w-4 h-4 shrink-0" />
+        <div className="p-3 rounded-lg bg-zinc-900 border border-zinc-700 text-zinc-200 text-xs flex items-center gap-2">
+          <CheckCircle className="w-4 h-4 shrink-0 text-red-500" />
           <span>{successMsg}</span>
         </div>
       )}
 
       {errorMsg && (
-        <div className="p-3 rounded-lg bg-rose-950/50 border border-rose-800/60 text-rose-300 text-xs flex items-center gap-2">
+        <div className="p-3 rounded-lg bg-red-950/50 border border-red-800/60 text-red-300 text-xs flex items-center gap-2">
           <AlertTriangle className="w-4 h-4 shrink-0" />
           <span>{errorMsg}</span>
         </div>
@@ -188,7 +188,7 @@ export const CashClosingPage: React.FC = () => {
           <span className="text-3xs uppercase tracking-wider text-slate-400 font-mono block">
             System Expected Cash
           </span>
-          <span className="text-lg font-bold font-mono text-emerald-400 tabular-nums">
+          <span className="text-lg font-bold font-mono text-white tabular-nums">
             {formatRupees(expectedCashPaise)}
           </span>
           <span className="text-3xs text-slate-500 block font-mono">Net drawer currency</span>
@@ -198,7 +198,7 @@ export const CashClosingPage: React.FC = () => {
           <span className="text-3xs uppercase tracking-wider text-slate-400 font-mono block">
             GPay / UPI Digital
           </span>
-          <span className="text-lg font-bold font-mono text-blue-400 tabular-nums">
+          <span className="text-lg font-bold font-mono text-zinc-300 tabular-nums">
             {formatRupees(totalGpayPaise)}
           </span>
           <span className="text-3xs text-slate-500 block font-mono">Direct bank transfers</span>
@@ -223,10 +223,8 @@ export const CashClosingPage: React.FC = () => {
           <span
             className={`text-lg font-bold font-mono tabular-nums ${
               variancePaise === 0
-                ? 'text-emerald-400'
-                : variancePaise > 0
-                ? 'text-amber-400'
-                : 'text-rose-400'
+                ? 'text-zinc-200'
+                : 'text-red-400'
             }`}
           >
             {variancePaise === 0
@@ -252,7 +250,7 @@ export const CashClosingPage: React.FC = () => {
             <button
               type="button"
               onClick={handleFillExpected}
-              className="text-2xs text-amber-400 hover:text-amber-300 underline font-mono"
+              className="text-2xs text-red-400 hover:text-red-300 underline font-mono"
             >
               Autofill Expected Count
             </button>
@@ -269,7 +267,7 @@ export const CashClosingPage: React.FC = () => {
                   min="0"
                   value={counts[d] || 0}
                   onChange={(e) => handleDenominationChange(String(d), e.target.value)}
-                  className="w-full text-center py-1 rounded bg-[#131722] border border-white/[0.08] text-xs font-mono text-white outline-none focus:border-amber-500"
+                  className="w-full text-center py-1 rounded bg-[#131722] border border-white/[0.08] text-xs font-mono text-white outline-none focus:border-red-500"
                 />
                 <span className="text-3xs text-slate-500 font-mono block mt-1">
                   = {formatRupees(counts[d] * d * 100)}
@@ -286,7 +284,7 @@ export const CashClosingPage: React.FC = () => {
                 min="0"
                 value={counts.coins || 0}
                 onChange={(e) => handleDenominationChange('coins', e.target.value)}
-                className="w-full text-center py-1 rounded bg-[#131722] border border-white/[0.08] text-xs font-mono text-white outline-none focus:border-amber-500"
+                className="w-full text-center py-1 rounded bg-[#131722] border border-white/[0.08] text-xs font-mono text-white outline-none focus:border-red-500"
               />
               <span className="text-3xs text-slate-500 font-mono block mt-1">
                 = {formatRupees(counts.coins * 100)}
@@ -298,10 +296,8 @@ export const CashClosingPage: React.FC = () => {
           <div
             className={`p-3 rounded-lg border text-xs font-mono flex items-center justify-between ${
               variancePaise === 0
-                ? 'bg-emerald-950/30 border-emerald-800/40 text-emerald-300'
-                : variancePaise > 0
-                ? 'bg-amber-950/30 border-amber-800/40 text-amber-300'
-                : 'bg-rose-950/30 border-rose-800/40 text-rose-300'
+                ? 'bg-zinc-900 border-zinc-700 text-zinc-200'
+                : 'bg-red-950/40 border-red-800/60 text-red-300'
             }`}
           >
             <div>
@@ -312,12 +308,12 @@ export const CashClosingPage: React.FC = () => {
             </div>
             <div>
               {variancePaise === 0 ? (
-                <span className="flex items-center gap-1 font-bold">
-                  <CheckCircle className="w-3.5 h-3.5 text-emerald-400" />
+                <span className="flex items-center gap-1 font-bold text-zinc-300">
+                  <CheckCircle className="w-3.5 h-3.5 text-zinc-400" />
                   <span>Drawer Reconciled Exactly</span>
                 </span>
               ) : (
-                <span className="font-bold">
+                <span className="font-bold text-red-400">
                   Variance: {variancePaise > 0 ? `+${formatRupees(variancePaise)} Overage` : `${formatRupees(variancePaise)} Shortage`}
                 </span>
               )}
@@ -333,14 +329,14 @@ export const CashClosingPage: React.FC = () => {
               placeholder="e.g. End of evening shift, drawer handed over to night lead."
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              className="w-full px-3 py-1.5 rounded bg-[#0b0e14] border border-white/[0.08] text-xs text-slate-200 outline-none focus:border-amber-500"
+              className="w-full px-3 py-1.5 rounded bg-[#0b0e14] border border-white/[0.08] text-xs text-slate-200 outline-none focus:border-red-500"
             />
           </div>
 
           <div className="flex justify-end pt-1">
             <button
               type="submit"
-              className="flex items-center gap-1.5 px-4 py-2 rounded bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-sm transition-all"
+              className="flex items-center gap-1.5 px-4 py-2 rounded bg-red-600 hover:bg-red-500 text-white font-bold text-xs shadow-sm transition-all"
             >
               <Save className="w-3.5 h-3.5" />
               <span>Finalize & Record Daily Closing</span>
@@ -383,10 +379,8 @@ export const CashClosingPage: React.FC = () => {
                       <span
                         className={`font-semibold ${
                           c.cashVariancePaise === 0
-                            ? 'text-emerald-400'
-                            : c.cashVariancePaise > 0
-                            ? 'text-amber-400'
-                            : 'text-rose-400'
+                            ? 'text-zinc-300'
+                            : 'text-red-400'
                         }`}
                       >
                         {c.cashVariancePaise === 0

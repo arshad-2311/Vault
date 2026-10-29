@@ -22,12 +22,12 @@ export const Badge: React.FC<BadgeProps> = ({
   className = '',
 }) => {
   const variantStyles: Record<BadgeVariant, string> = {
-    success: 'bg-emerald-950/80 text-emerald-400 border border-emerald-800/60',
-    warning: 'bg-amber-950/80 text-amber-300 border border-amber-800/60',
-    danger: 'bg-rose-950/80 text-rose-400 border border-rose-800/60',
-    info: 'bg-blue-950/80 text-blue-400 border border-blue-800/60',
-    neutral: 'bg-slate-800/80 text-slate-300 border border-slate-700/60',
-    purple: 'bg-purple-950/80 text-purple-300 border border-purple-800/60',
+    success: 'bg-zinc-850 text-zinc-200 border border-zinc-700',
+    warning: 'bg-red-950/80 text-red-400 border border-red-800/60',
+    danger: 'bg-red-950/90 text-red-400 border border-red-800/80',
+    info: 'bg-zinc-850 text-zinc-300 border border-zinc-700',
+    neutral: 'bg-zinc-900 text-zinc-400 border border-zinc-800',
+    purple: 'bg-zinc-850 text-zinc-300 border border-zinc-700',
   };
 
   const sizeStyles = {

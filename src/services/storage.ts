@@ -17,8 +17,65 @@ import {
 } from '../utils/pricing';
 import { formatRupees, formatDateTime } from '../utils/formatters';
 
+export interface UserCredential {
+  userId: string;
+  salt: string;
+  hash: string;
+}
+
+export interface AuthSession {
+  token: string;
+  userId: string;
+  role: 'admin' | 'employee';
+  displayName: string;
+  email: string;
+  createdAt: number;
+  expiresAt: number;
+  lastActivityAt: number;
+  signature?: string;
+}
+
+export async function hashPassword(password: string, salt: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(salt + ':' + password);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  return Array.from(new Uint8Array(hashBuffer))
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('');
+}
+
+export function generateSecureToken(byteLength = 16): string {
+  const arr = new Uint8Array(byteLength);
+  crypto.getRandomValues(arr);
+  return Array.from(arr)
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('');
+}
+
+// Precomputed salted SHA-256 hashes for standard accounts (Zero plaintext passwords)
+export const INITIAL_CREDENTIALS: Record<string, UserCredential> = {
+  'usr-admin-1': {
+    userId: 'usr-admin-1',
+    salt: 's4lt_v4ult_4dm1n_2026',
+    hash: '12f8aff8d420cb332211d23c4da3dc3e62c862683415e9052238b0e785c8d623',
+  },
+  'usr-emp-1': {
+    userId: 'usr-emp-1',
+    salt: 's4lt_v4ult_3mp1_2026',
+    hash: '7ec76a600619a875e6e2b5e56479900b074ddaa5c2d5a27262889456d3150322',
+  },
+  'usr-emp-2': {
+    userId: 'usr-emp-2',
+    salt: 's4lt_v4ult_3mp2_2026',
+    hash: 'da97a05db58744f1922a8cf8e59f6c5d198a01f606bd9006857686e48d3e20ce',
+  },
+};
+
 const STORAGE_KEYS = {
   USERS: 'vault_pos_users',
+  CREDENTIALS: 'vault_pos_credentials',
+  AUTH_SESSION: 'vault_pos_auth_session',
+  RATE_LIMITS: 'vault_pos_rate_limits',
   STATIONS: 'vault_pos_stations',
   SNACKS: 'vault_pos_snacks',
   PRICING: 'vault_pos_pricing',
@@ -409,13 +466,27 @@ const safeStorage = {
 
 // Storage helpers with JSON fallbacks
 class PosStorageEngine {
+  private inFlightCheckouts = new Set<string>();
+
   constructor() {
     this.init();
+  }
+
+  private getRateLimits(): Record<string, { count: number; lockedUntil: number | null }> {
+    const raw = safeStorage.getItem(STORAGE_KEYS.RATE_LIMITS);
+    return raw ? JSON.parse(raw) : {};
+  }
+
+  private saveRateLimits(limits: Record<string, { count: number; lockedUntil: number | null }>): void {
+    safeStorage.setItem(STORAGE_KEYS.RATE_LIMITS, JSON.stringify(limits));
   }
 
   private init() {
     if (!safeStorage.getItem(STORAGE_KEYS.USERS)) {
       safeStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(INITIAL_USERS));
+    }
+    if (!safeStorage.getItem(STORAGE_KEYS.CREDENTIALS)) {
+      safeStorage.setItem(STORAGE_KEYS.CREDENTIALS, JSON.stringify(INITIAL_CREDENTIALS));
     }
     if (!safeStorage.getItem(STORAGE_KEYS.STATIONS)) {
       safeStorage.setItem(STORAGE_KEYS.STATIONS, JSON.stringify(INITIAL_STATIONS));
@@ -453,8 +524,225 @@ class PosStorageEngine {
     }
   }
 
+  // --- AUTHENTICATION & SESSION MANAGEMENT ---
+  async authenticateUser(email: string, password: string): Promise<User> {
+    const normalizedEmail = email.trim().toLowerCase();
+    const now = Date.now();
+    const rateLimits = this.getRateLimits();
+    const attemptRecord = rateLimits[normalizedEmail] || { count: 0, lockedUntil: null };
+
+    // Check rate limit lockout (persists across page reloads and browser sessions)
+    if (attemptRecord.lockedUntil && now < attemptRecord.lockedUntil) {
+      const remainingSecs = Math.ceil((attemptRecord.lockedUntil - now) / 1000);
+      throw new Error(`Too many failed login attempts. Account temporarily locked for ${remainingSecs} seconds.`);
+    }
+
+    const users = this.getUsers();
+    const user = users.find((u) => u.email.toLowerCase() === normalizedEmail);
+
+    if (!user || !user.isActive) {
+      attemptRecord.count += 1;
+      if (attemptRecord.count >= 5) {
+        attemptRecord.lockedUntil = now + 60 * 1000;
+      }
+      rateLimits[normalizedEmail] = attemptRecord;
+      this.saveRateLimits(rateLimits);
+      this.addAuditLog({
+        actorId: 'system',
+        actorName: 'Security Gate',
+        actorRole: 'admin',
+        action: 'LOGIN_FAILED',
+        entityType: 'auth',
+        entityId: normalizedEmail,
+        details: `Failed login attempt for unknown or deactivated account: ${normalizedEmail} (Attempt ${attemptRecord.count})`,
+      });
+      if (attemptRecord.count >= 3 && attemptRecord.count < 5) {
+        await new Promise((r) => setTimeout(r, (attemptRecord.count - 2) * 800));
+      }
+      throw new Error('Invalid email or password.');
+    }
+
+    const credentialsRaw = safeStorage.getItem(STORAGE_KEYS.CREDENTIALS);
+    const credentialsMap: Record<string, UserCredential> = credentialsRaw ? JSON.parse(credentialsRaw) : INITIAL_CREDENTIALS;
+    const userCred = credentialsMap[user.id];
+
+    let isValid = false;
+    if (userCred) {
+      const candidateHash = await hashPassword(password, userCred.salt);
+      isValid = candidateHash === userCred.hash;
+    }
+
+    if (!isValid) {
+      attemptRecord.count += 1;
+      if (attemptRecord.count >= 5) {
+        attemptRecord.lockedUntil = now + 60 * 1000;
+        rateLimits[normalizedEmail] = attemptRecord;
+        this.saveRateLimits(rateLimits);
+        this.addAuditLog({
+          actorId: user.id,
+          actorName: user.displayName,
+          actorRole: user.role,
+          action: 'ACCOUNT_LOCKED',
+          entityType: 'auth',
+          entityId: user.id,
+          details: `Account ${user.email} locked for 60 seconds after 5 consecutive failed login attempts.`,
+        });
+        throw new Error('Too many failed login attempts. Account locked for 60 seconds.');
+      }
+      rateLimits[normalizedEmail] = attemptRecord;
+      this.saveRateLimits(rateLimits);
+      this.addAuditLog({
+        actorId: user.id,
+        actorName: user.displayName,
+        actorRole: user.role,
+        action: 'LOGIN_FAILED',
+        entityType: 'auth',
+        entityId: user.id,
+        details: `Failed password authentication for ${user.email} (Attempt ${attemptRecord.count} of 5)`,
+      });
+      if (attemptRecord.count >= 3) {
+        await new Promise((r) => setTimeout(r, (attemptRecord.count - 2) * 800));
+      }
+      throw new Error(`Invalid email or password. Attempt ${attemptRecord.count} of 5 before temporary lockout.`);
+    }
+
+    // Success: Clear failed attempts
+    delete rateLimits[normalizedEmail];
+    this.saveRateLimits(rateLimits);
+
+    // Update lastLoginAt
+    user.lastLoginAt = new Date().toISOString();
+    const uIndex = users.findIndex((u) => u.id === user.id);
+    if (uIndex !== -1) {
+      users[uIndex] = user;
+      safeStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(users));
+    }
+
+    // Create cryptographically signed auth session
+    const sessionToken = generateSecureToken(16);
+    const signature = await hashPassword(
+      `${sessionToken}:${user.id}:${user.role}:${user.email}`,
+      userCred.salt
+    );
+    const authSession: AuthSession = {
+      token: sessionToken,
+      userId: user.id,
+      role: user.role,
+      displayName: user.displayName,
+      email: user.email,
+      createdAt: now,
+      expiresAt: now + 8 * 60 * 60 * 1000, // 8-hour maximum lifetime
+      lastActivityAt: now,
+      signature,
+    };
+    safeStorage.setItem(STORAGE_KEYS.AUTH_SESSION, JSON.stringify(authSession));
+    safeStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(user));
+
+    this.addAuditLog({
+      actorId: user.id,
+      actorName: user.displayName,
+      actorRole: user.role,
+      action: 'USER_LOGIN',
+      entityType: 'auth',
+      entityId: user.id,
+      details: `User ${user.displayName} (${user.role.toUpperCase()}) authenticated successfully via secure password verification.`,
+    });
+
+    emitDataChanged();
+    return user;
+  }
+
+  getAuthSession(): AuthSession | null {
+    const raw = safeStorage.getItem(STORAGE_KEYS.AUTH_SESSION);
+    if (!raw) return null;
+    try {
+      const session: AuthSession = JSON.parse(raw);
+      const now = Date.now();
+      // 8-hour max session lifespan
+      if (now > session.expiresAt) {
+        this.clearAuthSession('Session expired after 8-hour duration limit.');
+        return null;
+      }
+      // 60-minute inactivity limit
+      if (now - session.lastActivityAt > 60 * 60 * 1000) {
+        this.clearAuthSession('Session expired due to 60 minutes of inactivity.');
+        return null;
+      }
+      return session;
+    } catch {
+      return null;
+    }
+  }
+
+  async verifySessionIntegrity(session: AuthSession): Promise<boolean> {
+    if (!session || !session.signature) return false;
+    const credsRaw = safeStorage.getItem(STORAGE_KEYS.CREDENTIALS);
+    const credsMap: Record<string, UserCredential> = credsRaw ? JSON.parse(credsRaw) : INITIAL_CREDENTIALS;
+    const userCred = credsMap[session.userId];
+    if (!userCred) return false;
+
+    const expectedSig = await hashPassword(
+      `${session.token}:${session.userId}:${session.role}:${session.email}`,
+      userCred.salt
+    );
+    const isAuthentic = expectedSig === session.signature;
+    if (!isAuthentic) {
+      this.addAuditLog({
+        actorId: session.userId,
+        actorName: session.displayName || 'Unknown',
+        actorRole: session.role || 'employee',
+        action: 'SECURITY_ALERT',
+        entityType: 'auth',
+        entityId: session.userId,
+        details: `Cryptographic session signature mismatch! Tampered session rejected for ${session.email} claiming role ${session.role}.`,
+      });
+    }
+    return isAuthentic;
+  }
+
+  touchSessionActivity(): void {
+    const raw = safeStorage.getItem(STORAGE_KEYS.AUTH_SESSION);
+    if (raw) {
+      try {
+        const session: AuthSession = JSON.parse(raw);
+        session.lastActivityAt = Date.now();
+        safeStorage.setItem(STORAGE_KEYS.AUTH_SESSION, JSON.stringify(session));
+      } catch {}
+    }
+  }
+
+  clearAuthSession(reason?: string): void {
+    const raw = safeStorage.getItem(STORAGE_KEYS.AUTH_SESSION);
+    if (raw) {
+      try {
+        const session: AuthSession = JSON.parse(raw);
+        this.addAuditLog({
+          actorId: session.userId,
+          actorName: session.displayName,
+          actorRole: session.role,
+          action: 'USER_LOGOUT',
+          entityType: 'auth',
+          entityId: session.userId,
+          details: reason || `User ${session.displayName} signed out of POS session.`,
+        });
+      } catch {}
+    }
+    safeStorage.setItem(STORAGE_KEYS.AUTH_SESSION, '');
+    if (typeof window !== 'undefined' && window.localStorage) {
+      try {
+        window.localStorage.removeItem(STORAGE_KEYS.AUTH_SESSION);
+      } catch {}
+    }
+    emitDataChanged();
+  }
+
   // --- CURRENT USER ---
   getCurrentUser(): User {
+    const session = this.getAuthSession();
+    if (session) {
+      const user = this.getUsers().find((u) => u.id === session.userId);
+      if (user && user.isActive) return user;
+    }
     const raw = safeStorage.getItem(STORAGE_KEYS.CURRENT_USER);
     if (!raw) return INITIAL_USERS[0];
     try {
@@ -470,10 +758,10 @@ class PosStorageEngine {
       actorId: user.id,
       actorName: user.displayName,
       actorRole: user.role,
-      action: 'USER_LOGIN',
+      action: 'USER_SWITCH',
       entityType: 'user',
       entityId: user.id,
-      details: `Switched active session to ${user.displayName} (${user.role.toUpperCase()})`,
+      details: `Switched active profile to ${user.displayName} (${user.role.toUpperCase()})`,
     });
   }
 
@@ -501,6 +789,16 @@ class PosStorageEngine {
     users.push(newUser);
     safeStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(users));
 
+    // Store default salted hash for new employee account
+    const credsRaw = safeStorage.getItem(STORAGE_KEYS.CREDENTIALS);
+    const credsMap: Record<string, UserCredential> = credsRaw ? JSON.parse(credsRaw) : { ...INITIAL_CREDENTIALS };
+    credsMap[newUser.id] = {
+      userId: newUser.id,
+      salt: 's4lt_v4ult_3mp1_2026',
+      hash: '7ec76a600619a875e6e2b5e56479900b074ddaa5c2d5a27262889456d3150322',
+    };
+    safeStorage.setItem(STORAGE_KEYS.CREDENTIALS, JSON.stringify(credsMap));
+
     this.addAuditLog({
       actorId: actor.id,
       actorName: actor.displayName,
@@ -509,6 +807,56 @@ class PosStorageEngine {
       entityType: 'user',
       entityId: newUser.id,
       details: `Created new employee account: ${newUser.displayName} (${newUser.email}) with role ${newUser.role}`,
+    });
+
+    return newUser;
+  }
+
+  async createUserWithPassword(
+    userData: Omit<User, 'id' | 'createdAt'>,
+    password: string,
+    actor: User
+  ): Promise<User> {
+    if (actor.role !== 'admin') {
+      throw new Error('Permission denied: Only administrators can create new users.');
+    }
+    if (!password || password.trim().length < 6) {
+      throw new Error('Password must be at least 6 characters long.');
+    }
+    const users = this.getUsers();
+    if (users.some((u) => u.email.toLowerCase() === userData.email.toLowerCase())) {
+      throw new Error(`A user with email ${userData.email} already exists.`);
+    }
+
+    const salt = generateSecureToken(16);
+    const hash = await hashPassword(password.trim(), salt);
+
+    const newUser: User = {
+      ...userData,
+      id: `usr-${Date.now()}`,
+      createdAt: new Date().toISOString(),
+    };
+
+    users.push(newUser);
+    safeStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(users));
+
+    const credsRaw = safeStorage.getItem(STORAGE_KEYS.CREDENTIALS);
+    const credsMap: Record<string, UserCredential> = credsRaw ? JSON.parse(credsRaw) : { ...INITIAL_CREDENTIALS };
+    credsMap[newUser.id] = {
+      userId: newUser.id,
+      salt,
+      hash,
+    };
+    safeStorage.setItem(STORAGE_KEYS.CREDENTIALS, JSON.stringify(credsMap));
+
+    this.addAuditLog({
+      actorId: actor.id,
+      actorName: actor.displayName,
+      actorRole: actor.role,
+      action: 'USER_CREATED',
+      entityType: 'user',
+      entityId: newUser.id,
+      details: `Created new staff account: ${newUser.displayName} (${newUser.email}) with role ${newUser.role} (secured with salted SHA-256 hash)`,
     });
 
     return newUser;
@@ -924,112 +1272,122 @@ class PosStorageEngine {
       actor,
     } = params;
 
-    const sessions = this.getSessions();
-    const index = sessions.findIndex((s) => s.id === sessionId);
-    if (index === -1) throw new Error('Session not found.');
-
-    const session = sessions[index];
-    if (session.status === 'completed') {
-      throw new Error('This session has already been finalized.');
+    // Prevent duplicate in-flight submissions
+    if (this.inFlightCheckouts.has(sessionId)) {
+      throw new Error('Duplicate payment prevented: Checkout is already in-flight for this session.');
     }
+    this.inFlightCheckouts.add(sessionId);
 
-    const config = this.getPricingConfig();
+    try {
+      const sessions = this.getSessions();
+      const index = sessions.findIndex((s) => s.id === sessionId);
+      if (index === -1) throw new Error('Session not found.');
 
-    // Validate employee discount authority
-    if (actor.role === 'employee' && discountPaise > config.maxEmployeeDiscountPaise) {
-      throw new Error(
-        `Employee discount cannot exceed ₹${(config.maxEmployeeDiscountPaise / 100).toFixed(0)}. Admin approval required.`
-      );
+      const session = sessions[index];
+      if (session.status === 'completed') {
+        throw new Error('This session has already been finalized.');
+      }
+
+      const config = this.getPricingConfig();
+
+      // Validate employee discount authority
+      if (actor.role === 'employee' && discountPaise > config.maxEmployeeDiscountPaise) {
+        throw new Error(
+          `Employee discount cannot exceed ₹${(config.maxEmployeeDiscountPaise / 100).toFixed(0)}. Admin approval required.`
+        );
+      }
+
+      // Calculate final duration and gaming charge on server/storage logic
+      const chargeCalc = calculateGamingCharge({
+        gamingType: session.gamingType,
+        billingType: session.billingType,
+        startTimeISO: session.startTime,
+        endTimeISO,
+        config,
+        isMultiplayer: session.isMultiplayer,
+        fixedPlanId: session.fixedPlanId,
+        framesCount: session.framesCount,
+      });
+
+      const snackSubtotalPaise = session.items.reduce((sum, it) => sum + it.lineTotalPaise, 0);
+      const billBreakdown = calculateFinalBill({
+        gamingChargePaise: chargeCalc.gamingChargePaise,
+        snackSubtotalPaise,
+        discountPaise,
+      });
+
+      // Validate payment amounts strictly in integer paise
+      const paymentValidation = validatePaymentAmounts({
+        method: paymentMethod,
+        finalBillPaise: billBreakdown.finalBillPaise,
+        gpayAmountPaise,
+        cashAmountPaise,
+        allowPartial: config.allowPartialPayments,
+      });
+
+      if (!paymentValidation.isValid) {
+        throw new Error(paymentValidation.error || 'Payment validation failed.');
+      }
+
+      const totalReceivedPaise = gpayAmountPaise + cashAmountPaise;
+
+      const paymentRecord: PaymentRecord = {
+        id: `pay-${Date.now()}`,
+        sessionId,
+        method: paymentMethod,
+        gpayAmountPaise,
+        cashAmountPaise,
+        totalReceivedPaise,
+        finalBillPaise: billBreakdown.finalBillPaise,
+        outstandingBalancePaise: paymentValidation.outstandingBalancePaise,
+        changeDuePaise: paymentValidation.changeDuePaise,
+        recordedBy: actor.id,
+        recordedByName: actor.displayName,
+        timestamp: endTimeISO,
+        status: paymentValidation.paymentStatus,
+        notes,
+      };
+
+      // Update Session
+      session.endTime = endTimeISO;
+      session.durationMinutes = chargeCalc.billedMinutes;
+      session.gamingChargePaise = chargeCalc.gamingChargePaise;
+      session.snackSubtotalPaise = snackSubtotalPaise;
+      session.discountPaise = billBreakdown.discountPaise;
+      session.discountReason = discountReason;
+      session.finalBillPaise = billBreakdown.finalBillPaise;
+      session.status = 'completed';
+      session.payment = paymentRecord;
+      session.completedBy = actor.id;
+      session.completedByName = actor.displayName;
+      if (notes) session.notes = (session.notes ? session.notes + ' | ' : '') + notes;
+      session.updatedAt = new Date().toISOString();
+
+      sessions[index] = session;
+      safeStorage.setItem(STORAGE_KEYS.SESSIONS, JSON.stringify(sessions));
+
+      // Release station
+      this.updateStation(session.stationId, {
+        status: 'available',
+        activeSessionId: null,
+      });
+
+      this.addAuditLog({
+        actorId: actor.id,
+        actorName: actor.displayName,
+        actorRole: actor.role,
+        action: 'SESSION_COMPLETED',
+        entityType: 'session',
+        entityId: sessionId,
+        details: `Completed session for ${session.customerName}. Bill: ₹${(billBreakdown.finalBillPaise / 100).toFixed(2)}, Received: ₹${(totalReceivedPaise / 100).toFixed(2)} (GPay: ₹${(gpayAmountPaise / 100).toFixed(2)}, Cash: ₹${(cashAmountPaise / 100).toFixed(2)})`,
+        newState: session,
+      });
+
+      emitDataChanged();
+      return session;
+    } finally {
+      this.inFlightCheckouts.delete(sessionId);
     }
-
-    // Calculate final duration and gaming charge on server/storage logic
-    const chargeCalc = calculateGamingCharge({
-      gamingType: session.gamingType,
-      billingType: session.billingType,
-      startTimeISO: session.startTime,
-      endTimeISO,
-      config,
-      isMultiplayer: session.isMultiplayer,
-      fixedPlanId: session.fixedPlanId,
-      framesCount: session.framesCount,
-    });
-
-    const snackSubtotalPaise = session.items.reduce((sum, it) => sum + it.lineTotalPaise, 0);
-    const billBreakdown = calculateFinalBill({
-      gamingChargePaise: chargeCalc.gamingChargePaise,
-      snackSubtotalPaise,
-      discountPaise,
-    });
-
-    // Validate payment amounts strictly in integer paise
-    const paymentValidation = validatePaymentAmounts({
-      method: paymentMethod,
-      finalBillPaise: billBreakdown.finalBillPaise,
-      gpayAmountPaise,
-      cashAmountPaise,
-      allowPartial: config.allowPartialPayments,
-    });
-
-    if (!paymentValidation.isValid) {
-      throw new Error(paymentValidation.error || 'Payment validation failed.');
-    }
-
-    const totalReceivedPaise = gpayAmountPaise + cashAmountPaise;
-
-    const paymentRecord: PaymentRecord = {
-      id: `pay-${Date.now()}`,
-      sessionId,
-      method: paymentMethod,
-      gpayAmountPaise,
-      cashAmountPaise,
-      totalReceivedPaise,
-      finalBillPaise: billBreakdown.finalBillPaise,
-      outstandingBalancePaise: paymentValidation.outstandingBalancePaise,
-      changeDuePaise: paymentValidation.changeDuePaise,
-      recordedBy: actor.id,
-      recordedByName: actor.displayName,
-      timestamp: endTimeISO,
-      status: paymentValidation.paymentStatus,
-      notes,
-    };
-
-    // Update Session
-    session.endTime = endTimeISO;
-    session.durationMinutes = chargeCalc.billedMinutes;
-    session.gamingChargePaise = chargeCalc.gamingChargePaise;
-    session.snackSubtotalPaise = snackSubtotalPaise;
-    session.discountPaise = billBreakdown.discountPaise;
-    session.discountReason = discountReason;
-    session.finalBillPaise = billBreakdown.finalBillPaise;
-    session.status = 'completed';
-    session.payment = paymentRecord;
-    session.completedBy = actor.id;
-    session.completedByName = actor.displayName;
-    if (notes) session.notes = (session.notes ? session.notes + ' | ' : '') + notes;
-    session.updatedAt = new Date().toISOString();
-
-    sessions[index] = session;
-    safeStorage.setItem(STORAGE_KEYS.SESSIONS, JSON.stringify(sessions));
-
-    // Release station
-    this.updateStation(session.stationId, {
-      status: 'available',
-      activeSessionId: null,
-    });
-
-    this.addAuditLog({
-      actorId: actor.id,
-      actorName: actor.displayName,
-      actorRole: actor.role,
-      action: 'SESSION_COMPLETED',
-      entityType: 'session',
-      entityId: sessionId,
-      details: `Completed session for ${session.customerName}. Bill: ₹${(billBreakdown.finalBillPaise / 100).toFixed(2)}, Received: ₹${(totalReceivedPaise / 100).toFixed(2)} (GPay: ₹${(gpayAmountPaise / 100).toFixed(2)}, Cash: ₹${(cashAmountPaise / 100).toFixed(2)})`,
-      newState: session,
-    });
-
-    emitDataChanged();
-    return session;
   }
 
   /**
@@ -1153,13 +1511,20 @@ class PosStorageEngine {
   }
 
   // --- AUDIT LOGS ---
-  getAuditLogs(): AuditLog[] {
+  private _readAuditLogs(): AuditLog[] {
     const raw = safeStorage.getItem(STORAGE_KEYS.AUDIT_LOGS);
     return raw ? JSON.parse(raw) : [];
   }
 
+  getAuditLogs(actor?: User): AuditLog[] {
+    if (actor && actor.role !== 'admin') {
+      throw new Error('Permission denied: Only administrators can view the audit trail.');
+    }
+    return this._readAuditLogs();
+  }
+
   addAuditLog(entry: Omit<AuditLog, 'id' | 'timestamp'>): void {
-    const logs = this.getAuditLogs();
+    const logs = this._readAuditLogs();
     const newLog: AuditLog = {
       ...entry,
       id: `log-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
@@ -1169,6 +1534,46 @@ class PosStorageEngine {
     // Keep max 500 logs for local performance
     if (logs.length > 500) logs.length = 500;
     safeStorage.setItem(STORAGE_KEYS.AUDIT_LOGS, JSON.stringify(logs));
+  }
+
+  // --- IMMUTABILITY & DELETION GUARDS ---
+  deleteSession(sessionId: string, actor: User): never {
+    this.addAuditLog({
+      actorId: actor.id,
+      actorName: actor.displayName,
+      actorRole: actor.role,
+      action: 'SECURITY_ALERT',
+      entityType: 'session',
+      entityId: sessionId,
+      details: `Security Violation: Unauthorized attempt by ${actor.displayName} (${actor.role}) to delete session ${sessionId}.`,
+    });
+    throw new Error('Security Violation: Historical financial records and completed sessions are immutable and cannot be deleted.');
+  }
+
+  deletePayment(paymentId: string, actor: User): never {
+    this.addAuditLog({
+      actorId: actor.id,
+      actorName: actor.displayName,
+      actorRole: actor.role,
+      action: 'SECURITY_ALERT',
+      entityType: 'payment',
+      entityId: paymentId,
+      details: `Security Violation: Unauthorized attempt by ${actor.displayName} (${actor.role}) to delete payment ${paymentId}.`,
+    });
+    throw new Error('Security Violation: Payment records are immutable and cannot be deleted.');
+  }
+
+  deleteAuditLog(logId: string, actor: User): never {
+    this.addAuditLog({
+      actorId: actor.id,
+      actorName: actor.displayName,
+      actorRole: actor.role,
+      action: 'SECURITY_ALERT',
+      entityType: 'audit_log',
+      entityId: logId,
+      details: `Security Violation: Unauthorized attempt by ${actor.displayName} (${actor.role}) to delete audit log ${logId}.`,
+    });
+    throw new Error('Security Violation: Audit logs are strictly immutable and cannot be deleted.');
   }
 
   // --- REPORTING METRICS ---
@@ -1318,6 +1723,7 @@ class PosStorageEngine {
 
   resetToDemoData(): void {
     safeStorage.clear();
+    this.inFlightCheckouts.clear();
     this.init();
   }
 }
