@@ -1,15 +1,20 @@
 -- ======================================================================================
--- VAULT GAMING CENTRE & POOL LOUNGE - PRODUCTION DATABASE SCHEMA
+-- VAULT GAMING CENTRE & POOL LOUNGE - PRODUCTION DATABASE SCHEMA (IDEMPOTENT)
 -- Target Database: PostgreSQL 15+ (Supabase)
 -- All financial amounts are stored as exact INTEGER PAISE (1 INR = 100 paise)
 -- Row Level Security (RLS) is strictly enforced on all tables
+-- Safe to re-run multiple times without duplicate errors
 -- ======================================================================================
 
 -- Enable UUID extension
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- 1. PROFILES & ROLES
-CREATE TYPE user_role AS ENUM ('admin', 'employee');
+DO $$ BEGIN
+  CREATE TYPE user_role AS ENUM ('admin', 'employee');
+EXCEPTION
+  WHEN duplicate_object THEN null;
+END $$;
 
 CREATE TABLE IF NOT EXISTS public.profiles (
   id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -34,21 +39,56 @@ BEGIN
       AND is_active = true
   );
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp;
 
 -- Profiles Policies
+DROP POLICY IF EXISTS "Users can read own profile" ON public.profiles;
 CREATE POLICY "Users can read own profile" ON public.profiles
   FOR SELECT USING (auth.uid() = id);
 
+DROP POLICY IF EXISTS "Admins can view all profiles" ON public.profiles;
 CREATE POLICY "Admins can view all profiles" ON public.profiles
   FOR SELECT USING (public.is_admin());
 
+DROP POLICY IF EXISTS "Admins can insert and update profiles" ON public.profiles;
 CREATE POLICY "Admins can insert and update profiles" ON public.profiles
   FOR ALL USING (public.is_admin());
 
+-- Auto-provision profile row whenever a new user is created in Supabase Auth
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS TRIGGER AS $$
+BEGIN
+  INSERT INTO public.profiles (id, email, display_name, role)
+  VALUES (
+    NEW.id,
+    NEW.email,
+    COALESCE(NEW.raw_user_meta_data->>'display_name', split_part(NEW.email, '@', 1)),
+    COALESCE((NEW.raw_user_meta_data->>'role')::user_role, 'employee')
+  )
+  ON CONFLICT (id) DO UPDATE
+  SET email = EXCLUDED.email,
+      display_name = COALESCE(EXCLUDED.display_name, public.profiles.display_name);
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp;
+
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+
 -- 2. STATIONS (PS5 consoles and 8-Ball Pool tables)
-CREATE TYPE gaming_type AS ENUM ('ps5', 'pool');
-CREATE TYPE station_status AS ENUM ('available', 'occupied', 'maintenance');
+DO $$ BEGIN
+  CREATE TYPE gaming_type AS ENUM ('ps5', 'pool');
+EXCEPTION
+  WHEN duplicate_object THEN null;
+END $$;
+
+DO $$ BEGIN
+  CREATE TYPE station_status AS ENUM ('available', 'occupied', 'maintenance');
+EXCEPTION
+  WHEN duplicate_object THEN null;
+END $$;
 
 CREATE TABLE IF NOT EXISTS public.stations (
   id TEXT PRIMARY KEY,
@@ -62,12 +102,15 @@ CREATE TABLE IF NOT EXISTS public.stations (
 
 ALTER TABLE public.stations ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Authenticated users can read stations" ON public.stations;
 CREATE POLICY "Authenticated users can read stations" ON public.stations
   FOR SELECT TO authenticated USING (true);
 
+DROP POLICY IF EXISTS "Employees can update station status" ON public.stations;
 CREATE POLICY "Employees can update station status" ON public.stations
   FOR UPDATE TO authenticated USING (true);
 
+DROP POLICY IF EXISTS "Admins can manage stations" ON public.stations;
 CREATE POLICY "Admins can manage stations" ON public.stations
   FOR ALL TO authenticated USING (public.is_admin());
 
@@ -91,9 +134,11 @@ CREATE TABLE IF NOT EXISTS public.pricing_config (
 
 ALTER TABLE public.pricing_config ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Authenticated users can read pricing" ON public.pricing_config;
 CREATE POLICY "Authenticated users can read pricing" ON public.pricing_config
   FOR SELECT TO authenticated USING (true);
 
+DROP POLICY IF EXISTS "Only admins can update pricing" ON public.pricing_config;
 CREATE POLICY "Only admins can update pricing" ON public.pricing_config
   FOR UPDATE TO authenticated USING (public.is_admin());
 
@@ -110,15 +155,26 @@ CREATE TABLE IF NOT EXISTS public.products (
 
 ALTER TABLE public.products ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Authenticated users can read products" ON public.products;
 CREATE POLICY "Authenticated users can read products" ON public.products
   FOR SELECT TO authenticated USING (true);
 
+DROP POLICY IF EXISTS "Only admins can manage products" ON public.products;
 CREATE POLICY "Only admins can manage products" ON public.products
   FOR ALL TO authenticated USING (public.is_admin());
 
 -- 5. SESSIONS
-CREATE TYPE billing_type AS ENUM ('hourly', 'fixed');
-CREATE TYPE session_status AS ENUM ('active', 'completed', 'cancelled');
+DO $$ BEGIN
+  CREATE TYPE billing_type AS ENUM ('hourly', 'fixed');
+EXCEPTION
+  WHEN duplicate_object THEN null;
+END $$;
+
+DO $$ BEGIN
+  CREATE TYPE session_status AS ENUM ('active', 'completed', 'cancelled');
+EXCEPTION
+  WHEN duplicate_object THEN null;
+END $$;
 
 CREATE TABLE IF NOT EXISTS public.sessions (
   id TEXT PRIMARY KEY DEFAULT ('sess-' || extract(epoch from now())::text),
@@ -155,18 +211,21 @@ CREATE TABLE IF NOT EXISTS public.sessions (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now())
 );
 
-CREATE INDEX idx_sessions_start_time ON public.sessions(start_time);
-CREATE INDEX idx_sessions_status ON public.sessions(status);
-CREATE INDEX idx_sessions_station ON public.sessions(station_id);
+CREATE INDEX IF NOT EXISTS idx_sessions_start_time ON public.sessions(start_time);
+CREATE INDEX IF NOT EXISTS idx_sessions_status ON public.sessions(status);
+CREATE INDEX IF NOT EXISTS idx_sessions_station ON public.sessions(station_id);
 
 ALTER TABLE public.sessions ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Authenticated users can read sessions" ON public.sessions;
 CREATE POLICY "Authenticated users can read sessions" ON public.sessions
   FOR SELECT TO authenticated USING (true);
 
+DROP POLICY IF EXISTS "Employees can create sessions" ON public.sessions;
 CREATE POLICY "Employees can create sessions" ON public.sessions
   FOR INSERT TO authenticated WITH CHECK (true);
 
+DROP POLICY IF EXISTS "Employees can update active sessions" ON public.sessions;
 CREATE POLICY "Employees can update active sessions" ON public.sessions
   FOR UPDATE TO authenticated USING (
     status = 'active' OR public.is_admin()
@@ -185,19 +244,30 @@ CREATE TABLE IF NOT EXISTS public.session_items (
   created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now())
 );
 
-CREATE INDEX idx_session_items_session ON public.session_items(session_id);
+CREATE INDEX IF NOT EXISTS idx_session_items_session ON public.session_items(session_id);
 
 ALTER TABLE public.session_items ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Authenticated users can read session items" ON public.session_items;
 CREATE POLICY "Authenticated users can read session items" ON public.session_items
   FOR SELECT TO authenticated USING (true);
 
+DROP POLICY IF EXISTS "Employees can insert session items" ON public.session_items;
 CREATE POLICY "Employees can insert session items" ON public.session_items
   FOR INSERT TO authenticated WITH CHECK (true);
 
 -- 7. PAYMENTS
-CREATE TYPE payment_method AS ENUM ('gpay', 'cash', 'split');
-CREATE TYPE payment_status AS ENUM ('PAID', 'PARTIAL', 'UNPAID', 'VOIDED');
+DO $$ BEGIN
+  CREATE TYPE payment_method AS ENUM ('gpay', 'cash', 'split');
+EXCEPTION
+  WHEN duplicate_object THEN null;
+END $$;
+
+DO $$ BEGIN
+  CREATE TYPE payment_status AS ENUM ('PAID', 'PARTIAL', 'UNPAID', 'VOIDED');
+EXCEPTION
+  WHEN duplicate_object THEN null;
+END $$;
 
 CREATE TABLE IF NOT EXISTS public.payments (
   id TEXT PRIMARY KEY DEFAULT ('pay-' || extract(epoch from now())::text),
@@ -217,12 +287,15 @@ CREATE TABLE IF NOT EXISTS public.payments (
 
 ALTER TABLE public.payments ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Authenticated users can read payments" ON public.payments;
 CREATE POLICY "Authenticated users can read payments" ON public.payments
   FOR SELECT TO authenticated USING (true);
 
+DROP POLICY IF EXISTS "Employees can insert payments" ON public.payments;
 CREATE POLICY "Employees can insert payments" ON public.payments
   FOR INSERT TO authenticated WITH CHECK (true);
 
+DROP POLICY IF EXISTS "Only admins can update or void payments" ON public.payments;
 CREATE POLICY "Only admins can update or void payments" ON public.payments
   FOR UPDATE TO authenticated USING (public.is_admin());
 
@@ -244,9 +317,11 @@ CREATE TABLE IF NOT EXISTS public.daily_closings (
 
 ALTER TABLE public.daily_closings ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Authenticated users can read daily closings" ON public.daily_closings;
 CREATE POLICY "Authenticated users can read daily closings" ON public.daily_closings
   FOR SELECT TO authenticated USING (true);
 
+DROP POLICY IF EXISTS "Employees and admins can insert daily closings" ON public.daily_closings;
 CREATE POLICY "Employees and admins can insert daily closings" ON public.daily_closings
   FOR INSERT TO authenticated WITH CHECK (true);
 
@@ -265,13 +340,15 @@ CREATE TABLE IF NOT EXISTS public.audit_logs (
   timestamp TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now())
 );
 
-CREATE INDEX idx_audit_logs_timestamp ON public.audit_logs(timestamp);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_timestamp ON public.audit_logs(timestamp);
 
 ALTER TABLE public.audit_logs ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Only admins can read audit logs" ON public.audit_logs;
 CREATE POLICY "Only admins can read audit logs" ON public.audit_logs
   FOR SELECT TO authenticated USING (public.is_admin());
 
+DROP POLICY IF EXISTS "System and employees can insert audit logs" ON public.audit_logs;
 CREATE POLICY "System and employees can insert audit logs" ON public.audit_logs
   FOR INSERT TO authenticated WITH CHECK (true);
 
@@ -281,8 +358,9 @@ RETURNS TRIGGER AS $$
 BEGIN
   RAISE EXCEPTION 'Audit logs are strictly immutable and cannot be updated or deleted.';
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp;
 
+DROP TRIGGER IF EXISTS trg_protect_audit_logs ON public.audit_logs;
 CREATE TRIGGER trg_protect_audit_logs
 BEFORE UPDATE OR DELETE ON public.audit_logs
 FOR EACH ROW EXECUTE FUNCTION prevent_audit_log_modification();

@@ -1,2 +1,2 @@
-/* /index.html 200
-
+# Cloudflare Pages SPA routing
+# Cloudflare Pages automatically serves /index.html for client-side routes out-of-the-box when 404.html is absent.
