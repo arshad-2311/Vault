@@ -29,6 +29,7 @@ export const SettingsPage: React.FC = () => {
   const [snookerHourlyRupees, setSnookerHourlyRupees] = useState('250');
   const [poolPerFrameRupees, setPoolPerFrameRupees] = useState('50');
   const [roundingRule, setRoundingRule] = useState<PricingConfig['roundingRule']>('nearest_5');
+  const [graceMinutes, setGraceMinutes] = useState('5');
   const [allowCustomSnacks, setAllowCustomSnacks] = useState(true);
   const [allowPartialPayments, setAllowPartialPayments] = useState(true);
   const [maxEmployeeDiscountRupees, setMaxEmployeeDiscountRupees] = useState('50');
@@ -48,6 +49,7 @@ export const SettingsPage: React.FC = () => {
     setSnookerHourlyRupees(((current.snookerHourlyRatePaise || current.poolHourlyRatePaise || 25000) / 100).toString());
     setPoolPerFrameRupees((current.poolPerFrameRatePaise / 100).toString());
     setRoundingRule(current.roundingRule);
+    setGraceMinutes((current.graceMinutes ?? 5).toString());
     setAllowCustomSnacks(current.allowCustomSnacks);
     setAllowPartialPayments(current.allowPartialPayments);
     setMaxEmployeeDiscountRupees((current.maxEmployeeDiscountPaise / 100).toString());
@@ -101,6 +103,7 @@ export const SettingsPage: React.FC = () => {
           poolHourlyRatePaise: snookerRatePaise,
           poolPerFrameRatePaise: poolFrameRatePaise,
           roundingRule,
+          graceMinutes: Math.max(0, parseInt(graceMinutes, 10) || 0),
           allowCustomSnacks,
           allowPartialPayments,
           maxEmployeeDiscountPaise: maxDiscountPaise,
@@ -327,7 +330,7 @@ export const SettingsPage: React.FC = () => {
             </h3>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
               <label className="block text-xs font-semibold text-slate-300 mb-1">
                 Time Rounding Policy
@@ -344,6 +347,24 @@ export const SettingsPage: React.FC = () => {
               </select>
               <p className="text-3xs text-slate-500 mt-1">
                 Determines how raw elapsed minutes are rounded when calculating final charges.
+              </p>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 mb-1">
+                Grace Period Allowance (Mins)
+              </label>
+              <input
+                type="number"
+                required
+                min="0"
+                step="1"
+                value={graceMinutes}
+                onChange={(e) => setGraceMinutes(e.target.value)}
+                className="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-xs font-mono text-slate-100 focus:border-red-500 outline-none"
+              />
+              <p className="text-3xs text-slate-500 mt-1">
+                Extra minutes without overtime charge (e.g. 5 minutes grace on an hourly slot).
               </p>
             </div>
 

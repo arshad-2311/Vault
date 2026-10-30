@@ -88,6 +88,7 @@ export interface PricingConfig {
   snookerHourlyRatePaise?: number; // 25000 = ₹250/hr
   poolPerFrameRatePaise: number; // e.g. 5000 = ₹50/frame
   roundingRule: 'exact' | 'nearest_5' | 'nearest_15' | 'ceiling_15';
+  graceMinutes?: number; // e.g. 5 minutes grace period on hourly sessions
   allowCustomSnacks: boolean;
   allowPartialPayments: boolean;
   maxEmployeeDiscountPaise: number; // e.g. 5000 = max ₹50 employee can apply without admin
@@ -109,6 +110,7 @@ export interface Session {
   startTime: string; // ISO string
   endTime?: string | null; // ISO string
   durationMinutes?: number | null;
+  customBilledMinutes?: number; // Manual override of billed duration in minutes
   status: SessionStatus;
   rateSnapshot: {
     hourlyRatePaise?: number;

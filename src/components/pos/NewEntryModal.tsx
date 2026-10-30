@@ -18,7 +18,7 @@ import { Modal } from '../common/Modal';
 import { Button } from '../common/Button';
 import { useAuth } from '../../context/AuthContext';
 import { db } from '../../services/storage';
-import { formatRupees, formatRupeesShort } from '../../utils/formatters';
+import { formatRupees } from '../../utils/formatters';
 
 interface NewEntryModalProps {
   isOpen: boolean;
@@ -41,11 +41,10 @@ export const NewEntryModal: React.FC<NewEntryModalProps> = ({
   // Form Fields
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
-  const [gamingType, setGamingType] = useState<'ps5' | 'pool'>('ps5');
+  const [gamingType, setGamingType] = useState<'ps5' | 'pool'>('pool');
   const [stationId, setStationId] = useState('');
   const [billingType, setBillingType] = useState<'hourly' | 'fixed'>('hourly');
-  const [controllersCount, setControllersCount] = useState<number>(2);
-  const [isMultiplayer, setIsMultiplayer] = useState(true);
+  const [controllersCount, setControllersCount] = useState<number>(1);
   const [fixedPlanId, setFixedPlanId] = useState('');
   const [framesCount, setFramesCount] = useState(1);
   const [notes, setNotes] = useState('');
@@ -62,6 +61,13 @@ export const NewEntryModal: React.FC<NewEntryModalProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const toLocalISOString = (d: Date) => {
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(
+      d.getHours()
+    )}:${pad(d.getMinutes())}`;
+  };
+
   useEffect(() => {
     if (isOpen) {
       const allStations = db.getStations();
@@ -72,12 +78,7 @@ export const NewEntryModal: React.FC<NewEntryModalProps> = ({
       setPricingConfig(cfg);
 
       // Default time to current local
-      const now = new Date();
-      const pad = (n: number) => String(n).padStart(2, '0');
-      const localStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(
-        now.getDate()
-      )}T${pad(now.getHours())}:${pad(now.getMinutes())}`;
-      setStartTimeLocal(localStr);
+      setStartTimeLocal(toLocalISOString(new Date()));
 
       // Determine initial station
       let initialStation: Station | undefined;
@@ -88,15 +89,17 @@ export const NewEntryModal: React.FC<NewEntryModalProps> = ({
           initialStation = found;
         } else if (found) {
           // If preselected is occupied, select first available station of that same gaming type
-          initialStation = allStations.find((s) => s.gamingType === found.gamingType && s.status === 'available')
-            || allStations.find((s) => s.status === 'available');
+          initialStation =
+            allStations.find((s) => s.gamingType === found.gamingType && s.status === 'available') ||
+            allStations.find((s) => s.status === 'available');
         }
       }
 
       if (!initialStation) {
         // Pick first available of current gamingType (or any available)
-        initialStation = allStations.find((s) => s.gamingType === gamingType && s.status === 'available')
-          || allStations.find((s) => s.status === 'available');
+        initialStation =
+          allStations.find((s) => s.gamingType === gamingType && s.status === 'available') ||
+          allStations.find((s) => s.status === 'available');
       }
 
       if (initialStation) {
@@ -131,6 +134,39 @@ export const NewEntryModal: React.FC<NewEntryModalProps> = ({
     }
   };
 
+  // Start Time Presets (e.g. customer arrives at 3:55 for a 4:00 slot)
+  const handleSetTimeNow = () => {
+    setStartTimeLocal(toLocalISOString(new Date()));
+  };
+
+  const handleRoundToNextHour = () => {
+    const d = startTimeLocal ? new Date(startTimeLocal) : new Date();
+    // If not on exact :00, advance to next top of the hour
+    if (d.getMinutes() > 0) {
+      d.setHours(d.getHours() + 1);
+    }
+    d.setMinutes(0, 0, 0);
+    setStartTimeLocal(toLocalISOString(d));
+  };
+
+  const handleRoundToHalfHour = () => {
+    const d = startTimeLocal ? new Date(startTimeLocal) : new Date();
+    const mins = d.getMinutes();
+    if (mins < 30) {
+      d.setMinutes(30, 0, 0);
+    } else {
+      d.setHours(d.getHours() + 1);
+      d.setMinutes(0, 0, 0);
+    }
+    setStartTimeLocal(toLocalISOString(d));
+  };
+
+  const handleAdjustMinutes = (deltaMins: number) => {
+    const d = startTimeLocal ? new Date(startTimeLocal) : new Date();
+    d.setMinutes(d.getMinutes() + deltaMins);
+    setStartTimeLocal(toLocalISOString(d));
+  };
+
   const handleSnackQtyChange = (snackId: string, delta: number) => {
     setSelectedSnacks((prev) => {
       const current = prev[snackId] || 0;
@@ -161,37 +197,31 @@ export const NewEntryModal: React.FC<NewEntryModalProps> = ({
     return matchesSearch && matchesCat;
   });
 
-  const availableStationsOfType = stations.filter(
-    (s) => s.gamingType === gamingType && s.status === 'available'
-  );
+  const stationsOfType = stations.filter((s) => s.gamingType === gamingType);
+  const availableStationsOfType = stationsOfType.filter((s) => s.status === 'available');
 
-  // Live estimated initial charge preview
-  let estimatedInitialBasePaise = 0;
-  if (billingType === 'fixed') {
-    if (gamingType === 'ps5') {
-      const plan = pricingConfig.ps5FixedPlans.find((p) => p.id === fixedPlanId) || pricingConfig.ps5FixedPlans[0];
-      estimatedInitialBasePaise = plan ? plan.pricePaise : 14000;
+  // Rate calculation for the session rate banner
+  let currentHourlyRatePaise = 25000;
+  if (gamingType === 'ps5') {
+    if (controllersCount === 4) {
+      currentHourlyRatePaise = pricingConfig.ps5Rate4PlayersPaise || 50000;
+    } else if (controllersCount === 3) {
+      currentHourlyRatePaise = pricingConfig.ps5Rate3PlayersPaise || 40000;
+    } else if (controllersCount === 2) {
+      currentHourlyRatePaise =
+        pricingConfig.ps5Rate2PlayersPaise || pricingConfig.ps5MultiplayerHourlyRatePaise || 30000;
     } else {
-      estimatedInitialBasePaise = (framesCount || 1) * pricingConfig.poolPerFrameRatePaise;
+      currentHourlyRatePaise =
+        pricingConfig.ps5Rate1PlayerPaise || pricingConfig.ps5HourlyRatePaise || 15000;
     }
   } else {
-    // 1 hour standard estimate
-    if (gamingType === 'ps5') {
-      if (controllersCount === 4) {
-        estimatedInitialBasePaise = pricingConfig.ps5Rate4PlayersPaise || 50000;
-      } else if (controllersCount === 3) {
-        estimatedInitialBasePaise = pricingConfig.ps5Rate3PlayersPaise || 40000;
-      } else if (controllersCount === 2) {
-        estimatedInitialBasePaise = pricingConfig.ps5Rate2PlayersPaise || pricingConfig.ps5MultiplayerHourlyRatePaise || 30000;
-      } else {
-        estimatedInitialBasePaise = pricingConfig.ps5Rate1PlayerPaise || pricingConfig.ps5HourlyRatePaise || 15000;
-      }
-    } else {
-      estimatedInitialBasePaise = pricingConfig.snookerHourlyRatePaise || pricingConfig.poolHourlyRatePaise || 25000;
-    }
+    currentHourlyRatePaise =
+      pricingConfig.snookerHourlyRatePaise || pricingConfig.poolHourlyRatePaise || 25000;
   }
 
-  const previewTotalPaise = estimatedInitialBasePaise + snackTotalPaise;
+  // Calculate schedule time difference from now
+  const scheduledDate = startTimeLocal ? new Date(startTimeLocal) : new Date();
+  const diffFromNowMinutes = Math.round((scheduledDate.getTime() - Date.now()) / (1000 * 60));
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -203,7 +233,7 @@ export const NewEntryModal: React.FC<NewEntryModalProps> = ({
     }
 
     if (!stationId) {
-      setError(`Please select an available ${gamingType.toUpperCase()} station.`);
+      setError(`Please select an available ${gamingType === 'pool' ? 'Snooker table' : 'PS5 station'}.`);
       return;
     }
 
@@ -245,20 +275,14 @@ export const NewEntryModal: React.FC<NewEntryModalProps> = ({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title="Create New Digital Entry"
-      description="Register customer, assign station, and start gaming session."
-      maxWidth="2xl"
+      title="Start a session"
+      description="The timer starts as soon as you confirm."
+      maxWidth="lg"
       onSubmit={handleSubmit}
       footer={
         <div className="w-full flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <span className="text-2xs text-slate-400 font-mono">
-              Staff: <strong className="text-slate-200">{currentUser.displayName}</strong>
-            </span>
-            <span className="hidden sm:inline-block text-slate-700">|</span>
-            <span className="text-xs font-mono font-bold text-red-400">
-              Est. Total: {formatRupees(previewTotalPaise)}
-            </span>
+          <div className="text-2xs text-zinc-400 font-mono">
+            Staff: <strong className="text-zinc-200">{currentUser.displayName}</strong>
           </div>
           <div className="flex items-center gap-2">
             <Button variant="secondary" size="md" type="button" onClick={onClose}>
@@ -270,428 +294,354 @@ export const NewEntryModal: React.FC<NewEntryModalProps> = ({
               type="submit"
               disabled={!stationId || isSubmitting || availableStationsOfType.length === 0}
               isLoading={isSubmitting}
-              leftIcon={<Sparkles className="w-4 h-4" />}
-              className="bg-red-600 hover:bg-red-500 text-white font-bold border-red-500 shadow-md shadow-red-950/50 disabled:opacity-40"
+              className="bg-red-600 hover:bg-red-500 text-white font-bold border-red-500 shadow-md shadow-red-950/60 px-5"
             >
-              Start Session
+              Start timer
             </Button>
           </div>
         </div>
       }
     >
-      {error && (
-        <div className="p-3 rounded-lg bg-red-950/60 border border-red-800 text-red-300 text-xs flex items-center gap-2">
-          <Info className="w-4 h-4 shrink-0" />
-          <span>{error}</span>
-        </div>
-      )}
+      <div className="space-y-4">
+        {error && (
+          <div className="p-3 rounded-lg bg-red-950/70 border border-red-800 text-red-300 text-xs flex items-center gap-2">
+            <Info className="w-4 h-4 shrink-0" />
+            <span>{error}</span>
+          </div>
+        )}
 
-      {/* 1. Customer Details */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <div>
-          <label className="block text-xs font-medium text-slate-300 mb-1">
-            Customer Name <span className="text-red-400">*</span>
+        {/* 1. Service Selector (Snooker / PlayStation 5) */}
+        <div className="space-y-1.5">
+          <label className="block text-xs font-medium text-zinc-300">Service</label>
+          <div className="grid grid-cols-2 gap-2.5">
+            <button
+              type="button"
+              onClick={() => handleGamingTypeChange('pool')}
+              className={`flex items-center justify-center gap-2.5 py-2.5 px-4 rounded-xl border text-sm font-semibold transition-all ${
+                gamingType === 'pool'
+                  ? 'border-red-600 bg-red-950/25 text-white shadow-sm ring-1 ring-red-600/40'
+                  : 'bg-[#0e0e14] border-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-850'
+              }`}
+            >
+              <CircleDot className={`w-4 h-4 ${gamingType === 'pool' ? 'text-red-500' : 'text-zinc-400'}`} />
+              <span>Snooker</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => handleGamingTypeChange('ps5')}
+              className={`flex items-center justify-center gap-2.5 py-2.5 px-4 rounded-xl border text-sm font-semibold transition-all ${
+                gamingType === 'ps5'
+                  ? 'border-red-600 bg-red-950/25 text-white shadow-sm ring-1 ring-red-600/40'
+                  : 'bg-[#0e0e14] border-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-850'
+              }`}
+            >
+              <Gamepad2 className={`w-4 h-4 ${gamingType === 'ps5' ? 'text-red-500' : 'text-zinc-400'}`} />
+              <span>PlayStation 5</span>
+            </button>
+          </div>
+        </div>
+
+        {/* 2. Customer Name */}
+        <div className="space-y-1.5">
+          <label className="block text-xs font-medium text-zinc-300">
+            Customer name <span className="text-red-400">*</span>
           </label>
           <div className="relative">
-            <User className="absolute left-3 top-2.5 w-4 h-4 text-slate-500" />
             <input
               type="text"
               autoFocus
               required
               value={customerName}
               onChange={(e) => setCustomerName(e.target.value)}
-              placeholder="e.g. Aryan Sharma"
-              className="w-full pl-9 pr-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-slate-100 placeholder:text-slate-600 text-sm focus:border-red-500 outline-none"
+              placeholder="e.g. Rohit"
+              className="w-full px-3.5 py-2.5 rounded-xl bg-[#0a0a0f] border border-zinc-800 text-zinc-100 placeholder:text-zinc-600 text-sm focus:border-red-500 outline-none transition-colors"
             />
           </div>
         </div>
 
-        <div>
-          <label className="block text-xs font-medium text-slate-300 mb-1">
-            Customer Phone <span className="text-slate-500 text-2xs">(Optional)</span>
-          </label>
-          <div className="relative">
-            <Phone className="absolute left-3 top-2.5 w-4 h-4 text-slate-500" />
-            <input
-              type="tel"
-              value={customerPhone}
-              onChange={(e) => setCustomerPhone(e.target.value)}
-              placeholder="e.g. 9876543210"
-              className="w-full pl-9 pr-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-slate-100 placeholder:text-slate-600 text-sm focus:border-red-500 outline-none font-mono"
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* 2. Gaming Type & Station Selection */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3.5 rounded-lg bg-slate-950/60 border border-slate-800">
-        <div>
-          <label className="block text-xs font-medium text-slate-300 mb-1.5">
-            Game Type
-          </label>
-          <div className="grid grid-cols-2 gap-2">
-            <button
-              type="button"
-              onClick={() => handleGamingTypeChange('ps5')}
-              className={`flex items-center justify-center gap-2 py-2 px-3 rounded-lg border text-xs font-semibold transition-all ${
-                gamingType === 'ps5'
-                  ? 'bg-red-600/20 text-red-300 border-red-500/60 shadow-sm'
-                  : 'bg-slate-900 text-slate-400 border-slate-800 hover:text-slate-200'
-              }`}
-            >
-              <Gamepad2 className="w-4 h-4 text-red-400" />
-              <span>PS5 Lounge</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => handleGamingTypeChange('pool')}
-              className={`flex items-center justify-center gap-2 py-2 px-3 rounded-lg border text-xs font-semibold transition-all ${
-                gamingType === 'pool'
-                  ? 'bg-red-600/20 text-red-300 border-red-500/60 shadow-sm'
-                  : 'bg-slate-900 text-slate-400 border-slate-800 hover:text-slate-200'
-              }`}
-            >
-              <CircleDot className="w-4 h-4 text-red-400" />
-              <span>Snooker Table</span>
-            </button>
-          </div>
-        </div>
-
-        <div>
-          <label className="block text-xs font-medium text-slate-300 mb-1.5">
-            Station / Table <span className="text-red-400">*</span>
-          </label>
-          <select
-            value={stationId}
-            onChange={(e) => setStationId(e.target.value)}
-            disabled={availableStationsOfType.length === 0}
-            className="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-slate-100 text-sm focus:border-red-500 outline-none disabled:opacity-50"
-          >
-            {availableStationsOfType.length === 0 ? (
-              <option value="">
-                All {gamingType === 'pool' ? 'Snooker tables' : 'PS5 stations'} currently in use
-              </option>
-            ) : (
-              availableStationsOfType.map((st) => (
-                <option key={st.id} value={st.id}>
-                  {st.name} — Ready
-                </option>
-              ))
-            )}
-          </select>
-          {availableStationsOfType.length === 0 && (
-            <p className="text-3xs text-red-400 font-mono mt-1">
-              All {gamingType === 'pool' ? 'Snooker tables' : 'PS5 stations'} are occupied. Choose another game or end an active session first.
-            </p>
-          )}
-        </div>
-      </div>
-
-      {/* 3. Pricing Rule & Billing Type */}
-      <div className="p-3.5 rounded-lg bg-slate-950/60 border border-slate-800 space-y-3">
-        <div className="flex items-center justify-between">
-          <span className="text-xs font-medium text-slate-300">Billing Policy</span>
-          <div className="flex items-center gap-1 bg-slate-900 p-0.5 rounded-lg border border-slate-800 text-xs">
-            <button
-              type="button"
-              onClick={() => setBillingType('hourly')}
-              className={`px-3 py-1 rounded-md font-medium transition-colors ${
-                billingType === 'hourly'
-                  ? 'bg-red-600 text-white font-bold'
-                  : 'text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              Hourly Rate
-            </button>
-            <button
-              type="button"
-              onClick={() => setBillingType('fixed')}
-              className={`px-3 py-1 rounded-md font-medium transition-colors ${
-                billingType === 'fixed'
-                  ? 'bg-red-600 text-white font-bold'
-                  : 'text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              Fixed Pass / Frames
-            </button>
-          </div>
-        </div>
-
-        {/* Hourly options */}
-        {billingType === 'hourly' && (
-          <div className="pt-2 border-t border-slate-800/80">
-            {gamingType === 'ps5' ? (
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <label className="text-xs font-medium text-slate-300">
-                    Number of Players / Joysticks (VAULT Rate):
-                  </label>
-                  <span className="text-2xs font-mono font-bold text-red-400">
-                    {controllersCount === 1 && `1 Player — ${formatRupees(pricingConfig.ps5Rate1PlayerPaise || 15000)}/hr`}
-                    {controllersCount === 2 && `2 Players — ${formatRupees(pricingConfig.ps5Rate2PlayersPaise || 30000)}/hr`}
-                    {controllersCount === 3 && `3 Players — ${formatRupees(pricingConfig.ps5Rate3PlayersPaise || 40000)}/hr`}
-                    {controllersCount === 4 && `4 Players — ${formatRupees(pricingConfig.ps5Rate4PlayersPaise || 50000)}/hr`}
-                  </span>
-                </div>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                  {[
-                    { count: 1, label: '1 Joystick', sub: '1 Player', rate: pricingConfig.ps5Rate1PlayerPaise || 15000 },
-                    { count: 2, label: '2 Joysticks', sub: '2 Players', rate: pricingConfig.ps5Rate2PlayersPaise || 30000 },
-                    { count: 3, label: '3 Joysticks', sub: '3 Players', rate: pricingConfig.ps5Rate3PlayersPaise || 40000 },
-                    { count: 4, label: '4 Joysticks', sub: '4 Players', rate: pricingConfig.ps5Rate4PlayersPaise || 50000 },
-                  ].map((opt) => (
-                    <button
-                      key={opt.count}
-                      type="button"
-                      onClick={() => {
-                        setControllersCount(opt.count);
-                        setIsMultiplayer(opt.count > 1);
-                      }}
-                      className={`p-2 rounded-lg border text-center transition-all ${
-                        controllersCount === opt.count
-                          ? 'bg-red-600/25 border-red-500 text-white shadow-sm'
-                          : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-200'
-                      }`}
-                    >
-                      <div className="text-xs font-bold">{opt.label}</div>
-                      <div className="text-3xs text-slate-400">{opt.sub}</div>
-                      <div className="text-xs font-mono font-bold text-red-400 mt-0.5">
-                        {formatRupees(opt.rate)}/h
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            ) : (
-              <div className="flex items-center justify-between text-xs py-1">
-                <div>
-                  <span className="text-slate-200 font-medium block">Snooker Table Rate</span>
-                  <span className="text-3xs text-slate-400 font-mono">Monday - Sunday standard rate</span>
-                </div>
-                <span className="font-bold text-red-400 font-mono text-sm">
-                  {formatRupees(pricingConfig.snookerHourlyRatePaise || pricingConfig.poolHourlyRatePaise || 25000)} / hour
-                </span>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Fixed options */}
-        {billingType === 'fixed' && (
-          <div className="pt-2 border-t border-slate-800/80">
-            {gamingType === 'ps5' ? (
-              <div>
-                <label className="block text-2xs font-semibold text-slate-400 mb-1.5 uppercase">
-                  Select PS5 Fixed Pass
-                </label>
-                <div className="grid grid-cols-3 gap-2">
-                  {pricingConfig.ps5FixedPlans.map((plan) => (
-                    <button
-                      key={plan.id}
-                      type="button"
-                      onClick={() => setFixedPlanId(plan.id)}
-                      className={`p-2 rounded-lg border text-left transition-all ${
-                        fixedPlanId === plan.id
-                          ? 'bg-red-950/40 border-red-500 text-white'
-                          : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-200'
-                      }`}
-                    >
-                      <p className="text-xs font-semibold">{plan.name}</p>
-                      <p className="text-2xs font-mono text-red-400 font-bold mt-0.5">
-                        {formatRupees(plan.pricePaise)}
-                      </p>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            ) : (
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-semibold text-slate-200">Per Frame Billing</p>
-                  <p className="text-2xs text-slate-400 font-mono">
-                    Rate: {formatRupees(pricingConfig.poolPerFrameRatePaise)} / frame
-                  </p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setFramesCount(Math.max(1, framesCount - 1))}
-                    className="w-7 h-7 rounded bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-300 hover:text-white"
-                  >
-                    <Minus className="w-3.5 h-3.5" />
-                  </button>
-                  <span className="text-sm font-bold font-mono px-2 text-white">
-                    {framesCount}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setFramesCount(framesCount + 1)}
-                    className="w-7 h-7 rounded bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-300 hover:text-white"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* 4. Start Time & Session Notes */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <div>
-          <label className="block text-xs font-medium text-slate-300 mb-1">
-            Start Time
-          </label>
-          <div className="relative">
-            <Clock className="absolute left-3 top-2.5 w-4 h-4 text-slate-500" />
-            <input
-              type="datetime-local"
-              value={startTimeLocal}
-              onChange={(e) => setStartTimeLocal(e.target.value)}
-              className="w-full pl-9 pr-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-slate-100 text-xs focus:border-red-500 font-mono outline-none"
-            />
-          </div>
-        </div>
-
-        <div>
-          <label className="block text-xs font-medium text-slate-300 mb-1">
-            Session Notes <span className="text-slate-500 text-2xs">(Optional)</span>
-          </label>
-          <input
-            type="text"
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            placeholder="e.g. VIP tournament / Group"
-            className="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-slate-100 text-xs placeholder:text-slate-600 focus:border-red-500 outline-none"
-          />
-        </div>
-      </div>
-
-      {/* 5. Drinks & Snacks Concessions Section */}
-      <div className="p-3.5 rounded-lg bg-slate-950/60 border border-slate-800 space-y-2">
-        <div className="flex items-center justify-between">
-          <button
-            type="button"
-            onClick={() => setIsSnacksExpanded(!isSnacksExpanded)}
-            className="flex items-center gap-2 text-xs font-medium text-slate-200 hover:text-red-400 transition-colors"
-          >
-            <UtensilsCrossed className="w-4 h-4 text-red-400" />
-            <span>Add Drinks & Snacks</span>
-            {totalSnackItemsCount > 0 && (
-              <span className="px-1.5 py-0.2 rounded-full bg-red-600 text-white text-3xs font-bold font-mono">
-                {totalSnackItemsCount} items
+        {/* 3. Table / Station Cards Grid */}
+        <div className="space-y-1.5">
+          <div className="flex items-center justify-between">
+            <label className="block text-xs font-medium text-zinc-300">
+              {gamingType === 'pool' ? 'Table' : 'Station'}
+            </label>
+            {availableStationsOfType.length === 0 && (
+              <span className="text-3xs text-red-400 font-mono">
+                All {gamingType === 'pool' ? 'tables' : 'stations'} occupied
               </span>
             )}
-            {isSnacksExpanded ? (
-              <ChevronUp className="w-3.5 h-3.5 text-slate-400" />
-            ) : (
-              <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
-            )}
-          </button>
-          {snackTotalPaise > 0 && (
-            <span className="text-xs font-mono font-bold text-red-400">
-              Snacks: {formatRupees(snackTotalPaise)}
-            </span>
-          )}
-        </div>
+          </div>
 
-        {isSnacksExpanded && (
-          <div className="space-y-2.5 pt-2 border-t border-slate-800/60">
-            {/* Search and Category Filter */}
-            <div className="flex items-center gap-2">
-              <input
-                type="text"
-                value={snackSearch}
-                onChange={(e) => setSnackSearch(e.target.value)}
-                placeholder="Search snack or beverage..."
-                className="flex-1 px-2.5 py-1.5 rounded-md bg-slate-900 border border-slate-700 text-xs text-slate-200 placeholder:text-slate-500 outline-none"
-              />
-            </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+            {stationsOfType.map((st) => {
+              const isSelected = stationId === st.id;
+              const isOccupied = st.status === 'occupied';
 
-            <div className="flex items-center gap-1 overflow-x-auto pb-1 text-2xs">
-              {categories.map((cat) => (
+              return (
                 <button
-                  key={cat}
+                  key={st.id}
                   type="button"
-                  onClick={() => setActiveSnackCategory(cat)}
-                  className={`px-2 py-0.5 rounded transition-colors whitespace-nowrap ${
-                    activeSnackCategory === cat
-                      ? 'bg-red-600 text-white font-semibold'
-                      : 'bg-slate-900 text-slate-400 hover:text-slate-200'
+                  disabled={isOccupied}
+                  onClick={() => setStationId(st.id)}
+                  className={`p-3 rounded-xl border text-left transition-all ${
+                    isSelected
+                      ? 'border-red-600 bg-red-950/20 text-white ring-1 ring-red-600/50'
+                      : isOccupied
+                      ? 'bg-[#09090c] border-zinc-900 opacity-50 cursor-not-allowed'
+                      : 'bg-[#0e0e14] border-zinc-800 text-zinc-300 hover:border-zinc-700 hover:text-white'
                   }`}
                 >
-                  {cat}
-                </button>
-              ))}
-            </div>
-
-            {/* Snacks Grid */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-40 overflow-y-auto pr-1">
-              {filteredSnacks.map((snk) => {
-                const qty = selectedSnacks[snk.id] || 0;
-                const isOutOfStock = snk.stock !== undefined && snk.stock <= 0;
-                const isLowStock = snk.stock !== undefined && snk.stock > 0 && snk.stock <= (snk.lowStockThreshold ?? 5);
-                const isMaxReached = snk.stock !== undefined && qty >= snk.stock;
-
-                return (
-                  <div
-                    key={snk.id}
-                    className={`p-2 rounded-lg border text-left flex flex-col justify-between ${
-                      isOutOfStock
-                        ? 'bg-slate-950/60 border-slate-900 opacity-60'
-                        : qty > 0
-                        ? 'bg-red-950/30 border-red-600/50'
-                        : 'bg-slate-900 border-slate-800'
+                  <p className="text-xs font-bold truncate">{st.name}</p>
+                  <p
+                    className={`text-2xs font-mono mt-0.5 ${
+                      isOccupied ? 'text-red-400' : 'text-zinc-400'
                     }`}
                   >
-                    <div>
-                      <p className="text-2xs font-medium text-slate-200 truncate">{snk.name}</p>
-                      <div className="flex items-center justify-between mt-0.5">
-                        <span className="text-3xs font-mono text-slate-400">
-                          {formatRupees(snk.pricePaise)}
-                        </span>
-                        {snk.stock !== undefined && (
-                          <span
-                            className={`text-3xs font-mono font-semibold px-1 rounded ${
-                              isOutOfStock
-                                ? 'bg-red-950 text-red-400 border border-red-800/60'
-                                : isLowStock
-                                ? 'bg-amber-950/80 text-amber-300 border border-amber-800/60'
-                                : 'text-slate-500'
-                            }`}
-                          >
-                            {isOutOfStock ? 'Out of stock' : `${snk.stock} left`}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                    <div className="flex items-center justify-between mt-1.5 pt-1 border-t border-slate-800/60">
-                      <button
-                        type="button"
-                        onClick={() => handleSnackQtyChange(snk.id, -1)}
-                        disabled={qty === 0}
-                        className="w-7 h-7 sm:w-6 sm:h-6 rounded bg-slate-800 flex items-center justify-center text-slate-400 hover:text-white disabled:opacity-30"
-                      >
-                        <Minus className="w-3.5 h-3.5" />
-                      </button>
-                      <span className="text-xs font-bold font-mono text-white">{qty}</span>
-                      <button
-                        type="button"
-                        onClick={() => handleSnackQtyChange(snk.id, 1)}
-                        disabled={isOutOfStock || isMaxReached}
-                        className="w-7 h-7 sm:w-6 sm:h-6 rounded bg-slate-800 flex items-center justify-center text-slate-400 hover:text-white disabled:opacity-30"
-                      >
-                        <Plus className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  </div>
+                    {isOccupied ? 'Occupied' : 'Available'}
+                  </p>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* 4. Number of Players (Only for PS5) */}
+        {gamingType === 'ps5' && (
+          <div className="space-y-1.5">
+            <label className="block text-xs font-medium text-zinc-300">
+              Number of players
+            </label>
+            <div className="grid grid-cols-4 gap-2">
+              {[
+                { count: 1, rate: pricingConfig.ps5Rate1PlayerPaise || 15000 },
+                { count: 2, rate: pricingConfig.ps5Rate2PlayersPaise || 30000 },
+                { count: 3, rate: pricingConfig.ps5Rate3PlayersPaise || 40000 },
+                { count: 4, rate: pricingConfig.ps5Rate4PlayersPaise || 50000 },
+              ].map((opt) => {
+                const isSelected = controllersCount === opt.count;
+                return (
+                  <button
+                    key={opt.count}
+                    type="button"
+                    onClick={() => setControllersCount(opt.count)}
+                    className={`p-2.5 rounded-xl border text-center transition-all ${
+                      isSelected
+                        ? 'border-red-600 bg-red-950/25 text-white ring-1 ring-red-600/50'
+                        : 'bg-[#0e0e14] border-zinc-800 text-zinc-400 hover:text-white hover:border-zinc-700'
+                    }`}
+                  >
+                    <p className="text-sm font-black font-mono">{opt.count}</p>
+                    <p className="text-3xs font-mono text-zinc-400 mt-0.5">
+                      {formatRupees(opt.rate)}/hr
+                    </p>
+                  </button>
                 );
               })}
             </div>
           </div>
         )}
+
+        {/* 5. Rate for this session Banner */}
+        <div className="flex items-center justify-between p-3.5 rounded-xl bg-[#0e0e14] border border-zinc-800">
+          <span className="text-xs text-zinc-400 font-medium">Rate for this session</span>
+          <span className="text-base sm:text-lg font-black font-microgramma text-red-500 tracking-wide">
+            {formatRupees(currentHourlyRatePaise)}/hour
+          </span>
+        </div>
+
+        {/* 6. Manual Slot Start Time & Presets */}
+        <div className="p-3 rounded-xl bg-[#0a0a0f] border border-zinc-800 space-y-2">
+          <div className="flex items-center justify-between">
+            <label className="text-xs font-medium text-zinc-300 flex items-center gap-1.5">
+              <Clock className="w-3.5 h-3.5 text-red-500" />
+              <span>Start Time / Slot</span>
+            </label>
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={handleSetTimeNow}
+                className="px-2 py-0.5 rounded bg-zinc-800 hover:bg-zinc-700 text-3xs font-mono text-zinc-300 transition-colors"
+                title="Current exact time"
+              >
+                Now
+              </button>
+              <button
+                type="button"
+                onClick={handleRoundToNextHour}
+                className="px-2 py-0.5 rounded bg-zinc-800 hover:bg-zinc-700 text-3xs font-mono font-bold text-red-400 transition-colors"
+                title="Round up to top of hour (e.g. 3:55 -> 4:00)"
+              >
+                :00 Slot
+              </button>
+              <button
+                type="button"
+                onClick={handleRoundToHalfHour}
+                className="px-2 py-0.5 rounded bg-zinc-800 hover:bg-zinc-700 text-3xs font-mono text-zinc-300 transition-colors"
+                title="Round to :30"
+              >
+                :30 Slot
+              </button>
+              <button
+                type="button"
+                onClick={() => handleAdjustMinutes(5)}
+                className="px-1.5 py-0.5 rounded bg-zinc-800 hover:bg-zinc-700 text-3xs font-mono text-zinc-300"
+              >
+                +5m
+              </button>
+              <button
+                type="button"
+                onClick={() => handleAdjustMinutes(-5)}
+                className="px-1.5 py-0.5 rounded bg-zinc-800 hover:bg-zinc-700 text-3xs font-mono text-zinc-300"
+              >
+                -5m
+              </button>
+            </div>
+          </div>
+
+          <input
+            type="datetime-local"
+            value={startTimeLocal}
+            onChange={(e) => setStartTimeLocal(e.target.value)}
+            className="w-full px-3 py-1.5 rounded-lg bg-black border border-zinc-800 text-xs font-mono text-zinc-200 focus:border-red-500 outline-none"
+          />
+
+          {diffFromNowMinutes > 0 && (
+            <p className="text-3xs font-mono text-red-400">
+              *Scheduled slot starts in {diffFromNowMinutes} minutes (e.g. customer walked in early).
+            </p>
+          )}
+          {diffFromNowMinutes < -5 && (
+            <p className="text-3xs font-mono text-amber-400">
+              *Started {Math.abs(diffFromNowMinutes)} minutes ago.
+            </p>
+          )}
+        </div>
+
+        {/* 7. Optional Details (Phone & Concessions) */}
+        <div className="space-y-2">
+          {/* Customer Phone (Optional) */}
+          <div>
+            <label className="block text-3xs uppercase font-mono text-zinc-400 mb-1">
+              Customer Phone (Optional)
+            </label>
+            <div className="relative">
+              <Phone className="absolute left-3 top-2 w-3.5 h-3.5 text-zinc-500" />
+              <input
+                type="tel"
+                value={customerPhone}
+                onChange={(e) => setCustomerPhone(e.target.value)}
+                placeholder="e.g. 9876543210"
+                className="w-full pl-8 pr-3 py-1.5 rounded-lg bg-[#0a0a0f] border border-zinc-800 text-xs font-mono text-zinc-200 placeholder:text-zinc-600 focus:border-red-500 outline-none"
+              />
+            </div>
+          </div>
+
+          {/* Snacks & Drinks (Collapsible) */}
+          <div className="p-2.5 rounded-xl bg-[#0a0a0f] border border-zinc-800 space-y-2">
+            <div className="flex items-center justify-between">
+              <button
+                type="button"
+                onClick={() => setIsSnacksExpanded(!isSnacksExpanded)}
+                className="flex items-center gap-2 text-xs font-medium text-zinc-300 hover:text-red-400 transition-colors"
+              >
+                <UtensilsCrossed className="w-3.5 h-3.5 text-red-500" />
+                <span>Add Drinks & Snacks (Optional)</span>
+                {totalSnackItemsCount > 0 && (
+                  <span className="px-1.5 py-0.2 rounded-full bg-red-600 text-white text-3xs font-bold font-mono">
+                    {totalSnackItemsCount} items
+                  </span>
+                )}
+                {isSnacksExpanded ? (
+                  <ChevronUp className="w-3.5 h-3.5 text-zinc-400" />
+                ) : (
+                  <ChevronDown className="w-3.5 h-3.5 text-zinc-400" />
+                )}
+              </button>
+              {snackTotalPaise > 0 && (
+                <span className="text-xs font-mono font-bold text-red-400">
+                  +{formatRupees(snackTotalPaise)}
+                </span>
+              )}
+            </div>
+
+            {isSnacksExpanded && (
+              <div className="space-y-2 pt-2 border-t border-zinc-800">
+                <input
+                  type="text"
+                  value={snackSearch}
+                  onChange={(e) => setSnackSearch(e.target.value)}
+                  placeholder="Search snacks..."
+                  className="w-full px-2.5 py-1.5 rounded-lg bg-black border border-zinc-800 text-xs text-zinc-200 placeholder:text-zinc-600 outline-none"
+                />
+
+                <div className="flex items-center gap-1 overflow-x-auto pb-1 text-2xs">
+                  {categories.map((cat) => (
+                    <button
+                      key={cat}
+                      type="button"
+                      onClick={() => setActiveSnackCategory(cat)}
+                      className={`px-2 py-0.5 rounded transition-colors whitespace-nowrap ${
+                        activeSnackCategory === cat
+                          ? 'bg-red-600 text-white font-semibold'
+                          : 'bg-zinc-900 text-zinc-400 hover:text-zinc-200'
+                      }`}
+                    >
+                      {cat}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-36 overflow-y-auto pr-1">
+                  {filteredSnacks.map((snk) => {
+                    const qty = selectedSnacks[snk.id] || 0;
+                    const isOutOfStock = snk.stock !== undefined && snk.stock <= 0;
+                    const isMaxReached = snk.stock !== undefined && qty >= snk.stock;
+
+                    return (
+                      <div
+                        key={snk.id}
+                        className={`p-2 rounded-lg border text-left flex flex-col justify-between ${
+                          isOutOfStock
+                            ? 'bg-black/60 border-zinc-900 opacity-60'
+                            : qty > 0
+                            ? 'bg-red-950/30 border-red-600/50'
+                            : 'bg-black border-zinc-800'
+                        }`}
+                      >
+                        <div>
+                          <p className="text-2xs font-medium text-zinc-200 truncate">{snk.name}</p>
+                          <span className="text-3xs font-mono text-zinc-400">
+                            {formatRupees(snk.pricePaise)}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between mt-1 pt-1 border-t border-zinc-800/60">
+                          <button
+                            type="button"
+                            onClick={() => handleSnackQtyChange(snk.id, -1)}
+                            disabled={qty === 0}
+                            className="w-6 h-6 rounded bg-zinc-800 flex items-center justify-center text-zinc-400 hover:text-white disabled:opacity-30"
+                          >
+                            <Minus className="w-3 h-3" />
+                          </button>
+                          <span className="text-xs font-bold font-mono text-white">{qty}</span>
+                          <button
+                            type="button"
+                            onClick={() => handleSnackQtyChange(snk.id, 1)}
+                            disabled={isOutOfStock || isMaxReached}
+                            className="w-6 h-6 rounded bg-zinc-800 flex items-center justify-center text-zinc-400 hover:text-white disabled:opacity-30"
+                          >
+                            <Plus className="w-3 h-3" />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
     </Modal>
   );

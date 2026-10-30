@@ -52,6 +52,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   const [activeSession, setActiveSession] = useState<Session | null>(session);
   const [endTimeISO, setEndTimeISO] = useState<string>('');
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('gpay');
+  const [customMinutes, setCustomMinutes] = useState<number | null>(null);
 
   // Input strings in Rupees (supports exact decimal paise like "137.50")
   const [gpayInput, setGpayInput] = useState<string>('0');
@@ -70,6 +71,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
       setEndTimeISO(nowISO);
       setError(null);
       setIsSubmitting(false);
+      setCustomMinutes(null);
       setDiscountInput('0');
       setDiscountReason('');
       setNotes('');
@@ -115,6 +117,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
     controllersCount: activeSession.controllersCount,
     fixedPlanId: activeSession.fixedPlanId,
     framesCount: activeSession.framesCount,
+    customBilledMinutes: customMinutes !== null ? customMinutes : undefined,
   });
 
   const discountPaise = rupeesToPaise(discountInput);
@@ -163,6 +166,22 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
     const exactBillStr = formatPaiseToInputRupees(billBreakdown.finalBillPaise);
     setGpayInput(exactBillStr);
     setError(null);
+  };
+
+  const applyDiscountValue = (discountRupeesStr: string, reason?: string) => {
+    setDiscountInput(discountRupeesStr);
+    if (reason) setDiscountReason(reason);
+    const dPaise = rupeesToPaise(discountRupeesStr);
+    const grossPaise = chargeCalc.gamingChargePaise + activeSession.snackSubtotalPaise;
+    const newFinalPaise = Math.max(0, grossPaise - dPaise);
+    const exactRupees = formatPaiseToInputRupees(newFinalPaise);
+    if (paymentMethod === 'gpay') {
+      setGpayInput(exactRupees);
+      setCashInput('0');
+    } else if (paymentMethod === 'cash') {
+      setCashInput(exactRupees);
+      setGpayInput('0');
+    }
   };
 
   const handleRemoveSnackItem = (itemId: string) => {
@@ -232,6 +251,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
         paymentMethod,
         gpayAmountPaise: gpayPaise,
         cashAmountPaise: cashPaise,
+        customBilledMinutes: customMinutes !== null ? customMinutes : undefined,
         notes: notes.trim() || undefined,
         actor: currentUser,
       });
@@ -355,6 +375,85 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
               </span>
             </div>
           </div>
+
+          {/* Interactive Billed Minutes Tuner */}
+          <div className="flex flex-wrap items-center justify-between gap-2 p-2 rounded bg-black/40 border border-white/[0.06]">
+            <div className="flex items-center gap-1.5">
+              <span className="text-2xs text-slate-300 font-semibold">Adjust Billed Minutes:</span>
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  title="Subtract 5 minutes"
+                  onClick={() => {
+                    const cur = customMinutes ?? chargeCalc.billedMinutes;
+                    setCustomMinutes(Math.max(1, cur - 5));
+                  }}
+                  className="px-2 py-0.5 rounded bg-zinc-800 hover:bg-zinc-700 text-xs font-mono font-bold text-zinc-200"
+                >
+                  -5m
+                </button>
+                <button
+                  type="button"
+                  title="Subtract 1 minute"
+                  onClick={() => {
+                    const cur = customMinutes ?? chargeCalc.billedMinutes;
+                    setCustomMinutes(Math.max(1, cur - 1));
+                  }}
+                  className="px-2 py-0.5 rounded bg-zinc-800 hover:bg-zinc-700 text-xs font-mono font-bold text-zinc-200"
+                >
+                  -1m
+                </button>
+                <input
+                  type="number"
+                  min="1"
+                  value={customMinutes ?? chargeCalc.billedMinutes}
+                  onChange={(e) => {
+                    const val = parseInt(e.target.value, 10);
+                    setCustomMinutes(isNaN(val) ? null : Math.max(1, val));
+                  }}
+                  className="w-14 px-1 py-0.5 text-center rounded bg-black border border-zinc-700 text-xs font-mono font-bold text-white focus:border-red-500 outline-none"
+                />
+                <span className="text-3xs font-mono text-zinc-400">m</span>
+                <button
+                  type="button"
+                  title="Add 1 minute"
+                  onClick={() => {
+                    const cur = customMinutes ?? chargeCalc.billedMinutes;
+                    setCustomMinutes(cur + 1);
+                  }}
+                  className="px-2 py-0.5 rounded bg-zinc-800 hover:bg-zinc-700 text-xs font-mono font-bold text-zinc-200"
+                >
+                  +1m
+                </button>
+                <button
+                  type="button"
+                  title="Add 5 minutes"
+                  onClick={() => {
+                    const cur = customMinutes ?? chargeCalc.billedMinutes;
+                    setCustomMinutes(cur + 5);
+                  }}
+                  className="px-2 py-0.5 rounded bg-zinc-800 hover:bg-zinc-700 text-xs font-mono font-bold text-zinc-200"
+                >
+                  +5m
+                </button>
+                {customMinutes !== null && (
+                  <button
+                    type="button"
+                    onClick={() => setCustomMinutes(null)}
+                    className="text-3xs text-red-400 hover:text-red-300 underline font-mono ml-1"
+                  >
+                    Reset
+                  </button>
+                )}
+              </div>
+            </div>
+            {customMinutes !== null && (
+              <span className="text-3xs font-mono text-amber-400 font-semibold">
+                Manual override active
+              </span>
+            )}
+          </div>
+
           <p className="text-2xs text-slate-400 font-mono italic">
             {chargeCalc.explanation}
           </p>
@@ -404,6 +503,51 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
             </div>
           )}
 
+          {/* Quick 1-Click Round-Off Buttons */}
+          {(() => {
+            const grossRupees = Math.round((chargeCalc.gamingChargePaise + activeSession.snackSubtotalPaise) / 100);
+            const round50 = Math.floor(grossRupees / 50) * 50;
+            const diff50 = grossRupees - round50;
+            const round10 = Math.floor(grossRupees / 10) * 10;
+            const diff10 = grossRupees - round10;
+            const hasOptions = (diff50 > 0 && round50 > 0) || (diff10 > 0 && round10 > 0 && diff10 !== diff50);
+
+            if (!hasOptions && Number(discountInput) <= 0) return null;
+
+            return (
+              <div className="border-t border-white/[0.06] pt-2 flex flex-wrap items-center gap-1.5">
+                <span className="text-3xs uppercase font-mono text-slate-400 font-bold">Round Off:</span>
+                {diff50 > 0 && round50 > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => applyDiscountValue(diff50.toString(), `Round off to ₹${round50}`)}
+                    className="px-2.5 py-1 rounded-md bg-red-950/40 hover:bg-red-900/60 text-xs font-mono font-bold text-red-300 border border-red-700/60 transition-colors"
+                  >
+                    Round to ₹{round50} (-₹{diff50})
+                  </button>
+                )}
+                {diff10 > 0 && round10 > 0 && diff10 !== diff50 && (
+                  <button
+                    type="button"
+                    onClick={() => applyDiscountValue(diff10.toString(), `Round off to ₹${round10}`)}
+                    className="px-2.5 py-1 rounded-md bg-zinc-800 hover:bg-zinc-700 text-xs font-mono font-bold text-zinc-200 border border-zinc-700 transition-colors"
+                  >
+                    Round to ₹{round10} (-₹{diff10})
+                  </button>
+                )}
+                {Number(discountInput) > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => applyDiscountValue('0', '')}
+                    className="px-2 py-0.5 rounded text-3xs text-zinc-400 hover:text-white underline font-mono ml-auto"
+                  >
+                    Remove Discount
+                  </button>
+                )}
+              </div>
+            );
+          })()}
+
           {/* Discount Inputs */}
           <div className="border-t border-white/[0.06] pt-2 grid grid-cols-1 sm:grid-cols-2 gap-2">
             <div>
@@ -420,7 +564,8 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                 min="0"
                 step="0.01"
                 value={discountInput}
-                onChange={(e) => setDiscountInput(e.target.value)}
+                onChange={(e) => applyDiscountValue(e.target.value)}
+                placeholder="0"
                 className="w-full px-3 py-1.5 rounded-md bg-[#050507] border border-white/[0.1] text-xs font-mono text-slate-100 focus:border-red-500 outline-none"
               />
             </div>
@@ -431,7 +576,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
               </label>
               <input
                 type="text"
-                placeholder="e.g. Regular tournament offer"
+                placeholder="e.g. Round off, Regular customer"
                 value={discountReason}
                 onChange={(e) => setDiscountReason(e.target.value)}
                 className="w-full px-3 py-1.5 rounded-md bg-[#050507] border border-white/[0.1] text-xs text-slate-100 focus:border-red-500 outline-none"

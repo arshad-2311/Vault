@@ -126,6 +126,7 @@ export const DEFAULT_PRICING_CONFIG: PricingConfig = {
   snookerHourlyRatePaise: 25000, // ₹250.00 / hr
   poolPerFrameRatePaise: 5000, // ₹50.00 / frame
   roundingRule: 'nearest_5',
+  graceMinutes: 5, // 5 minutes grace period before overtime charges
   allowCustomSnacks: true,
   allowPartialPayments: true,
   maxEmployeeDiscountPaise: 5000, // Max ₹50 without admin approval
@@ -1442,6 +1443,7 @@ class PosStorageEngine {
     paymentMethod: 'gpay' | 'cash' | 'split';
     gpayAmountPaise: number;
     cashAmountPaise: number;
+    customBilledMinutes?: number;
     notes?: string;
     actor: User;
   }): Session {
@@ -1453,6 +1455,7 @@ class PosStorageEngine {
       paymentMethod,
       gpayAmountPaise,
       cashAmountPaise,
+      customBilledMinutes,
       notes,
       actor,
     } = params;
@@ -1490,8 +1493,10 @@ class PosStorageEngine {
         endTimeISO,
         config,
         isMultiplayer: session.isMultiplayer,
+        controllersCount: session.controllersCount,
         fixedPlanId: session.fixedPlanId,
         framesCount: session.framesCount,
+        customBilledMinutes,
       });
 
       const snackSubtotalPaise = session.items.reduce((sum, it) => sum + it.lineTotalPaise, 0);
@@ -1536,6 +1541,7 @@ class PosStorageEngine {
       // Update Session
       session.endTime = endTimeISO;
       session.durationMinutes = chargeCalc.billedMinutes;
+      session.customBilledMinutes = customBilledMinutes;
       session.gamingChargePaise = chargeCalc.gamingChargePaise;
       session.snackSubtotalPaise = snackSubtotalPaise;
       session.discountPaise = billBreakdown.discountPaise;

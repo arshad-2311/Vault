@@ -55,6 +55,8 @@ export function calculateGamingCharge(params: {
   controllersCount?: number;
   fixedPlanId?: string;
   framesCount?: number;
+  customBilledMinutes?: number;
+  graceMinutes?: number;
 }): CalculationResult {
   const {
     gamingType,
@@ -66,6 +68,8 @@ export function calculateGamingCharge(params: {
     controllersCount,
     fixedPlanId,
     framesCount,
+    customBilledMinutes,
+    graceMinutes,
   } = params;
 
   // Handle Fixed Billing Type
@@ -76,9 +80,16 @@ export function calculateGamingCharge(params: {
         ? calculateDurationMinutes(startTimeISO, endTimeISO)
         : calculateDurationMinutes(startTimeISO, new Date().toISOString());
 
+      const billed =
+        customBilledMinutes !== undefined && customBilledMinutes !== null
+          ? Math.max(1, customBilledMinutes)
+          : plan
+          ? plan.durationMinutes
+          : 60;
+
       return {
         actualMinutes,
-        billedMinutes: plan ? plan.durationMinutes : 60,
+        billedMinutes: billed,
         gamingChargePaise: plan ? plan.pricePaise : 15000,
         explanation: `Fixed Plan: ${plan ? plan.name : 'Standard'} (₹${((plan ? plan.pricePaise : 15000) / 100).toFixed(0)})`,
       };
@@ -102,7 +113,6 @@ export function calculateGamingCharge(params: {
   // Handle Hourly Billing Type
   const endISO = endTimeISO || new Date().toISOString();
   const actualMinutes = calculateDurationMinutes(startTimeISO, endISO);
-  const billedMinutes = applyRoundingPolicy(actualMinutes, config.roundingRule);
 
   let hourlyRatePaise = config.ps5HourlyRatePaise;
   let rateDescription = 'PS5 Standard';
@@ -127,11 +137,33 @@ export function calculateGamingCharge(params: {
     rateDescription = 'Snooker Table';
   }
 
+  const rateRupees = (hourlyRatePaise / 100).toFixed(0);
+  let billedMinutes: number;
+  let explanation: string;
+
+  if (customBilledMinutes !== undefined && customBilledMinutes !== null) {
+    billedMinutes = Math.max(1, customBilledMinutes);
+    explanation = `${rateDescription} (${billedMinutes}m custom set @ ₹${rateRupees}/hr)`;
+  } else {
+    const grace = graceMinutes ?? config.graceMinutes ?? 5;
+    const hours = Math.floor(actualMinutes / 60);
+    const extraMinutes = actualMinutes % 60;
+
+    // Grace Period rule:
+    // If session is 60+ minutes and within the grace threshold (e.g., 61-65 min for 5m grace),
+    // customer gets grace time for those 5 mins and is billed for 60 min.
+    // If duration extends beyond 65 minutes, overtime kicks in and actual minutes are billed.
+    if (hours >= 1 && extraMinutes > 0 && extraMinutes <= grace) {
+      billedMinutes = hours * 60;
+      explanation = `${rateDescription} (${billedMinutes}m billed — ${actualMinutes}m elapsed with ${grace}m grace applied @ ₹${rateRupees}/hr)`;
+    } else {
+      billedMinutes = applyRoundingPolicy(actualMinutes, config.roundingRule);
+      explanation = `${rateDescription} (${billedMinutes}m billed @ ₹${rateRupees}/hr, rounded by ${config.roundingRule})`;
+    }
+  }
+
   // Exact paise calculation: (billedMinutes / 60) * hourlyRatePaise
   const gamingChargePaise = Math.round((billedMinutes / 60) * hourlyRatePaise);
-
-  const rateRupees = (hourlyRatePaise / 100).toFixed(0);
-  const explanation = `${rateDescription} (${billedMinutes}m billed @ ₹${rateRupees}/hr, rounded by ${config.roundingRule})`;
 
   return {
     actualMinutes,

@@ -577,4 +577,90 @@ describe('VAULT POS Acceptance & Financial Correctness Test Suite', () => {
     const found = db.getSnacks().find((s) => s.id === newSnack.id);
     expect(found).toBeUndefined();
   });
+
+  // Acceptance Test 23: 5-minute grace period policy
+  it('Scenario 23: 5-minute grace period applies to 60-65 min sessions; overtime charges kick in beyond 65 mins', () => {
+    const startTime = '2026-10-30T10:00:00Z';
+    // 63 minutes (within 60m + 5m grace)
+    const end63 = '2026-10-30T11:03:00Z';
+    const calc63 = calculateGamingCharge({
+      gamingType: 'pool',
+      billingType: 'hourly',
+      startTimeISO: startTime,
+      endTimeISO: end63,
+      config: { ...DEFAULT_PRICING_CONFIG, roundingRule: 'exact', graceMinutes: 5 },
+    });
+    // 63 minutes elapsed, but billed 60 minutes due to 5m grace
+    expect(calc63.actualMinutes).toBe(63);
+    expect(calc63.billedMinutes).toBe(60);
+    expect(calc63.gamingChargePaise).toBe(25000); // exactly ₹250
+    expect(calc63.explanation).toContain('5m grace applied');
+
+    // 65 minutes (exact boundary of grace period)
+    const end65 = '2026-10-30T11:05:00Z';
+    const calc65 = calculateGamingCharge({
+      gamingType: 'pool',
+      billingType: 'hourly',
+      startTimeISO: startTime,
+      endTimeISO: end65,
+      config: { ...DEFAULT_PRICING_CONFIG, roundingRule: 'exact', graceMinutes: 5 },
+    });
+    expect(calc65.billedMinutes).toBe(60);
+    expect(calc65.gamingChargePaise).toBe(25000);
+
+    // 68 minutes (extends past grace window: charges full minutes)
+    const end68 = '2026-10-30T11:08:00Z';
+    const calc68 = calculateGamingCharge({
+      gamingType: 'pool',
+      billingType: 'hourly',
+      startTimeISO: startTime,
+      endTimeISO: end68,
+      config: { ...DEFAULT_PRICING_CONFIG, roundingRule: 'exact', graceMinutes: 5 },
+    });
+    expect(calc68.actualMinutes).toBe(68);
+    expect(calc68.billedMinutes).toBe(68);
+    // 68 / 60 * 25000 paise = 28333 paise
+    expect(calc68.gamingChargePaise).toBe(28333);
+  });
+
+  // Acceptance Test 24: Custom manual billed minutes override in checkout calculation
+  it('Scenario 24: Custom manual billed minutes directly overrides duration calculation', () => {
+    const startTime = '2026-10-30T10:00:00Z';
+    const endTime = '2026-10-30T11:15:00Z'; // 75 mins actual
+
+    // Staff manually adjusts billed minutes to 60 mins
+    const customCalc = calculateGamingCharge({
+      gamingType: 'pool',
+      billingType: 'hourly',
+      startTimeISO: startTime,
+      endTimeISO: endTime,
+      config: DEFAULT_PRICING_CONFIG,
+      customBilledMinutes: 60,
+    });
+    expect(customCalc.actualMinutes).toBe(75);
+    expect(customCalc.billedMinutes).toBe(60);
+    expect(customCalc.gamingChargePaise).toBe(25000);
+    expect(customCalc.explanation).toContain('custom set');
+  });
+
+  // Acceptance Test 25: Round-off discount calculation (gross 268 - 18 = 250, gross 267 - 17 = 250)
+  it('Scenario 25: Round-off discount accurately reconciles final bill to target round numbers', () => {
+    // Case 1: Gross 268, Discount 18 -> Final 250
+    const bill268 = calculateFinalBill({
+      gamingChargePaise: 26800,
+      snackSubtotalPaise: 0,
+      discountPaise: 1800,
+    });
+    expect(bill268.grossTotalPaise).toBe(26800);
+    expect(bill268.discountPaise).toBe(1800);
+    expect(bill268.finalBillPaise).toBe(25000);
+
+    // Case 2: Gross 267, Discount 17 -> Final 250
+    const bill267 = calculateFinalBill({
+      gamingChargePaise: 26700,
+      snackSubtotalPaise: 0,
+      discountPaise: 1700,
+    });
+    expect(bill267.finalBillPaise).toBe(25000);
+  });
 });

@@ -7,6 +7,7 @@ import {
   X,
   User as UserIcon,
   LogOut,
+  Plus,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
@@ -18,6 +19,7 @@ interface NavbarProps {
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
+  onOpenNewEntry,
   mobileMenuOpen,
   onToggleMobileMenu,
 }) => {
@@ -49,78 +51,91 @@ export const Navbar: React.FC<NavbarProps> = ({
         </div>
       </div>
 
-      {/* Profile Switch (Top Right) */}
-      <div className="relative">
-        <button
-          onClick={() => setShowUserDropdown(!showUserDropdown)}
-          className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-850 border border-zinc-800 text-xs transition-colors"
-          title="Switch Staff Member"
-        >
-          <div className="w-6 h-6 rounded bg-zinc-800 flex items-center justify-center text-zinc-300">
-            {isAdmin ? (
-              <Shield className="w-3.5 h-3.5 text-red-500" />
-            ) : (
-              <UserIcon className="w-3.5 h-3.5 text-zinc-400" />
-            )}
-          </div>
-          <span className="font-medium text-white text-xs">
-            {currentUser.displayName.split(' ')[0]}
-          </span>
-          <span className="text-3xs text-zinc-400 uppercase font-mono hidden sm:inline font-semibold">
-            ({currentUser.role})
-          </span>
-          <ChevronDown className="w-3.5 h-3.5 text-zinc-500" />
-        </button>
-
-        {/* User Switch Dropdown */}
-        {showUserDropdown && (
-          <div className="absolute right-0 mt-2 w-64 rounded-lg bg-[#0e0e14] border border-zinc-800 shadow-2xl py-1 z-50">
-            <div className="px-3 py-2 border-b border-zinc-800">
-              <p className="text-3xs font-semibold text-zinc-400 uppercase tracking-wider">
-                Switch Staff Profile
-              </p>
-            </div>
-
-            <div className="py-1">
-              {users.map((u) => (
-                <button
-                  key={u.id}
-                  onClick={() => {
-                    switchUser(u);
-                    setShowUserDropdown(false);
-                  }}
-                  className={`w-full flex items-center justify-between px-3 py-2 text-left text-xs hover:bg-zinc-850 transition-colors ${
-                    u.id === currentUser.id
-                      ? 'bg-red-950/30 text-red-400 font-semibold border-l-2 border-red-500'
-                      : 'text-zinc-300'
-                  }`}
-                >
-                  <div>
-                    <p className="leading-tight text-white">{u.displayName}</p>
-                    <p className="text-3xs text-zinc-400 font-mono">{u.email}</p>
-                  </div>
-                  <span className="text-3xs font-mono uppercase px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400">
-                    {u.role}
-                  </span>
-                </button>
-              ))}
-            </div>
-
-            <div className="pt-1 mt-1 border-t border-zinc-800">
-              <button
-                type="button"
-                onClick={() => {
-                  setShowUserDropdown(false);
-                  logout('User signed out.');
-                }}
-                className="w-full flex items-center gap-2 px-3 py-2 text-left text-xs text-red-400 hover:bg-red-950/30 hover:text-red-300 transition-colors font-medium"
-              >
-                <LogOut className="w-3.5 h-3.5" />
-                <span>Sign Out (Lock POS)</span>
-              </button>
-            </div>
-          </div>
+      {/* Right Controls: Start Session [+] & Profile Switch */}
+      <div className="flex items-center gap-2">
+        {onOpenNewEntry && (
+          <button
+            type="button"
+            onClick={onOpenNewEntry}
+            className="flex items-center justify-center w-8 h-8 rounded-lg bg-red-600 hover:bg-red-500 text-white font-bold shadow-md shadow-red-950/60 transition-colors"
+            title="Start New Session (+)"
+          >
+            <Plus className="w-4 h-4 stroke-[3]" />
+          </button>
         )}
+
+        <div className="relative">
+          <button
+            onClick={() => setShowUserDropdown(!showUserDropdown)}
+            className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-850 border border-zinc-800 text-xs transition-colors"
+            title="Switch Staff Member"
+          >
+            <div className="w-6 h-6 rounded bg-zinc-800 flex items-center justify-center text-zinc-300">
+              {isAdmin ? (
+                <Shield className="w-3.5 h-3.5 text-red-500" />
+              ) : (
+                <UserIcon className="w-3.5 h-3.5 text-zinc-400" />
+              )}
+            </div>
+            <span className="font-medium text-white text-xs">
+              {currentUser.displayName.split(' ')[0]}
+            </span>
+            <span className="text-3xs text-zinc-400 uppercase font-mono hidden sm:inline font-semibold">
+              ({currentUser.role})
+            </span>
+            <ChevronDown className="w-3.5 h-3.5 text-zinc-500" />
+          </button>
+
+          {/* User Switch Dropdown */}
+          {showUserDropdown && (
+            <div className="absolute right-0 mt-2 w-64 rounded-lg bg-[#0e0e14] border border-zinc-800 shadow-2xl py-1 z-50">
+              <div className="px-3 py-2 border-b border-zinc-800">
+                <p className="text-3xs font-semibold text-zinc-400 uppercase tracking-wider">
+                  Switch Staff Profile
+                </p>
+              </div>
+
+              <div className="py-1">
+                {users.map((u) => (
+                  <button
+                    key={u.id}
+                    onClick={() => {
+                      switchUser(u);
+                      setShowUserDropdown(false);
+                    }}
+                    className={`w-full flex items-center justify-between px-3 py-2 text-left text-xs hover:bg-zinc-850 transition-colors ${
+                      u.id === currentUser.id
+                        ? 'bg-red-950/30 text-red-400 font-semibold border-l-2 border-red-500'
+                        : 'text-zinc-300'
+                    }`}
+                  >
+                    <div>
+                      <p className="leading-tight text-white">{u.displayName}</p>
+                      <p className="text-3xs text-zinc-400 font-mono">{u.email}</p>
+                    </div>
+                    <span className="text-3xs font-mono uppercase px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400">
+                      {u.role}
+                    </span>
+                  </button>
+                ))}
+              </div>
+
+              <div className="pt-1 mt-1 border-t border-zinc-800">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowUserDropdown(false);
+                    logout('User signed out.');
+                  }}
+                  className="w-full flex items-center gap-2 px-3 py-2 text-left text-xs text-red-400 hover:bg-red-950/30 hover:text-red-300 transition-colors font-medium"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                  <span>Sign Out (Lock POS)</span>
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </header>
   );

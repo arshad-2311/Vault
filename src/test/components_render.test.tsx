@@ -214,7 +214,7 @@ describe('UI Pages & Modals Rendering Integrity Test Suite', () => {
         <NewEntryModal isOpen={true} onClose={() => {}} onSessionCreated={() => {}} />
       </AuthProvider>
     );
-    expect(htmlNewEntry).toContain('Create New Digital Entry');
+    expect(htmlNewEntry).toContain('Start a session');
 
     const htmlCheckout = renderToString(
       <AuthProvider>
