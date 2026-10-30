@@ -80,18 +80,30 @@ export const NewEntryModal: React.FC<NewEntryModalProps> = ({
       setStartTimeLocal(localStr);
 
       // Determine initial station
+      let initialStation: Station | undefined;
+
       if (preselectedStationId) {
         const found = allStations.find((s) => s.id === preselectedStationId);
-        if (found) {
-          setStationId(found.id);
-          setGamingType(found.gamingType);
+        if (found && found.status === 'available') {
+          initialStation = found;
+        } else if (found) {
+          // If preselected is occupied, select first available station of that same gaming type
+          initialStation = allStations.find((s) => s.gamingType === found.gamingType && s.status === 'available')
+            || allStations.find((s) => s.status === 'available');
         }
+      }
+
+      if (!initialStation) {
+        // Pick first available of current gamingType (or any available)
+        initialStation = allStations.find((s) => s.gamingType === gamingType && s.status === 'available')
+          || allStations.find((s) => s.status === 'available');
+      }
+
+      if (initialStation) {
+        setStationId(initialStation.id);
+        setGamingType(initialStation.gamingType);
       } else {
-        const available = allStations.find((s) => s.status === 'available');
-        if (available) {
-          setStationId(available.id);
-          setGamingType(available.gamingType);
-        }
+        setStationId('');
       }
 
       if (cfg.ps5FixedPlans.length > 0) {
@@ -150,7 +162,7 @@ export const NewEntryModal: React.FC<NewEntryModalProps> = ({
   });
 
   const availableStationsOfType = stations.filter(
-    (s) => s.gamingType === gamingType && (s.status === 'available' || s.id === stationId)
+    (s) => s.gamingType === gamingType && s.status === 'available'
   );
 
   // Live estimated initial charge preview
@@ -256,9 +268,10 @@ export const NewEntryModal: React.FC<NewEntryModalProps> = ({
               variant="primary"
               size="md"
               type="submit"
+              disabled={!stationId || isSubmitting || availableStationsOfType.length === 0}
               isLoading={isSubmitting}
               leftIcon={<Sparkles className="w-4 h-4" />}
-              className="bg-red-600 hover:bg-red-500 text-white font-bold border-red-500 shadow-md shadow-red-950/50"
+              className="bg-red-600 hover:bg-red-500 text-white font-bold border-red-500 shadow-md shadow-red-950/50 disabled:opacity-40"
             >
               Start Session
             </Button>
@@ -352,18 +365,26 @@ export const NewEntryModal: React.FC<NewEntryModalProps> = ({
           <select
             value={stationId}
             onChange={(e) => setStationId(e.target.value)}
-            className="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-slate-100 text-sm focus:border-red-500 outline-none"
+            disabled={availableStationsOfType.length === 0}
+            className="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-slate-100 text-sm focus:border-red-500 outline-none disabled:opacity-50"
           >
             {availableStationsOfType.length === 0 ? (
-              <option value="">No {gamingType === 'pool' ? 'SNOOKER' : 'PS5'} stations available</option>
+              <option value="">
+                All {gamingType === 'pool' ? 'Snooker tables' : 'PS5 stations'} currently in use
+              </option>
             ) : (
               availableStationsOfType.map((st) => (
                 <option key={st.id} value={st.id}>
-                  {st.name} — {st.status === 'occupied' ? 'Occupied' : 'Ready'}
+                  {st.name} — Ready
                 </option>
               ))
             )}
           </select>
+          {availableStationsOfType.length === 0 && (
+            <p className="text-3xs text-red-400 font-mono mt-1">
+              All {gamingType === 'pool' ? 'Snooker tables' : 'PS5 stations'} are occupied. Choose another game or end an active session first.
+            </p>
+          )}
         </div>
       </div>
 

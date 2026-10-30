@@ -948,7 +948,46 @@ class PosStorageEngine {
   // --- STATIONS ---
   getStations(): Station[] {
     const raw = safeStorage.getItem(STORAGE_KEYS.STATIONS);
-    return raw ? JSON.parse(raw) : INITIAL_STATIONS;
+    const stations: Station[] = raw ? JSON.parse(raw) : INITIAL_STATIONS;
+
+    // Single source of truth: synchronize station status with actual active sessions
+    const sessionsRaw = safeStorage.getItem(STORAGE_KEYS.SESSIONS);
+    if (!sessionsRaw) return stations;
+
+    try {
+      const sessions: Session[] = JSON.parse(sessionsRaw);
+      const activeByStation = new Map<string, Session>();
+      sessions.forEach((s) => {
+        if (s.status === 'active') {
+          activeByStation.set(s.stationId, s);
+        }
+      });
+
+      let modified = false;
+      const synced = stations.map((st) => {
+        if (st.status === 'maintenance') return st;
+        const active = activeByStation.get(st.id);
+        if (active) {
+          if (st.status !== 'occupied' || st.activeSessionId !== active.id) {
+            modified = true;
+            return { ...st, status: 'occupied' as const, activeSessionId: active.id };
+          }
+        } else {
+          if (st.status === 'occupied' || st.activeSessionId) {
+            modified = true;
+            return { ...st, status: 'available' as const, activeSessionId: null };
+          }
+        }
+        return st;
+      });
+
+      if (modified) {
+        safeStorage.setItem(STORAGE_KEYS.STATIONS, JSON.stringify(synced));
+      }
+      return synced;
+    } catch {
+      return stations;
+    }
   }
 
   updateStation(stationId: string, updates: Partial<Station>): void {
@@ -1127,7 +1166,11 @@ class PosStorageEngine {
     const stations = this.getStations();
     const station = stations.find((s) => s.id === stationId);
     if (!station) throw new Error(`Station not found.`);
-    if (station.status === 'occupied') {
+
+    // Verify whether an active session is actively running on this station
+    const sessions = this.getSessions();
+    const existingActive = sessions.find((s) => s.stationId === stationId && s.status === 'active');
+    if (existingActive || station.status === 'occupied') {
       throw new Error(`Station ${station.name} is currently occupied.`);
     }
 
@@ -1232,9 +1275,9 @@ class PosStorageEngine {
     };
 
     // Save session
-    const sessions = this.getSessions();
-    sessions.unshift(newSession);
-    safeStorage.setItem(STORAGE_KEYS.SESSIONS, JSON.stringify(sessions));
+    const allSessions = this.getSessions();
+    allSessions.unshift(newSession);
+    safeStorage.setItem(STORAGE_KEYS.SESSIONS, JSON.stringify(allSessions));
 
     // Update station to occupied
     this.updateStation(stationId, {
