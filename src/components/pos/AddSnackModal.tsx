@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { UtensilsCrossed, Plus, Minus, Search, AlertCircle, Check } from 'lucide-react';
+import { UtensilsCrossed, Plus, Minus, Search, AlertCircle, Check, Trash2 } from 'lucide-react';
 import { Session, SnackItem } from '../../types';
 import { Modal } from '../common/Modal';
 import { Button } from '../common/Button';
@@ -24,6 +24,7 @@ export const AddSnackModal: React.FC<AddSnackModalProps> = ({
   const snacks = db.getSnacks().filter((s) => s.isActive);
   const pricingConfig = db.getPricingConfig();
 
+  const [activeSession, setActiveSession] = useState<Session | null>(session);
   const [selectedSnackId, setSelectedSnackId] = useState<string>('');
   const [quantity, setQuantity] = useState<number>(1);
   const [isCustom, setIsCustom] = useState<boolean>(false);
@@ -36,6 +37,7 @@ export const AddSnackModal: React.FC<AddSnackModalProps> = ({
 
   useEffect(() => {
     if (isOpen) {
+      setActiveSession(session);
       const activeSnacks = db.getSnacks().filter((s) => s.isActive);
       if (activeSnacks.length > 0) {
         setSelectedSnackId(activeSnacks[0].id);
@@ -48,9 +50,23 @@ export const AddSnackModal: React.FC<AddSnackModalProps> = ({
       setSearch('');
       setCategory('All');
     }
-  }, [isOpen]);
+  }, [isOpen, session]);
 
-  if (!session) return null;
+  if (!activeSession) return null;
+
+  const handleRemoveItem = (itemId: string) => {
+    try {
+      const updated = db.removeSnackFromSession({
+        sessionId: activeSession.id,
+        itemId,
+        actor: currentUser,
+      });
+      setActiveSession(updated);
+      onSnackAdded();
+    } catch (err: any) {
+      setError(err.message || 'Failed to remove snack.');
+    }
+  };
 
   const categories = ['All', ...Array.from(new Set(snacks.map((s) => s.category)))];
 
@@ -94,7 +110,7 @@ export const AddSnackModal: React.FC<AddSnackModalProps> = ({
         }
 
         db.addSnackToSession({
-          sessionId: session.id,
+          sessionId: activeSession.id,
           productId: null,
           customName: customName.trim(),
           unitPricePaise,
@@ -107,8 +123,18 @@ export const AddSnackModal: React.FC<AddSnackModalProps> = ({
           return;
         }
 
+        if (quantity <= 0) {
+          setError('Quantity must be at least 1.');
+          return;
+        }
+
+        if (selectedProduct.stock !== undefined && quantity > selectedProduct.stock) {
+          setError(`Cannot add ${quantity} items. Only ${selectedProduct.stock} left in stock.`);
+          return;
+        }
+
         db.addSnackToSession({
-          sessionId: session.id,
+          sessionId: activeSession.id,
           productId: selectedProduct.id,
           unitPricePaise: selectedProduct.pricePaise,
           quantity,
@@ -128,7 +154,7 @@ export const AddSnackModal: React.FC<AddSnackModalProps> = ({
       isOpen={isOpen}
       onClose={onClose}
       title="Add Snacks & Drinks"
-      description={`Add concessions to active session: ${session.customerName} (${session.stationName})`}
+      description={`Manage concessions for active session: ${activeSession.customerName} (${activeSession.stationName})`}
       maxWidth="lg"
       onSubmit={handleSubmit}
       footer={
@@ -157,6 +183,50 @@ export const AddSnackModal: React.FC<AddSnackModalProps> = ({
         <div className="p-3 rounded-lg bg-red-950/60 border border-red-800 text-red-300 text-xs flex items-center gap-2">
           <AlertCircle className="w-4 h-4 shrink-0" />
           <span>{error}</span>
+        </div>
+      )}
+
+      {/* Current Snacks in Session with delete button */}
+      {activeSession.items && activeSession.items.length > 0 && (
+        <div className="p-3.5 rounded-xl bg-[#09090e] border border-red-950/60 space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-2xs uppercase tracking-wider font-bold text-red-400 font-mono">
+              Current Session Snacks ({activeSession.items.length})
+            </span>
+            <span className="text-xs font-mono font-bold text-white">
+              Subtotal: {formatRupees(activeSession.snackSubtotalPaise)}
+            </span>
+          </div>
+          <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
+            {activeSession.items.map((it) => (
+              <div
+                key={it.id}
+                className="flex items-center justify-between p-2 rounded-lg bg-[#050507] border border-white/[0.06] text-xs"
+              >
+                <div>
+                  <span className="font-semibold text-slate-200">
+                    {it.quantity}x {it.name}
+                  </span>
+                  <span className="text-3xs text-slate-500 font-mono block">
+                    @{formatRupees(it.unitPricePaise)} each
+                  </span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="font-mono font-bold text-red-400">
+                    {formatRupees(it.lineTotalPaise)}
+                  </span>
+                  <button
+                    type="button"
+                    title="Delete snack item"
+                    onClick={() => handleRemoveItem(it.id)}
+                    className="p-1.5 rounded-lg bg-red-950/40 hover:bg-red-900 border border-red-800/40 text-red-400 hover:text-white transition-colors"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
@@ -255,21 +325,42 @@ export const AddSnackModal: React.FC<AddSnackModalProps> = ({
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-48 overflow-y-auto pr-1">
             {filteredSnacks.map((snk) => {
               const isSelected = selectedSnackId === snk.id;
+              const isOutOfStock = snk.stock !== undefined && snk.stock <= 0;
+              const isLowStock = snk.stock !== undefined && snk.stock > 0 && snk.stock <= (snk.lowStockThreshold ?? 5);
+
               return (
                 <button
                   key={snk.id}
                   type="button"
+                  disabled={isOutOfStock}
                   onClick={() => setSelectedSnackId(snk.id)}
                   className={`p-2.5 rounded-xl border text-left transition-all ${
-                    isSelected
+                    isOutOfStock
+                      ? 'bg-slate-950/40 border-slate-900 opacity-40 cursor-not-allowed'
+                      : isSelected
                       ? 'bg-red-950/50 border-red-500 text-white shadow-md shadow-red-950/40'
                       : 'bg-[#08080c] border-white/[0.08] text-slate-300 hover:text-white hover:border-red-500/30'
                   }`}
                 >
                   <p className="text-xs font-semibold truncate">{snk.name}</p>
-                  <p className="text-2xs font-mono font-bold text-red-400 mt-0.5">
-                    {formatRupees(snk.pricePaise)}
-                  </p>
+                  <div className="flex items-center justify-between mt-1">
+                    <span className="text-2xs font-mono font-bold text-red-400">
+                      {formatRupees(snk.pricePaise)}
+                    </span>
+                    {snk.stock !== undefined && (
+                      <span
+                        className={`text-3xs font-mono font-semibold px-1 py-0.2 rounded ${
+                          isOutOfStock
+                            ? 'bg-red-950 text-red-400 border border-red-800/60'
+                            : isLowStock
+                            ? 'bg-amber-950 text-amber-300 border border-amber-800/60'
+                            : 'text-slate-500'
+                        }`}
+                      >
+                        {isOutOfStock ? '0 left' : `${snk.stock} left`}
+                      </span>
+                    )}
+                  </div>
                 </button>
               );
             })}

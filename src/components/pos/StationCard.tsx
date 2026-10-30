@@ -69,7 +69,7 @@ export const StationCard: React.FC<StationCardProps> = ({
     ? estimatedGamingChargePaise + activeSession.snackSubtotalPaise
     : 0;
 
-  const defaultHourlyPaise = station.gamingType === 'ps5' ? 15000 : 18000;
+  const defaultHourlyPaise = station.gamingType === 'ps5' ? 15000 : 25000;
 
   // 1. IN USE / OCCUPIED STATE (High Operational Visibility)
   if (isOccupied && activeSession) {
@@ -84,11 +84,15 @@ export const StationCard: React.FC<StationCardProps> = ({
             <span className="w-2.5 h-2.5 rounded-full bg-red-500 ring-4 ring-red-500/20 shrink-0 animate-pulse" />
             <div>
               <div className="flex items-center gap-1.5">
-                <h4 className="text-sm sm:text-base font-black font-mono text-white tracking-tight">
+                <h4 className="text-sm sm:text-base font-black font-microgramma text-white tracking-tight">
                   {station.name}
                 </h4>
                 <span className="text-3xs uppercase font-mono font-bold px-1.5 py-0.5 rounded bg-red-950/80 text-red-300 border border-red-800/50">
-                  {station.gamingType}
+                  {station.gamingType === 'pool'
+                    ? 'SNOOKER'
+                    : activeSession.controllersCount
+                    ? `${activeSession.controllersCount}P PS5`
+                    : 'PS5'}
                 </span>
               </div>
             </div>
@@ -188,9 +192,9 @@ export const StationCard: React.FC<StationCardProps> = ({
           <span className="w-2.5 h-2.5 rounded-full bg-zinc-500 ring-2 ring-zinc-500/20 shrink-0" />
           <div>
             <div className="flex items-center gap-1.5">
-              <h4 className="text-xs sm:text-sm font-bold font-mono text-zinc-100">{station.name}</h4>
+              <h4 className="text-xs sm:text-sm font-bold font-microgramma text-zinc-100">{station.name}</h4>
               <span className="text-3xs uppercase font-mono px-1.5 py-0.2 rounded bg-zinc-800 text-zinc-400 border border-zinc-700">
-                {station.gamingType}
+                {station.gamingType === 'pool' ? 'SNOOKER' : 'PS5'}
               </span>
             </div>
           </div>
@@ -204,7 +208,9 @@ export const StationCard: React.FC<StationCardProps> = ({
       {/* Middle Specs */}
       <div className="py-3 flex items-center justify-between text-xs font-mono text-zinc-400">
         <span>Standard Rate:</span>
-        <span className="text-zinc-100 font-bold">{formatRupees(defaultHourlyPaise)}/hr</span>
+        <span className="text-zinc-100 font-bold">
+          {station.gamingType === 'ps5' ? 'From ₹150/hr' : `${formatRupees(defaultHourlyPaise)}/hr`}
+        </span>
       </div>
 
       {/* Action Row with big mobile-friendly button */}

@@ -4,11 +4,14 @@ import {
   Plus,
   Search,
   Edit2,
+  Trash2,
   CheckCircle,
   XCircle,
   Tag,
   AlertCircle,
   Filter,
+  Boxes,
+  AlertTriangle,
 } from 'lucide-react';
 import { SnackItem } from '../types';
 import { Button } from '../components/common/Button';
@@ -30,6 +33,8 @@ export const SnacksPage: React.FC = () => {
   const [nameInput, setNameInput] = useState('');
   const [categoryInput, setCategoryInput] = useState('Beverages');
   const [priceInput, setPriceInput] = useState('40');
+  const [stockInput, setStockInput] = useState('20');
+  const [thresholdInput, setThresholdInput] = useState('5');
   const [isActiveInput, setIsActiveInput] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -41,10 +46,16 @@ export const SnacksPage: React.FC = () => {
     loadData();
   }, []);
 
-  const categories = ['All', 'Beverages', 'Chips & Savouries', 'Chocolates', 'Hot Items'];
+  const categories = ['All', 'Low Stock', 'Beverages', 'Chips & Savouries', 'Chocolates', 'Hot Items', 'General'];
+
+  const lowStockItems = snacks.filter((s) => s.isActive && (s.stock ?? 20) <= (s.lowStockThreshold ?? 5));
+  const outOfStockItems = snacks.filter((s) => s.isActive && (s.stock ?? 20) === 0);
 
   const filteredSnacks = snacks.filter((s) => {
     const matchesSearch = s.name.toLowerCase().includes(search.toLowerCase());
+    if (categoryFilter === 'Low Stock') {
+      return matchesSearch && s.isActive && (s.stock ?? 20) <= (s.lowStockThreshold ?? 5);
+    }
     const matchesCat = categoryFilter === 'All' || s.category === categoryFilter;
     return matchesSearch && matchesCat;
   });
@@ -58,6 +69,8 @@ export const SnacksPage: React.FC = () => {
     setNameInput('');
     setCategoryInput('Beverages');
     setPriceInput('40');
+    setStockInput('20');
+    setThresholdInput('5');
     setIsActiveInput(true);
     setError(null);
     setModalOpen(true);
@@ -72,9 +85,24 @@ export const SnacksPage: React.FC = () => {
     setNameInput(snack.name);
     setCategoryInput(snack.category);
     setPriceInput((snack.pricePaise / 100).toString());
+    setStockInput((snack.stock ?? 20).toString());
+    setThresholdInput((snack.lowStockThreshold ?? 5).toString());
     setIsActiveInput(snack.isActive);
     setError(null);
     setModalOpen(true);
+  };
+
+  const handleDeleteSnack = (snackId: string) => {
+    if (!isAdmin) return;
+    if (window.confirm('Are you sure you want to remove this snack from the catalogue?')) {
+      try {
+        db.deleteSnack(snackId, currentUser);
+        loadData();
+        setModalOpen(false);
+      } catch (err: any) {
+        setError(err.message || 'Failed to delete item.');
+      }
+    }
   };
 
   const handleSave = (e: React.FormEvent) => {
@@ -92,6 +120,9 @@ export const SnacksPage: React.FC = () => {
       return;
     }
 
+    const parsedStock = Math.max(0, parseInt(stockInput, 10) || 0);
+    const parsedThreshold = Math.max(1, parseInt(thresholdInput, 10) || 5);
+
     try {
       if (editingSnack) {
         db.updateSnack(
@@ -100,6 +131,8 @@ export const SnacksPage: React.FC = () => {
             name: nameInput.trim(),
             category: categoryInput.trim(),
             pricePaise,
+            stock: parsedStock,
+            lowStockThreshold: parsedThreshold,
             isActive: isActiveInput,
           },
           currentUser
@@ -110,6 +143,8 @@ export const SnacksPage: React.FC = () => {
             name: nameInput.trim(),
             category: categoryInput.trim(),
             pricePaise,
+            stock: parsedStock,
+            lowStockThreshold: parsedThreshold,
             isActive: isActiveInput,
           },
           currentUser
@@ -154,6 +189,33 @@ export const SnacksPage: React.FC = () => {
         )}
       </div>
 
+      {/* Stock Reminder Banner */}
+      {lowStockItems.length > 0 && (
+        <div className="p-3.5 sm:p-4 rounded-xl bg-amber-950/40 border border-amber-600/50 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-amber-200 animate-in fade-in">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-amber-900/60 flex items-center justify-center text-amber-400 shrink-0">
+              <AlertTriangle className="w-4 h-4" />
+            </div>
+            <div>
+              <h4 className="text-xs font-bold font-mono tracking-wide">
+                STOCK REMINDER: {lowStockItems.length} ITEM{lowStockItems.length > 1 ? 'S' : ''} LOW ON INVENTORY
+              </h4>
+              <p className="text-3xs text-amber-300/80 font-mono mt-0.5">
+                {outOfStockItems.length > 0 ? `${outOfStockItems.length} item(s) are completely out of stock. ` : ''}
+                Restock soon to ensure counter availability.
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setCategoryFilter(categoryFilter === 'Low Stock' ? 'All' : 'Low Stock')}
+            className="px-3 py-1.5 rounded-lg bg-amber-900/60 hover:bg-amber-800/80 text-amber-200 border border-amber-700/60 text-xs font-mono font-bold transition-colors shrink-0"
+          >
+            {categoryFilter === 'Low Stock' ? 'Show All Items' : 'Filter Low Stock Items'}
+          </button>
+        </div>
+      )}
+
       {/* Filter and Category Bar */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 p-3 rounded-xl bg-slate-900 border border-slate-800">
         <div className="relative flex-1">
@@ -172,13 +234,18 @@ export const SnacksPage: React.FC = () => {
             <button
               key={cat}
               onClick={() => setCategoryFilter(cat)}
-              className={`px-3 py-1 rounded-md whitespace-nowrap transition-colors ${
+              className={`px-3 py-1 rounded-md whitespace-nowrap transition-colors flex items-center gap-1.5 ${
                 categoryFilter === cat
                   ? 'bg-red-600 text-white font-semibold'
                   : 'text-slate-400 hover:text-slate-200'
               }`}
             >
-              {cat}
+              <span>{cat}</span>
+              {cat === 'Low Stock' && lowStockItems.length > 0 && (
+                <span className="w-4 h-4 rounded-full bg-amber-500 text-black font-black text-3xs flex items-center justify-center">
+                  {lowStockItems.length}
+                </span>
+              )}
             </button>
           ))}
         </div>
@@ -186,54 +253,77 @@ export const SnacksPage: React.FC = () => {
 
       {/* Snacks Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-        {filteredSnacks.map((item) => (
-          <div
-            key={item.id}
-            className={`p-4 rounded-xl border flex flex-col justify-between transition-all ${
-              item.isActive
-                ? 'bg-slate-900/90 border-slate-800 hover:border-red-900/50 shadow-sm'
-                : 'bg-slate-950 border-slate-850 opacity-50'
-            }`}
-          >
-            <div>
-              <div className="flex items-start justify-between gap-2">
-                <span className="text-3xs uppercase tracking-wider font-semibold text-slate-400 px-2 py-0.5 rounded bg-slate-800/80">
-                  {item.category}
-                </span>
-                <Badge variant={item.isActive ? 'success' : 'neutral'} size="sm">
-                  {item.isActive ? 'ACTIVE' : 'INACTIVE'}
-                </Badge>
-              </div>
+        {filteredSnacks.map((item) => {
+          const currentStock = item.stock ?? 20;
+          const isLow = item.isActive && currentStock <= (item.lowStockThreshold ?? 5);
+          const isOut = item.isActive && currentStock === 0;
 
-              <h3 className="text-sm font-semibold text-slate-100 mt-2 line-clamp-2">
-                {item.name}
-              </h3>
-            </div>
-
-            <div className="mt-4 pt-3 border-t border-slate-800/60 flex items-center justify-between">
+          return (
+            <div
+              key={item.id}
+              className={`p-4 rounded-xl border flex flex-col justify-between transition-all ${
+                item.isActive
+                  ? isOut
+                    ? 'bg-red-950/20 border-red-900/60'
+                    : isLow
+                    ? 'bg-amber-950/10 border-amber-900/50 hover:border-amber-700/60'
+                    : 'bg-slate-900/90 border-slate-800 hover:border-red-900/50 shadow-sm'
+                  : 'bg-slate-950 border-slate-850 opacity-50'
+              }`}
+            >
               <div>
-                <span className="text-3xs text-slate-500 uppercase block font-mono">
-                  Selling Price
-                </span>
-                <span className="text-base font-bold font-mono text-white tabular-nums">
-                  {formatRupees(item.pricePaise)}
-                </span>
+                <div className="flex items-start justify-between gap-2">
+                  <span className="text-3xs uppercase tracking-wider font-semibold text-slate-400 px-2 py-0.5 rounded bg-slate-800/80">
+                    {item.category}
+                  </span>
+                  <div className="flex items-center gap-1">
+                    {isOut ? (
+                      <span className="text-3xs uppercase font-mono font-bold px-2 py-0.5 rounded bg-red-950 text-red-400 border border-red-800">
+                        OUT OF STOCK
+                      </span>
+                    ) : isLow ? (
+                      <span className="text-3xs uppercase font-mono font-bold px-2 py-0.5 rounded bg-amber-950 text-amber-400 border border-amber-700 flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-ping" />
+                        LOW: {currentStock} LEFT
+                      </span>
+                    ) : (
+                      <span className="text-3xs font-mono px-2 py-0.5 rounded bg-zinc-800 text-zinc-300 border border-zinc-700">
+                        {currentStock} in stock
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                <h3 className="text-sm font-semibold text-slate-100 mt-2 line-clamp-2">
+                  {item.name}
+                </h3>
               </div>
 
-              {isAdmin && (
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => handleOpenEdit(item)}
-                  leftIcon={<Edit2 className="w-3 h-3 text-red-400" />}
-                  className="text-xs"
-                >
-                  Edit
-                </Button>
-              )}
+              <div className="mt-4 pt-3 border-t border-slate-800/60 flex items-center justify-between">
+                <div>
+                  <span className="text-3xs text-slate-500 uppercase block font-mono">
+                    Selling Price
+                  </span>
+                  <span className="text-base font-bold font-mono text-white tabular-nums">
+                    {formatRupees(item.pricePaise)}
+                  </span>
+                </div>
+
+                {isAdmin && (
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => handleOpenEdit(item)}
+                    leftIcon={<Edit2 className="w-3 h-3 text-red-400" />}
+                    className="text-xs"
+                  >
+                    Edit
+                  </Button>
+                )}
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* Add / Edit Modal */}
@@ -241,8 +331,8 @@ export const SnacksPage: React.FC = () => {
         <Modal
           isOpen={modalOpen}
           onClose={() => setModalOpen(false)}
-          title={editingSnack ? 'Edit Snack Item' : 'Add New Snack Item'}
-          description="Updates to catalog prices will be applied to future entries without altering historical transaction records."
+          title={editingSnack ? 'Edit Snack Item & Inventory' : 'Add New Snack Item'}
+          description="Updates to catalog prices and inventory stocks are applied immediately to counter check-in and concessions."
           maxWidth="md"
         >
           <form onSubmit={handleSave} className="space-y-4">
@@ -300,7 +390,40 @@ export const SnacksPage: React.FC = () => {
               </div>
             </div>
 
-            <div className="pt-2">
+            {/* Inventory Stock & Low Stock Reminder Threshold */}
+            <div className="grid grid-cols-2 gap-3 p-3 rounded-xl bg-zinc-900/60 border border-zinc-800">
+              <div>
+                <label className="block text-xs font-semibold text-zinc-300 mb-1">
+                  Current Stock (Units)
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  step="1"
+                  value={stockInput}
+                  onChange={(e) => setStockInput(e.target.value)}
+                  className="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-xs font-mono text-slate-100 focus:border-red-500 outline-none"
+                />
+                <p className="text-3xs text-zinc-500 mt-1">Remaining inventory</p>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-zinc-300 mb-1">
+                  Reminder Threshold
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  step="1"
+                  value={thresholdInput}
+                  onChange={(e) => setThresholdInput(e.target.value)}
+                  className="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-xs font-mono text-slate-100 focus:border-red-500 outline-none"
+                />
+                <p className="text-3xs text-zinc-500 mt-1">Warn when stock &le; threshold</p>
+              </div>
+            </div>
+
+            <div className="pt-1">
               <label className="flex items-center gap-2 cursor-pointer text-xs text-slate-300">
                 <input
                   type="checkbox"
@@ -312,13 +435,28 @@ export const SnacksPage: React.FC = () => {
               </label>
             </div>
 
-            <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-800">
-              <Button variant="secondary" size="md" type="button" onClick={() => setModalOpen(false)}>
-                Cancel
-              </Button>
-              <Button variant="primary" size="md" type="submit">
-                {editingSnack ? 'Save Changes' : 'Create Item'}
-              </Button>
+            <div className="flex items-center justify-between pt-3 border-t border-slate-800">
+              {editingSnack && isAdmin ? (
+                <button
+                  type="button"
+                  onClick={() => handleDeleteSnack(editingSnack.id)}
+                  className="px-3 py-2 rounded-lg bg-red-950/60 hover:bg-red-900/80 text-red-400 hover:text-red-300 border border-red-800 text-xs font-semibold flex items-center gap-1.5 transition-colors"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>Delete Item</span>
+                </button>
+              ) : (
+                <div />
+              )}
+
+              <div className="flex items-center gap-2">
+                <Button variant="secondary" size="md" type="button" onClick={() => setModalOpen(false)}>
+                  Cancel
+                </Button>
+                <Button variant="primary" size="md" type="submit">
+                  {editingSnack ? 'Save Changes' : 'Create Item'}
+                </Button>
+              </div>
             </div>
           </form>
         </Modal>

@@ -24,23 +24,24 @@ export const Modal: React.FC<ModalProps> = ({
 }) => {
   const previousActiveElement = useRef<HTMLElement | null>(null);
   const modalContainerRef = useRef<HTMLDivElement>(null);
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
 
-  // Focus preservation and body scroll lock
+  // Focus preservation and body scroll lock - only triggers when isOpen state changes
   useEffect(() => {
     if (isOpen) {
       previousActiveElement.current = document.activeElement as HTMLElement;
-      // Prevent background scrolling
       const originalOverflow = document.body.style.overflow;
       document.body.style.overflow = 'hidden';
 
-      // Focus modal container
-      if (modalContainerRef.current) {
+      // Only focus container on initial open if focus is not already inside the modal
+      if (modalContainerRef.current && !modalContainerRef.current.contains(document.activeElement)) {
         modalContainerRef.current.focus();
       }
 
       const handleKeyDown = (e: KeyboardEvent) => {
         if (e.key === 'Escape') {
-          onClose();
+          onCloseRef.current();
         }
       };
       window.addEventListener('keydown', handleKeyDown);
@@ -53,7 +54,7 @@ export const Modal: React.FC<ModalProps> = ({
         }
       };
     }
-  }, [isOpen, onClose]);
+  }, [isOpen]);
 
   if (!isOpen) return null;
 

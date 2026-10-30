@@ -125,7 +125,7 @@ export const ActiveSessionsPage: React.FC<ActiveSessionsPageProps> = ({
                 : 'text-zinc-400 hover:text-zinc-200'
             }`}
           >
-            Pool ({sessions.filter((s) => s.gamingType === 'pool').length})
+            Snooker ({sessions.filter((s) => s.gamingType === 'pool').length})
           </button>
         </div>
       </div>
@@ -176,7 +176,7 @@ export const ActiveSessionsPage: React.FC<ActiveSessionsPageProps> = ({
                       <span className="w-2.5 h-2.5 rounded-full bg-red-500 ring-4 ring-red-500/20 shrink-0 animate-pulse" />
                       <h3 className="text-sm font-black font-mono text-white">{s.stationName}</h3>
                       <span className="text-3xs uppercase font-mono px-1.5 py-0.2 rounded bg-white/[0.05] text-slate-400 font-semibold">
-                        {s.gamingType}
+                        {s.gamingType === 'pool' ? 'SNOOKER' : (s.controllersCount ? `${s.controllersCount}P PS5` : 'PS5')}
                       </span>
                     </div>
                     <p className="text-xs font-semibold text-slate-200 mt-0.5 truncate max-w-[180px]">

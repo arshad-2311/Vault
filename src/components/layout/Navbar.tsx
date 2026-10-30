@@ -43,8 +43,8 @@ export const Navbar: React.FC<NavbarProps> = ({
             <Gamepad2 className="w-4 h-4 stroke-[2.5]" />
           </div>
           <div className="flex items-baseline gap-1.5">
-            <span className="text-base font-black tracking-tight text-white font-mono">VAULT 147</span>
-            <span className="text-2xs text-red-500 font-mono font-bold tracking-wider">POS</span>
+            <span className="text-base font-black tracking-wider text-white font-microgramma">VAULT 147</span>
+            <span className="text-2xs text-red-500 font-microgramma font-bold tracking-widest">POS</span>
           </div>
         </div>
       </div>

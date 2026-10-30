@@ -108,17 +108,22 @@ export function emitDataChanged(): void {
 // Initial default seed configuration
 export const DEFAULT_PRICING_CONFIG: PricingConfig = {
   id: 'cfg-default',
-  businessName: 'Vault Gaming Centre & Pool Lounge',
+  businessName: 'Vault Gaming Centre & Snooker Lounge',
   businessTimezone: 'Asia/Kolkata',
   currencySymbol: '₹',
-  ps5HourlyRatePaise: 15000, // ₹150.00 / hr
-  ps5MultiplayerHourlyRatePaise: 22000, // ₹220.00 / hr
+  ps5HourlyRatePaise: 15000, // ₹150.00 / hr (1 Player)
+  ps5MultiplayerHourlyRatePaise: 30000, // ₹300.00 / hr (2 Players fallback)
+  ps5Rate1PlayerPaise: 15000, // ₹150.00 / hr (1 Controller)
+  ps5Rate2PlayersPaise: 30000, // ₹300.00 / hr (2 Controllers)
+  ps5Rate3PlayersPaise: 40000, // ₹400.00 / hr (3 Controllers)
+  ps5Rate4PlayersPaise: 50000, // ₹500.00 / hr (4 Controllers)
   ps5FixedPlans: [
     { id: 'plan-30m', name: '30-Min Rush Pass', gamingType: 'ps5', durationMinutes: 30, pricePaise: 8000 },
-    { id: 'plan-1h', name: '1-Hour Fixed Pass', gamingType: 'ps5', durationMinutes: 60, pricePaise: 14000 },
-    { id: 'plan-2h', name: '2-Hour Power Pack', gamingType: 'ps5', durationMinutes: 120, pricePaise: 26000 },
+    { id: 'plan-1h', name: '1-Hour Fixed Pass', gamingType: 'ps5', durationMinutes: 60, pricePaise: 15000 },
+    { id: 'plan-2h', name: '2-Hour Power Pack', gamingType: 'ps5', durationMinutes: 120, pricePaise: 28000 },
   ],
-  poolHourlyRatePaise: 18000, // ₹180.00 / hr
+  poolHourlyRatePaise: 25000, // ₹250.00 / hr (Snooker: Mon-Sun)
+  snookerHourlyRatePaise: 25000, // ₹250.00 / hr
   poolPerFrameRatePaise: 5000, // ₹50.00 / frame
   roundingRule: 'nearest_5',
   allowCustomSnacks: true,
@@ -130,9 +135,9 @@ export const INITIAL_STATIONS: Station[] = [
   { id: 'ps5-1', name: 'PS5 Station 01 (4K OLED)', gamingType: 'ps5', status: 'occupied', activeSessionId: 'sess-active-1', displayOrder: 1 },
   { id: 'ps5-2', name: 'PS5 Station 02 (4K OLED)', gamingType: 'ps5', status: 'available', activeSessionId: null, displayOrder: 2 },
   { id: 'ps5-3', name: 'PS5 Station 03 (Gaming Chair)', gamingType: 'ps5', status: 'available', activeSessionId: null, displayOrder: 3 },
-  { id: 'ps5-4', name: 'PS5 Station 04 (Dual Controller)', gamingType: 'ps5', status: 'available', activeSessionId: null, displayOrder: 4 },
-  { id: 'pool-1', name: '8-Ball Pool Table A (Tournament)', gamingType: 'pool', status: 'occupied', activeSessionId: 'sess-active-2', displayOrder: 5 },
-  { id: 'pool-2', name: '8-Ball Pool Table B (Standard)', gamingType: 'pool', status: 'available', activeSessionId: null, displayOrder: 6 },
+  { id: 'pool-1', name: 'Snooker Table 01 (Tournament)', gamingType: 'pool', status: 'occupied', activeSessionId: 'sess-active-2', displayOrder: 4 },
+  { id: 'pool-2', name: 'Snooker Table 02 (Match Table)', gamingType: 'pool', status: 'available', activeSessionId: null, displayOrder: 5 },
+  { id: 'pool-3', name: 'Snooker Table 03 (Classic Table)', gamingType: 'pool', status: 'available', activeSessionId: null, displayOrder: 6 },
 ];
 
 export const INITIAL_USERS: User[] = [
@@ -166,14 +171,14 @@ export const INITIAL_USERS: User[] = [
 ];
 
 export const INITIAL_SNACKS: SnackItem[] = [
-  { id: 'snk-1', name: 'Red Bull Energy Drink (250ml)', category: 'Beverages', pricePaise: 12500, isActive: true },
-  { id: 'snk-2', name: 'Mountain Dew Can (300ml)', category: 'Beverages', pricePaise: 4000, isActive: true },
-  { id: 'snk-3', name: 'Coca-Cola Zero Can (300ml)', category: 'Beverages', pricePaise: 4000, isActive: true },
-  { id: 'snk-4', name: 'Kinley Mineral Water (500ml)', category: 'Beverages', pricePaise: 2000, isActive: true },
-  { id: 'snk-5', name: "Lay's Magic Masala (Large)", category: 'Chips & Savouries', pricePaise: 3000, isActive: true },
-  { id: 'snk-6', name: 'Doritos Cheese Supreme (75g)', category: 'Chips & Savouries', pricePaise: 5000, isActive: true },
-  { id: 'snk-7', name: 'Snickers Chocolate Bar', category: 'Chocolates', pricePaise: 5000, isActive: true },
-  { id: 'snk-8', name: 'Maggi Masala Double Bowl', category: 'Hot Items', pricePaise: 6000, isActive: true },
+  { id: 'snk-1', name: 'Red Bull Energy Drink (250ml)', category: 'Beverages', pricePaise: 12500, isActive: true, stock: 24, lowStockThreshold: 5 },
+  { id: 'snk-2', name: 'Mountain Dew Can (300ml)', category: 'Beverages', pricePaise: 4000, isActive: true, stock: 30, lowStockThreshold: 5 },
+  { id: 'snk-3', name: 'Coca-Cola Zero Can (300ml)', category: 'Beverages', pricePaise: 4000, isActive: true, stock: 18, lowStockThreshold: 5 },
+  { id: 'snk-4', name: 'Kinley Mineral Water (500ml)', category: 'Beverages', pricePaise: 2000, isActive: true, stock: 50, lowStockThreshold: 10 },
+  { id: 'snk-5', name: "Lay's Magic Masala (Large)", category: 'Chips & Savouries', pricePaise: 3000, isActive: true, stock: 12, lowStockThreshold: 5 },
+  { id: 'snk-6', name: 'Doritos Cheese Supreme (75g)', category: 'Chips & Savouries', pricePaise: 5000, isActive: true, stock: 4, lowStockThreshold: 5 },
+  { id: 'snk-7', name: 'Snickers Chocolate Bar', category: 'Chocolates', pricePaise: 5000, isActive: true, stock: 3, lowStockThreshold: 5 },
+  { id: 'snk-8', name: 'Maggi Masala Double Bowl', category: 'Hot Items', pricePaise: 6000, isActive: true, stock: 15, lowStockThreshold: 5 },
 ];
 
 function generateInitialSessions(): Session[] {
@@ -251,22 +256,22 @@ function generateInitialSessions(): Session[] {
       createdAt: todayMorning,
       updatedAt: todayNoon,
     },
-    // Completed Session 2 (Pool table 1 hour, Full GPay)
+    // Completed Session 2 (Snooker table 1 hour, Full GPay)
     {
       id: 'sess-comp-2',
       customerName: 'Karan Mehra',
       customerPhone: '9822334455',
       gamingType: 'pool',
       stationId: 'pool-2',
-      stationName: '8-Ball Pool Table B (Standard)',
+      stationName: 'Snooker Table 02 (Match Table)',
       billingType: 'hourly',
       startTime: new Date(now.getTime() - 150 * 60 * 1000).toISOString(),
       endTime: new Date(now.getTime() - 90 * 60 * 1000).toISOString(),
       durationMinutes: 60,
       status: 'completed',
       rateSnapshot: {
-        hourlyRatePaise: 18000,
-        description: '8-Ball Pool Table',
+        hourlyRatePaise: 25000,
+        description: 'Snooker Table',
         roundingPolicy: 'nearest_5',
       },
       gamingChargePaise: 18000,
@@ -373,16 +378,17 @@ function generateInitialSessions(): Session[] {
       stationId: 'ps5-1',
       stationName: 'PS5 Station 01 (4K OLED)',
       billingType: 'hourly',
+      controllersCount: 2,
       isMultiplayer: true,
       startTime: fortyFiveMinsAgo,
       endTime: null,
       status: 'active',
       rateSnapshot: {
-        hourlyRatePaise: 22000,
-        description: 'PS5 Multiplayer (2-4 Players)',
+        hourlyRatePaise: 30000,
+        description: 'PS5 (2 Controllers / 2 Players)',
         roundingPolicy: 'nearest_5',
       },
-      gamingChargePaise: 16500, // live estimated
+      gamingChargePaise: 22500, // live estimated
       items: [
         {
           id: 'item-active-1',
@@ -397,35 +403,35 @@ function generateInitialSessions(): Session[] {
       ],
       snackSubtotalPaise: 8000,
       discountPaise: 0,
-      finalBillPaise: 24500,
+      finalBillPaise: 30500,
       createdBy: 'usr-emp-1',
       createdByName: 'Rahul Sharma',
       notes: 'Playing Tekken 8 Tournament with 2 controllers',
       createdAt: fortyFiveMinsAgo,
       updatedAt: fortyFiveMinsAgo,
     },
-    // Active Session 2 (Pool-1 running for ~20 mins)
+    // Active Session 2 (Snooker-1 running for ~20 mins)
     {
       id: 'sess-active-2',
       customerName: 'Samir & Bilal',
       customerPhone: '9844556677',
       gamingType: 'pool',
       stationId: 'pool-1',
-      stationName: '8-Ball Pool Table A (Tournament)',
+      stationName: 'Snooker Table 01 (Tournament)',
       billingType: 'hourly',
       startTime: twentyMinsAgo,
       endTime: null,
       status: 'active',
       rateSnapshot: {
-        hourlyRatePaise: 18000,
-        description: '8-Ball Pool Table',
+        hourlyRatePaise: 25000,
+        description: 'Snooker Table',
         roundingPolicy: 'nearest_5',
       },
-      gamingChargePaise: 6000,
+      gamingChargePaise: 8500,
       items: [],
       snackSubtotalPaise: 0,
       discountPaise: 0,
-      finalBillPaise: 6000,
+      finalBillPaise: 8500,
       createdBy: 'usr-emp-2',
       createdByName: 'Priya Patel',
       notes: 'Brought their own professional cues',
@@ -488,14 +494,33 @@ class PosStorageEngine {
     if (!safeStorage.getItem(STORAGE_KEYS.CREDENTIALS)) {
       safeStorage.setItem(STORAGE_KEYS.CREDENTIALS, JSON.stringify(INITIAL_CREDENTIALS));
     }
-    if (!safeStorage.getItem(STORAGE_KEYS.STATIONS)) {
+    const stationsRaw = safeStorage.getItem(STORAGE_KEYS.STATIONS);
+    if (!stationsRaw) {
       safeStorage.setItem(STORAGE_KEYS.STATIONS, JSON.stringify(INITIAL_STATIONS));
+    } else {
+      try {
+        const parsed = JSON.parse(stationsRaw);
+        if (parsed.some((s: any) => s.id === 'ps5-4') || !parsed.some((s: any) => s.id === 'pool-3')) {
+          safeStorage.setItem(STORAGE_KEYS.STATIONS, JSON.stringify(INITIAL_STATIONS));
+        }
+      } catch {}
     }
     if (!safeStorage.getItem(STORAGE_KEYS.SNACKS)) {
       safeStorage.setItem(STORAGE_KEYS.SNACKS, JSON.stringify(INITIAL_SNACKS));
     }
-    if (!safeStorage.getItem(STORAGE_KEYS.PRICING)) {
+    const pricingRaw = safeStorage.getItem(STORAGE_KEYS.PRICING);
+    if (!pricingRaw) {
       safeStorage.setItem(STORAGE_KEYS.PRICING, JSON.stringify(DEFAULT_PRICING_CONFIG));
+    } else {
+      try {
+        const parsed = JSON.parse(pricingRaw);
+        if (!parsed.ps5Rate1PlayerPaise || !parsed.snookerHourlyRatePaise) {
+          safeStorage.setItem(
+            STORAGE_KEYS.PRICING,
+            JSON.stringify({ ...DEFAULT_PRICING_CONFIG, ...parsed })
+          );
+        }
+      } catch {}
     }
     if (!safeStorage.getItem(STORAGE_KEYS.SESSIONS)) {
       safeStorage.setItem(STORAGE_KEYS.SESSIONS, JSON.stringify(generateInitialSessions()));
@@ -939,7 +964,12 @@ class PosStorageEngine {
   // --- SNACKS ---
   getSnacks(): SnackItem[] {
     const raw = safeStorage.getItem(STORAGE_KEYS.SNACKS);
-    return raw ? JSON.parse(raw) : INITIAL_SNACKS;
+    const list: SnackItem[] = raw ? JSON.parse(raw) : INITIAL_SNACKS;
+    return list.map((s) => ({
+      ...s,
+      stock: s.stock !== undefined ? s.stock : 20,
+      lowStockThreshold: s.lowStockThreshold !== undefined ? s.lowStockThreshold : 5,
+    }));
   }
 
   createSnack(snackData: Omit<SnackItem, 'id'>, actor: User): SnackItem {
@@ -995,6 +1025,32 @@ class PosStorageEngine {
     return updated;
   }
 
+  deleteSnack(snackId: string, actor: User): void {
+    if (actor.role !== 'admin') {
+      throw new Error('Permission denied: Only administrators can delete catalogue items.');
+    }
+    const snacks = this.getSnacks();
+    const index = snacks.findIndex((s) => s.id === snackId);
+    if (index === -1) throw new Error('Snack item not found.');
+
+    const deleted = snacks[index];
+    snacks.splice(index, 1);
+    safeStorage.setItem(STORAGE_KEYS.SNACKS, JSON.stringify(snacks));
+
+    this.addAuditLog({
+      actorId: actor.id,
+      actorName: actor.displayName,
+      actorRole: actor.role,
+      action: 'SNACK_DELETED',
+      entityType: 'snack',
+      entityId: snackId,
+      details: `Deleted snack item: ${deleted.name} from catalogue`,
+      previousState: deleted,
+    });
+
+    emitDataChanged();
+  }
+
   // --- PRICING CONFIG ---
   getPricingConfig(): PricingConfig {
     const raw = safeStorage.getItem(STORAGE_KEYS.PRICING);
@@ -1044,6 +1100,7 @@ class PosStorageEngine {
     stationId: string;
     billingType: 'hourly' | 'fixed';
     startTimeISO: string;
+    controllersCount?: number;
     isMultiplayer?: boolean;
     fixedPlanId?: string;
     framesCount?: number;
@@ -1058,6 +1115,7 @@ class PosStorageEngine {
       stationId,
       billingType,
       startTimeISO,
+      controllersCount,
       isMultiplayer,
       fixedPlanId,
       framesCount,
@@ -1076,10 +1134,12 @@ class PosStorageEngine {
     const config = this.getPricingConfig();
     const sessionId = `sess-${Date.now()}`;
 
-    // Prepare snack items with price snapshots
+    // Prepare snack items with price snapshots and decrement inventory stock
     const items: SessionItem[] = [];
     if (initialSnacks && initialSnacks.length > 0) {
       const allSnacks = this.getSnacks();
+      let inventoryChanged = false;
+
       for (const item of initialSnacks) {
         const product = allSnacks.find((s) => s.id === item.snackId);
         if (product && item.quantity > 0) {
@@ -1093,11 +1153,23 @@ class PosStorageEngine {
             lineTotalPaise: product.pricePaise * item.quantity,
             isCustom: false,
           });
+
+          // Deduct from stock if inventory is tracked
+          if (product.stock !== undefined) {
+            product.stock = Math.max(0, product.stock - item.quantity);
+            inventoryChanged = true;
+          }
         }
+      }
+
+      if (inventoryChanged) {
+        safeStorage.setItem(STORAGE_KEYS.SNACKS, JSON.stringify(allSnacks));
       }
     }
 
     const snackSubtotalPaise = items.reduce((sum, it) => sum + it.lineTotalPaise, 0);
+
+    const actualControllers = gamingType === 'ps5' ? (controllersCount || (isMultiplayer ? 2 : 1)) : undefined;
 
     // Initial charge estimate
     const chargeCalc = calculateGamingCharge({
@@ -1106,12 +1178,23 @@ class PosStorageEngine {
       startTimeISO,
       endTimeISO: null,
       config,
-      isMultiplayer,
+      isMultiplayer: actualControllers ? actualControllers > 1 : isMultiplayer,
+      controllersCount: actualControllers,
       fixedPlanId,
       framesCount,
     });
 
     const fixedPlan = config.ps5FixedPlans.find((p) => p.id === fixedPlanId);
+
+    let hourlyRatePaise = config.ps5HourlyRatePaise;
+    if (gamingType === 'ps5') {
+      if (actualControllers === 4) hourlyRatePaise = config.ps5Rate4PlayersPaise || 50000;
+      else if (actualControllers === 3) hourlyRatePaise = config.ps5Rate3PlayersPaise || 40000;
+      else if (actualControllers === 2) hourlyRatePaise = config.ps5Rate2PlayersPaise || config.ps5MultiplayerHourlyRatePaise || 30000;
+      else hourlyRatePaise = config.ps5Rate1PlayerPaise || config.ps5HourlyRatePaise || 15000;
+    } else {
+      hourlyRatePaise = config.snookerHourlyRatePaise || config.poolHourlyRatePaise || 25000;
+    }
 
     const newSession: Session = {
       id: sessionId,
@@ -1121,7 +1204,8 @@ class PosStorageEngine {
       stationId,
       stationName: station.name,
       billingType,
-      isMultiplayer: isMultiplayer || false,
+      controllersCount: actualControllers,
+      isMultiplayer: actualControllers ? actualControllers > 1 : (isMultiplayer || false),
       fixedPlanId,
       fixedPlanName: fixedPlan ? fixedPlan.name : undefined,
       framesCount,
@@ -1130,12 +1214,7 @@ class PosStorageEngine {
       durationMinutes: null,
       status: 'active',
       rateSnapshot: {
-        hourlyRatePaise:
-          gamingType === 'ps5'
-            ? isMultiplayer
-              ? config.ps5MultiplayerHourlyRatePaise
-              : config.ps5HourlyRatePaise
-            : config.poolHourlyRatePaise,
+        hourlyRatePaise,
         fixedPricePaise: fixedPlan ? fixedPlan.pricePaise : undefined,
         description: chargeCalc.explanation,
         roundingPolicy: config.roundingRule,
@@ -1170,7 +1249,7 @@ class PosStorageEngine {
       action: 'SESSION_STARTED',
       entityType: 'session',
       entityId: sessionId,
-      details: `Started ${gamingType.toUpperCase()} session on ${station.name} for ${customerName}`,
+      details: `Started ${gamingType.toUpperCase()}${actualControllers ? ` (${actualControllers} controllers)` : ''} session on ${station.name} for ${customerName}`,
       newState: newSession,
     });
 
@@ -1179,7 +1258,7 @@ class PosStorageEngine {
   }
 
   /**
-   * Adds a snack item mid-game to an active session with historical price snapshot.
+   * Adds a snack item mid-game to an active session with historical price snapshot and decrements stock.
    */
   addSnackToSession(params: {
     sessionId: string;
@@ -1203,10 +1282,15 @@ class PosStorageEngine {
     let isCustom = true;
 
     if (productId) {
-      const product = this.getSnacks().find((s) => s.id === productId);
+      const allSnacks = this.getSnacks();
+      const product = allSnacks.find((s) => s.id === productId);
       if (product) {
         snackName = product.name;
         isCustom = false;
+        if (product.stock !== undefined) {
+          product.stock = Math.max(0, product.stock - quantity);
+          safeStorage.setItem(STORAGE_KEYS.SNACKS, JSON.stringify(allSnacks));
+        }
       }
     }
 
@@ -1240,6 +1324,64 @@ class PosStorageEngine {
       entityType: 'session',
       entityId: sessionId,
       details: `Added ${quantity}x ${snackName} (₹${(newItem.lineTotalPaise / 100).toFixed(2)}) to session for ${session.customerName}`,
+    });
+
+    emitDataChanged();
+    return session;
+  }
+
+  /**
+   * Removes a snack item from a session, restores catalogue stock, and recalculates totals.
+   */
+  removeSnackFromSession(params: {
+    sessionId: string;
+    itemId: string;
+    actor: User;
+  }): Session {
+    const { sessionId, itemId, actor } = params;
+    const sessions = this.getSessions();
+    const index = sessions.findIndex((s) => s.id === sessionId);
+    if (index === -1) throw new Error('Session not found.');
+
+    const session = sessions[index];
+    if (session.status !== 'active' && actor.role !== 'admin') {
+      throw new Error('Only active sessions can be modified unless authorized by admin.');
+    }
+
+    const itemIndex = session.items.findIndex((it) => it.id === itemId);
+    if (itemIndex === -1) throw new Error('Snack item not found in session.');
+
+    const removedItem = session.items[itemIndex];
+    session.items.splice(itemIndex, 1);
+
+    // Restore stock if it was a catalogue item
+    if (removedItem.productId) {
+      const allSnacks = this.getSnacks();
+      const pIdx = allSnacks.findIndex((s) => s.id === removedItem.productId);
+      if (pIdx !== -1 && allSnacks[pIdx].stock !== undefined) {
+        allSnacks[pIdx].stock = (allSnacks[pIdx].stock || 0) + removedItem.quantity;
+        safeStorage.setItem(STORAGE_KEYS.SNACKS, JSON.stringify(allSnacks));
+      }
+    }
+
+    session.snackSubtotalPaise = session.items.reduce((sum, it) => sum + it.lineTotalPaise, 0);
+    session.finalBillPaise = Math.max(
+      0,
+      session.gamingChargePaise + session.snackSubtotalPaise - session.discountPaise
+    );
+    session.updatedAt = new Date().toISOString();
+
+    sessions[index] = session;
+    safeStorage.setItem(STORAGE_KEYS.SESSIONS, JSON.stringify(sessions));
+
+    this.addAuditLog({
+      actorId: actor.id,
+      actorName: actor.displayName,
+      actorRole: actor.role,
+      action: 'SNACK_REMOVED_FROM_SESSION',
+      entityType: 'session',
+      entityId: sessionId,
+      details: `Removed ${removedItem.quantity}x ${removedItem.name} (-₹${(removedItem.lineTotalPaise / 100).toFixed(2)}) from session for ${session.customerName}`,
     });
 
     emitDataChanged();

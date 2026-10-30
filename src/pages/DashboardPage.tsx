@@ -214,7 +214,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
       <div className="space-y-4 pt-1">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <h2 className="text-xs sm:text-sm font-bold uppercase tracking-wider text-zinc-200 font-mono">
+            <h2 className="text-xs sm:text-sm font-bold uppercase tracking-wider text-zinc-200 font-microgramma">
               Gaming Stations
             </h2>
             {/* Filter pills - Super easy on phone! */}

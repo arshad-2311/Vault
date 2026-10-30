@@ -31,6 +31,8 @@ export interface SnackItem {
   category: string;
   pricePaise: number; // Integer paise (e.g. 4000 = ₹40.00)
   isActive: boolean;
+  stock?: number; // Stock inventory quantity
+  lowStockThreshold?: number; // Reminder threshold (e.g. 5)
 }
 
 export interface SessionItem {
@@ -75,10 +77,15 @@ export interface PricingConfig {
   businessName: string;
   businessTimezone: string;
   currencySymbol: string;
-  ps5HourlyRatePaise: number; // e.g. 15000 = ₹150/hr
-  ps5MultiplayerHourlyRatePaise: number; // e.g. 22000 = ₹220/hr
+  ps5HourlyRatePaise: number; // 1 Player: 15000 = ₹150/hr
+  ps5MultiplayerHourlyRatePaise: number; // 2 Players: 30000 = ₹300/hr
+  ps5Rate1PlayerPaise?: number; // 1 Controller: 15000 = ₹150/hr
+  ps5Rate2PlayersPaise?: number; // 2 Controllers: 30000 = ₹300/hr
+  ps5Rate3PlayersPaise?: number; // 3 Controllers: 40000 = ₹400/hr
+  ps5Rate4PlayersPaise?: number; // 4 Controllers: 50000 = ₹500/hr
   ps5FixedPlans: FixedPricingPlan[];
-  poolHourlyRatePaise: number; // e.g. 18000 = ₹180/hr
+  poolHourlyRatePaise: number; // Snooker/Pool: 25000 = ₹250/hr
+  snookerHourlyRatePaise?: number; // 25000 = ₹250/hr
   poolPerFrameRatePaise: number; // e.g. 5000 = ₹50/frame
   roundingRule: 'exact' | 'nearest_5' | 'nearest_15' | 'ceiling_15';
   allowCustomSnacks: boolean;
@@ -94,7 +101,8 @@ export interface Session {
   stationId: string;
   stationName: string;
   billingType: BillingType;
-  isMultiplayer?: boolean; // for PS5 dual controllers
+  controllersCount?: number; // 1, 2, 3, or 4 joysticks
+  isMultiplayer?: boolean; // for PS5 dual/multi controllers
   fixedPlanId?: string;
   fixedPlanName?: string;
   framesCount?: number; // for pool per-frame billing

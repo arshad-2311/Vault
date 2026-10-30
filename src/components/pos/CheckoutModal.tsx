@@ -9,6 +9,7 @@ import {
   AlertTriangle,
   Printer,
   ArrowRight,
+  Trash2,
 } from 'lucide-react';
 import { Session, PaymentMethod } from '../../types';
 import { Modal } from '../common/Modal';
@@ -48,6 +49,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   const { currentUser, isAdmin } = useAuth();
   const pricingConfig = db.getPricingConfig();
 
+  const [activeSession, setActiveSession] = useState<Session | null>(session);
   const [endTimeISO, setEndTimeISO] = useState<string>('');
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('gpay');
 
@@ -63,6 +65,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
 
   useEffect(() => {
     if (isOpen && session) {
+      setActiveSession(session);
       const nowISO = new Date().toISOString();
       setEndTimeISO(nowISO);
       setError(null);
@@ -79,6 +82,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
         endTimeISO: nowISO,
         config: pricingConfig,
         isMultiplayer: session.isMultiplayer,
+        controllersCount: session.controllersCount,
         fixedPlanId: session.fixedPlanId,
         framesCount: session.framesCount,
       });
@@ -97,25 +101,26 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
     }
   }, [isOpen, session]);
 
-  if (!session) return null;
+  if (!activeSession) return null;
 
   // Real-time recalculation based on current inputs
   const currentEndISO = endTimeISO || new Date().toISOString();
   const chargeCalc = calculateGamingCharge({
-    gamingType: session.gamingType,
-    billingType: session.billingType,
-    startTimeISO: session.startTime,
+    gamingType: activeSession.gamingType,
+    billingType: activeSession.billingType,
+    startTimeISO: activeSession.startTime,
     endTimeISO: currentEndISO,
     config: pricingConfig,
-    isMultiplayer: session.isMultiplayer,
-    fixedPlanId: session.fixedPlanId,
-    framesCount: session.framesCount,
+    isMultiplayer: activeSession.isMultiplayer,
+    controllersCount: activeSession.controllersCount,
+    fixedPlanId: activeSession.fixedPlanId,
+    framesCount: activeSession.framesCount,
   });
 
   const discountPaise = rupeesToPaise(discountInput);
   const billBreakdown = calculateFinalBill({
     gamingChargePaise: chargeCalc.gamingChargePaise,
-    snackSubtotalPaise: session.snackSubtotalPaise,
+    snackSubtotalPaise: activeSession.snackSubtotalPaise,
     discountPaise,
   });
 
@@ -160,6 +165,42 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
     setError(null);
   };
 
+  const handleRemoveSnackItem = (itemId: string) => {
+    if (!activeSession) return;
+    try {
+      const updated = db.removeSnackFromSession({
+        sessionId: activeSession.id,
+        itemId,
+        actor: currentUser,
+      });
+      setActiveSession(updated);
+      const charge = calculateGamingCharge({
+        gamingType: updated.gamingType,
+        billingType: updated.billingType,
+        startTimeISO: updated.startTime,
+        endTimeISO: currentEndISO,
+        config: pricingConfig,
+        isMultiplayer: updated.isMultiplayer,
+        controllersCount: updated.controllersCount,
+        fixedPlanId: updated.fixedPlanId,
+        framesCount: updated.framesCount,
+      });
+      const newBill = calculateFinalBill({
+        gamingChargePaise: charge.gamingChargePaise,
+        snackSubtotalPaise: updated.snackSubtotalPaise,
+        discountPaise,
+      });
+      const exactRupees = formatPaiseToInputRupees(newBill.finalBillPaise);
+      if (paymentMethod === 'gpay') {
+        setGpayInput(exactRupees);
+      } else if (paymentMethod === 'cash') {
+        setCashInput(exactRupees);
+      }
+    } catch (err: any) {
+      setError(err.message || 'Failed to remove snack.');
+    }
+  };
+
   const executeCheckout = (triggerPrint: boolean) => {
     setError(null);
 
@@ -184,7 +225,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
     try {
       setIsSubmitting(true);
       const finalized = db.completeSession({
-        sessionId: session.id,
+        sessionId: activeSession.id,
         endTimeISO: currentEndISO,
         discountPaise,
         discountReason: discountReason.trim() || undefined,
@@ -233,7 +274,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
       isOpen={isOpen}
       onClose={handleClose}
       title="End Payment & Settle Session"
-      description={`${session.customerName} • ${session.stationName} (${session.gamingType.toUpperCase()})`}
+      description={`${activeSession.customerName} • ${activeSession.stationName} (${activeSession.gamingType.toUpperCase()})`}
       maxWidth="2xl"
       onSubmit={handleSubmit}
       footer={
@@ -301,7 +342,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
           <div className="grid grid-cols-3 gap-2 p-2.5 rounded bg-slate-900 border border-slate-800/80 text-xs font-mono">
             <div>
               <span className="text-3xs text-slate-500 uppercase block">Started</span>
-              <span className="text-slate-200">{formatDateTime(session.startTime)}</span>
+              <span className="text-slate-200">{formatDateTime(activeSession.startTime)}</span>
             </div>
             <div>
               <span className="text-3xs text-slate-500 uppercase block">Checkout Time</span>
@@ -328,15 +369,28 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
             </span>
           </div>
 
-          {session.items.length > 0 && (
+          {activeSession.items.length > 0 && (
             <div className="border-t border-white/[0.06] pt-1.5 space-y-1">
-              <span className="text-3xs text-slate-500 uppercase font-semibold">Drinks & Snacks</span>
-              {session.items.map((it) => (
-                <div key={it.id} className="flex justify-between text-slate-400 pl-2">
-                  <span>
-                    {it.quantity}x {it.name}
-                  </span>
-                  <span className="font-mono text-slate-300">
+              <div className="flex items-center justify-between pb-0.5">
+                <span className="text-3xs text-slate-400 uppercase font-semibold">Drinks & Snacks</span>
+                <span className="text-3xs text-slate-500 font-mono">Click trash to remove item</span>
+              </div>
+              {activeSession.items.map((it) => (
+                <div key={it.id} className="flex items-center justify-between text-slate-300 pl-1 py-0.5 group">
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      title="Remove snack from bill"
+                      onClick={() => handleRemoveSnackItem(it.id)}
+                      className="p-1 rounded hover:bg-red-950/80 text-slate-500 hover:text-red-400 transition-colors"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                    <span>
+                      {it.quantity}x {it.name}
+                    </span>
+                  </div>
+                  <span className="font-mono text-slate-200">
                     {formatRupees(it.lineTotalPaise)}
                   </span>
                 </div>
@@ -344,7 +398,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
               <div className="flex justify-between font-medium text-slate-200 pt-1 border-t border-white/[0.04]">
                 <span>Snack Subtotal:</span>
                 <span className="font-mono text-red-400 font-semibold">
-                  {formatRupees(session.snackSubtotalPaise)}
+                  {formatRupees(activeSession.snackSubtotalPaise)}
                 </span>
               </div>
             </div>

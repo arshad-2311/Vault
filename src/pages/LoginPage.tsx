@@ -84,8 +84,8 @@ export const LoginPage: React.FC<LoginPageProps> = ({ sessionExpiredMessage }) =
             <Gamepad2 className="w-7 h-7 text-white stroke-[2.5]" />
           </div>
           <div className="flex items-center justify-center gap-2">
-            <span className="text-2xl font-black tracking-tight text-white font-mono">VAULT 147</span>
-            <span className="text-xs text-red-500 font-mono font-bold tracking-widest px-1.5 py-0.5 rounded bg-red-950/60 border border-red-900/60">
+            <span className="text-2xl font-black tracking-wider text-white font-microgramma">VAULT 147</span>
+            <span className="text-xs text-red-500 font-microgramma font-bold tracking-widest px-1.5 py-0.5 rounded bg-red-950/60 border border-red-900/60">
               POS
             </span>
           </div>

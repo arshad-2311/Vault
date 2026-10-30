@@ -51,9 +51,9 @@ describe('VAULT POS Acceptance & Financial Correctness Test Suite', () => {
     expect(formatRupees(chargeCalc.gamingChargePaise)).toBe('₹187.50');
   });
 
-  // Acceptance Test 3: 8-ball pool hourly vs per-frame pricing
+  // Acceptance Test 3: Snooker / 8-ball pool hourly vs per-frame pricing (VAULT Price list: ₹250/hr)
   it('Scenario 3: 8-Ball pool calculates hourly and per-frame rates correctly', () => {
-    // Hourly: 60 minutes @ ₹180/hr = 18000 paise
+    // Hourly: 60 minutes @ ₹250/hr = 25000 paise
     const hourlyCalc = calculateGamingCharge({
       gamingType: 'pool',
       billingType: 'hourly',
@@ -61,7 +61,7 @@ describe('VAULT POS Acceptance & Financial Correctness Test Suite', () => {
       endTimeISO: '2026-10-25T11:00:00Z',
       config: DEFAULT_PRICING_CONFIG,
     });
-    expect(hourlyCalc.gamingChargePaise).toBe(18000);
+    expect(hourlyCalc.gamingChargePaise).toBe(25000);
 
     // Per-frame: 3 frames @ ₹50/frame = 15000 paise = ₹150.00
     const frameCalc = calculateGamingCharge({
@@ -441,5 +441,140 @@ describe('VAULT POS Acceptance & Financial Correctness Test Suite', () => {
       expect(changeFired).toBe(true);
     }
     unsubscribe();
+  });
+
+  // Acceptance Test 19: Official VAULT flyer pricing verification for PS5 joysticks and Snooker
+  it('Scenario 19: PS5 calculates rates per number of joysticks (1=₹150, 2=₹300, 3=₹400, 4=₹500) and Snooker @ ₹250/hr', () => {
+    const startTime = '2026-10-25T14:00:00Z';
+    const endTime = '2026-10-25T15:00:00Z'; // 1 hour
+
+    // 1 Joystick = ₹150 (15000 paise)
+    const p1 = calculateGamingCharge({
+      gamingType: 'ps5',
+      billingType: 'hourly',
+      startTimeISO: startTime,
+      endTimeISO: endTime,
+      config: DEFAULT_PRICING_CONFIG,
+      controllersCount: 1,
+    });
+    expect(p1.gamingChargePaise).toBe(15000);
+
+    // 2 Joysticks = ₹300 (30000 paise)
+    const p2 = calculateGamingCharge({
+      gamingType: 'ps5',
+      billingType: 'hourly',
+      startTimeISO: startTime,
+      endTimeISO: endTime,
+      config: DEFAULT_PRICING_CONFIG,
+      controllersCount: 2,
+    });
+    expect(p2.gamingChargePaise).toBe(30000);
+
+    // 3 Joysticks = ₹400 (40000 paise)
+    const p3 = calculateGamingCharge({
+      gamingType: 'ps5',
+      billingType: 'hourly',
+      startTimeISO: startTime,
+      endTimeISO: endTime,
+      config: DEFAULT_PRICING_CONFIG,
+      controllersCount: 3,
+    });
+    expect(p3.gamingChargePaise).toBe(40000);
+
+    // 4 Joysticks = ₹500 (50000 paise)
+    const p4 = calculateGamingCharge({
+      gamingType: 'ps5',
+      billingType: 'hourly',
+      startTimeISO: startTime,
+      endTimeISO: endTime,
+      config: DEFAULT_PRICING_CONFIG,
+      controllersCount: 4,
+    });
+    expect(p4.gamingChargePaise).toBe(50000);
+
+    // Snooker @ ₹250/hr (25000 paise)
+    const snooker = calculateGamingCharge({
+      gamingType: 'pool',
+      billingType: 'hourly',
+      startTimeISO: startTime,
+      endTimeISO: endTime,
+      config: DEFAULT_PRICING_CONFIG,
+    });
+    expect(snooker.gamingChargePaise).toBe(25000);
+  });
+
+  // Acceptance Test 20: Station distribution is exactly 3 PS5s and 3 Snookers
+  it('Scenario 20: Station layout contains exactly 3 PS5 stations and 3 Snooker stations', () => {
+    const stations = db.getStations();
+    const ps5s = stations.filter((s) => s.gamingType === 'ps5');
+    const snookers = stations.filter((s) => s.gamingType === 'pool');
+
+    expect(ps5s.length).toBe(3);
+    expect(snookers.length).toBe(3);
+    expect(stations.length).toBe(6);
+  });
+
+  // Acceptance Test 21: Snack inventory stock tracking and removal from active sessions
+  it('Scenario 21: Snack inventory decrements on addition, can be removed, and stock is restored accurately', () => {
+    const initialSnacks = db.getSnacks();
+    const testSnack = initialSnacks.find((s) => s.id === 'snk-1')!;
+    const originalStock = testSnack.stock ?? 20;
+    const availableStation = db.getStations().find((s) => s.status === 'available')!;
+
+    // Start a session with 2 of snk-1
+    const session = db.createSession({
+      customerName: 'Snack Tester',
+      gamingType: availableStation.gamingType,
+      stationId: availableStation.id,
+      billingType: 'hourly',
+      startTimeISO: new Date().toISOString(),
+      controllersCount: 2,
+      initialSnacks: [{ snackId: 'snk-1', quantity: 2 }],
+      actor: empUser,
+    });
+
+    // Stock should be decremented by 2
+    let updatedSnack = db.getSnacks().find((s) => s.id === 'snk-1')!;
+    expect(updatedSnack.stock).toBe(originalStock - 2);
+    expect(session.items.length).toBe(1);
+    expect(session.snackSubtotalPaise).toBe(2 * testSnack.pricePaise);
+
+    // Remove the snack item from the session
+    const itemId = session.items[0].id;
+    const sessionAfterRemoval = db.removeSnackFromSession({
+      sessionId: session.id,
+      itemId,
+      actor: empUser,
+    });
+
+    // Verify session updated
+    expect(sessionAfterRemoval.items.length).toBe(0);
+    expect(sessionAfterRemoval.snackSubtotalPaise).toBe(0);
+
+    // Verify stock is restored
+    updatedSnack = db.getSnacks().find((s) => s.id === 'snk-1')!;
+    expect(updatedSnack.stock).toBe(originalStock);
+  });
+
+  // Acceptance Test 22: Admin can delete snack from catalogue while employee is blocked
+  it('Scenario 22: Admin can delete snack catalogue items; employee access is rejected', () => {
+    const newSnack = db.createSnack(
+      {
+        name: 'Temp Soda',
+        category: 'Beverages',
+        pricePaise: 3000,
+        stock: 10,
+        isActive: true,
+      },
+      adminUser
+    );
+
+    // Employee cannot delete
+    expect(() => db.deleteSnack(newSnack.id, empUser)).toThrow(/Permission denied/);
+
+    // Admin can delete
+    db.deleteSnack(newSnack.id, adminUser);
+    const found = db.getSnacks().find((s) => s.id === newSnack.id);
+    expect(found).toBeUndefined();
   });
 });

@@ -52,6 +52,7 @@ export function calculateGamingCharge(params: {
   endTimeISO?: string | null;
   config: PricingConfig;
   isMultiplayer?: boolean;
+  controllersCount?: number;
   fixedPlanId?: string;
   framesCount?: number;
 }): CalculationResult {
@@ -62,6 +63,7 @@ export function calculateGamingCharge(params: {
     endTimeISO,
     config,
     isMultiplayer,
+    controllersCount,
     fixedPlanId,
     framesCount,
   } = params;
@@ -77,11 +79,11 @@ export function calculateGamingCharge(params: {
       return {
         actualMinutes,
         billedMinutes: plan ? plan.durationMinutes : 60,
-        gamingChargePaise: plan ? plan.pricePaise : 14000,
-        explanation: `Fixed Plan: ${plan ? plan.name : 'Standard'} (₹${((plan ? plan.pricePaise : 14000) / 100).toFixed(0)})`,
+        gamingChargePaise: plan ? plan.pricePaise : 15000,
+        explanation: `Fixed Plan: ${plan ? plan.name : 'Standard'} (₹${((plan ? plan.pricePaise : 15000) / 100).toFixed(0)})`,
       };
     } else {
-      // 8-Ball Pool per-frame billing
+      // Snooker / Pool per-frame billing
       const frames = Math.max(1, framesCount || 1);
       const charge = frames * config.poolPerFrameRatePaise;
       const actualMinutes = endTimeISO
@@ -106,16 +108,23 @@ export function calculateGamingCharge(params: {
   let rateDescription = 'PS5 Standard';
 
   if (gamingType === 'ps5') {
-    if (isMultiplayer) {
-      hourlyRatePaise = config.ps5MultiplayerHourlyRatePaise;
-      rateDescription = 'PS5 Multiplayer (2-4 Players)';
+    const numControllers = controllersCount || (isMultiplayer ? 2 : 1);
+    if (numControllers === 4) {
+      hourlyRatePaise = config.ps5Rate4PlayersPaise || 50000;
+      rateDescription = 'PS5 (4 Controllers / 4 Players)';
+    } else if (numControllers === 3) {
+      hourlyRatePaise = config.ps5Rate3PlayersPaise || 40000;
+      rateDescription = 'PS5 (3 Controllers / 3 Players)';
+    } else if (numControllers === 2) {
+      hourlyRatePaise = config.ps5Rate2PlayersPaise || config.ps5MultiplayerHourlyRatePaise || 30000;
+      rateDescription = 'PS5 (2 Controllers / 2 Players)';
     } else {
-      hourlyRatePaise = config.ps5HourlyRatePaise;
-      rateDescription = 'PS5 Single Player';
+      hourlyRatePaise = config.ps5Rate1PlayerPaise || config.ps5HourlyRatePaise || 15000;
+      rateDescription = 'PS5 (1 Controller / 1 Player)';
     }
   } else {
-    hourlyRatePaise = config.poolHourlyRatePaise;
-    rateDescription = '8-Ball Pool Table';
+    hourlyRatePaise = config.snookerHourlyRatePaise || config.poolHourlyRatePaise || 25000;
+    rateDescription = 'Snooker Table';
   }
 
   // Exact paise calculation: (billedMinutes / 60) * hourlyRatePaise

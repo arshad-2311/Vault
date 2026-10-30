@@ -22,15 +22,17 @@ export const SettingsPage: React.FC = () => {
   const [config, setConfig] = useState<PricingConfig>(() => db.getPricingConfig());
 
   // Form Fields in Rupees
-  const [ps5HourlyRupees, setPs5HourlyRupees] = useState('150');
-  const [ps5MultiplayerRupees, setPs5MultiplayerRupees] = useState('220');
-  const [poolHourlyRupees, setPoolHourlyRupees] = useState('180');
+  const [ps5Rate1PlayerRupees, setPs5Rate1PlayerRupees] = useState('150');
+  const [ps5Rate2PlayersRupees, setPs5Rate2PlayersRupees] = useState('300');
+  const [ps5Rate3PlayersRupees, setPs5Rate3PlayersRupees] = useState('400');
+  const [ps5Rate4PlayersRupees, setPs5Rate4PlayersRupees] = useState('500');
+  const [snookerHourlyRupees, setSnookerHourlyRupees] = useState('250');
   const [poolPerFrameRupees, setPoolPerFrameRupees] = useState('50');
   const [roundingRule, setRoundingRule] = useState<PricingConfig['roundingRule']>('nearest_5');
   const [allowCustomSnacks, setAllowCustomSnacks] = useState(true);
   const [allowPartialPayments, setAllowPartialPayments] = useState(true);
   const [maxEmployeeDiscountRupees, setMaxEmployeeDiscountRupees] = useState('50');
-  const [businessName, setBusinessName] = useState('Vault Gaming Centre & Pool Lounge');
+  const [businessName, setBusinessName] = useState('Vault Gaming Centre & Snooker Lounge');
   const [businessTimezone, setBusinessTimezone] = useState('Asia/Kolkata');
 
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -39,9 +41,11 @@ export const SettingsPage: React.FC = () => {
   useEffect(() => {
     const current = db.getPricingConfig();
     setConfig(current);
-    setPs5HourlyRupees((current.ps5HourlyRatePaise / 100).toString());
-    setPs5MultiplayerRupees((current.ps5MultiplayerHourlyRatePaise / 100).toString());
-    setPoolHourlyRupees((current.poolHourlyRatePaise / 100).toString());
+    setPs5Rate1PlayerRupees(((current.ps5Rate1PlayerPaise || current.ps5HourlyRatePaise || 15000) / 100).toString());
+    setPs5Rate2PlayersRupees(((current.ps5Rate2PlayersPaise || current.ps5MultiplayerHourlyRatePaise || 30000) / 100).toString());
+    setPs5Rate3PlayersRupees(((current.ps5Rate3PlayersPaise || 40000) / 100).toString());
+    setPs5Rate4PlayersRupees(((current.ps5Rate4PlayersPaise || 50000) / 100).toString());
+    setSnookerHourlyRupees(((current.snookerHourlyRatePaise || current.poolHourlyRatePaise || 25000) / 100).toString());
     setPoolPerFrameRupees((current.poolPerFrameRatePaise / 100).toString());
     setRoundingRule(current.roundingRule);
     setAllowCustomSnacks(current.allowCustomSnacks);
@@ -69,14 +73,16 @@ export const SettingsPage: React.FC = () => {
     setError(null);
     setSuccessMessage(null);
 
-    const ps5RatePaise = rupeesToPaise(ps5HourlyRupees);
-    const ps5MultiRatePaise = rupeesToPaise(ps5MultiplayerRupees);
-    const poolRatePaise = rupeesToPaise(poolHourlyRupees);
+    const p1Paise = rupeesToPaise(ps5Rate1PlayerRupees);
+    const p2Paise = rupeesToPaise(ps5Rate2PlayersRupees);
+    const p3Paise = rupeesToPaise(ps5Rate3PlayersRupees);
+    const p4Paise = rupeesToPaise(ps5Rate4PlayersRupees);
+    const snookerRatePaise = rupeesToPaise(snookerHourlyRupees);
     const poolFrameRatePaise = rupeesToPaise(poolPerFrameRupees);
     const maxDiscountPaise = rupeesToPaise(maxEmployeeDiscountRupees);
 
-    if (ps5RatePaise <= 0 || poolRatePaise <= 0) {
-      setError('Hourly rates must be greater than ₹0.');
+    if (p1Paise <= 0 || p2Paise <= 0 || p3Paise <= 0 || p4Paise <= 0 || snookerRatePaise <= 0) {
+      setError('All hourly rates must be greater than ₹0.');
       return;
     }
 
@@ -85,9 +91,14 @@ export const SettingsPage: React.FC = () => {
         {
           businessName: businessName.trim(),
           businessTimezone: businessTimezone.trim(),
-          ps5HourlyRatePaise: ps5RatePaise,
-          ps5MultiplayerHourlyRatePaise: ps5MultiRatePaise,
-          poolHourlyRatePaise: poolRatePaise,
+          ps5HourlyRatePaise: p1Paise,
+          ps5Rate1PlayerPaise: p1Paise,
+          ps5Rate2PlayersPaise: p2Paise,
+          ps5Rate3PlayersPaise: p3Paise,
+          ps5Rate4PlayersPaise: p4Paise,
+          ps5MultiplayerHourlyRatePaise: p2Paise,
+          snookerHourlyRatePaise: snookerRatePaise,
+          poolHourlyRatePaise: snookerRatePaise,
           poolPerFrameRatePaise: poolFrameRatePaise,
           roundingRule,
           allowCustomSnacks,
@@ -192,71 +203,106 @@ export const SettingsPage: React.FC = () => {
         <div className="p-5 rounded-xl bg-slate-900 border border-slate-800 space-y-4">
           <div className="flex items-center gap-2">
             <Gamepad2 className="w-4 h-4 text-red-500" />
-            <h3 className="text-sm font-semibold text-slate-200">PlayStation 5 Rates</h3>
+            <div>
+              <h3 className="text-sm font-semibold text-slate-200">PlayStation 5 Rates (By Number of Joysticks / Players)</h3>
+              <p className="text-3xs text-slate-400">Enforced directly from official VAULT pricing guidelines</p>
+            </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <div>
               <label className="block text-xs font-semibold text-slate-300 mb-1">
-                PS5 Single Player Rate (₹/hour)
+                1 Player (1 Joystick)
               </label>
               <input
                 type="number"
                 required
                 min="1"
                 step="1"
-                value={ps5HourlyRupees}
-                onChange={(e) => setPs5HourlyRupees(e.target.value)}
+                value={ps5Rate1PlayerRupees}
+                onChange={(e) => setPs5Rate1PlayerRupees(e.target.value)}
                 className="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-xs font-mono text-slate-100 focus:border-red-500"
               />
-              <p className="text-3xs text-slate-500 mt-1">Default: ₹150 / hr</p>
+              <p className="text-3xs text-slate-500 mt-1">Flyer: ₹150 / hr</p>
             </div>
 
             <div>
               <label className="block text-xs font-semibold text-slate-300 mb-1">
-                PS5 Multiplayer (2-4 Players) Rate (₹/hour)
+                2 Players (2 Joysticks)
               </label>
               <input
                 type="number"
                 required
                 min="1"
                 step="1"
-                value={ps5MultiplayerRupees}
-                onChange={(e) => setPs5MultiplayerRupees(e.target.value)}
+                value={ps5Rate2PlayersRupees}
+                onChange={(e) => setPs5Rate2PlayersRupees(e.target.value)}
                 className="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-xs font-mono text-slate-100 focus:border-red-500"
               />
-              <p className="text-3xs text-slate-500 mt-1">Default: ₹220 / hr</p>
+              <p className="text-3xs text-slate-500 mt-1">Flyer: ₹300 / hr</p>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 mb-1">
+                3 Players (3 Joysticks)
+              </label>
+              <input
+                type="number"
+                required
+                min="1"
+                step="1"
+                value={ps5Rate3PlayersRupees}
+                onChange={(e) => setPs5Rate3PlayersRupees(e.target.value)}
+                className="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-xs font-mono text-slate-100 focus:border-red-500"
+              />
+              <p className="text-3xs text-slate-500 mt-1">Flyer: ₹400 / hr</p>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 mb-1">
+                4 Players (4 Joysticks)
+              </label>
+              <input
+                type="number"
+                required
+                min="1"
+                step="1"
+                value={ps5Rate4PlayersRupees}
+                onChange={(e) => setPs5Rate4PlayersRupees(e.target.value)}
+                className="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-xs font-mono text-slate-100 focus:border-red-500"
+              />
+              <p className="text-3xs text-slate-500 mt-1">Flyer: ₹500 / hr</p>
             </div>
           </div>
         </div>
 
-        {/* Section 3: 8-Ball Pool Rates */}
+        {/* Section 3: Snooker & 8-Ball Pool Rates */}
         <div className="p-5 rounded-xl bg-slate-900 border border-slate-800 space-y-4">
           <div className="flex items-center gap-2">
             <CircleDot className="w-4 h-4 text-zinc-400" />
-            <h3 className="text-sm font-semibold text-slate-200">8-Ball Pool Rates</h3>
+            <h3 className="text-sm font-semibold text-slate-200">Snooker / 8-Ball Pool Rates</h3>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-semibold text-slate-300 mb-1">
-                Pool Hourly Rate (₹/hour)
+                Snooker Hourly Rate (Monday - Sunday ₹/hour)
               </label>
               <input
                 type="number"
                 required
                 min="1"
                 step="1"
-                value={poolHourlyRupees}
-                onChange={(e) => setPoolHourlyRupees(e.target.value)}
+                value={snookerHourlyRupees}
+                onChange={(e) => setSnookerHourlyRupees(e.target.value)}
                 className="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-xs font-mono text-slate-100 focus:border-brand-500"
               />
-              <p className="text-3xs text-slate-500 mt-1">Default: ₹180 / hr</p>
+              <p className="text-3xs text-slate-500 mt-1">Flyer: ₹250 / hr</p>
             </div>
 
             <div>
               <label className="block text-xs font-semibold text-slate-300 mb-1">
-                Pool Per-Frame Rate (₹/frame)
+                Per-Frame Rate (₹/frame)
               </label>
               <input
                 type="number"

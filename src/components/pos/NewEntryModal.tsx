@@ -44,7 +44,8 @@ export const NewEntryModal: React.FC<NewEntryModalProps> = ({
   const [gamingType, setGamingType] = useState<'ps5' | 'pool'>('ps5');
   const [stationId, setStationId] = useState('');
   const [billingType, setBillingType] = useState<'hourly' | 'fixed'>('hourly');
-  const [isMultiplayer, setIsMultiplayer] = useState(false);
+  const [controllersCount, setControllersCount] = useState<number>(2);
+  const [isMultiplayer, setIsMultiplayer] = useState(true);
   const [fixedPlanId, setFixedPlanId] = useState('');
   const [framesCount, setFramesCount] = useState(1);
   const [notes, setNotes] = useState('');
@@ -164,11 +165,17 @@ export const NewEntryModal: React.FC<NewEntryModalProps> = ({
   } else {
     // 1 hour standard estimate
     if (gamingType === 'ps5') {
-      estimatedInitialBasePaise = isMultiplayer
-        ? pricingConfig.ps5MultiplayerHourlyRatePaise
-        : pricingConfig.ps5HourlyRatePaise;
+      if (controllersCount === 4) {
+        estimatedInitialBasePaise = pricingConfig.ps5Rate4PlayersPaise || 50000;
+      } else if (controllersCount === 3) {
+        estimatedInitialBasePaise = pricingConfig.ps5Rate3PlayersPaise || 40000;
+      } else if (controllersCount === 2) {
+        estimatedInitialBasePaise = pricingConfig.ps5Rate2PlayersPaise || pricingConfig.ps5MultiplayerHourlyRatePaise || 30000;
+      } else {
+        estimatedInitialBasePaise = pricingConfig.ps5Rate1PlayerPaise || pricingConfig.ps5HourlyRatePaise || 15000;
+      }
     } else {
-      estimatedInitialBasePaise = pricingConfig.poolHourlyRatePaise;
+      estimatedInitialBasePaise = pricingConfig.snookerHourlyRatePaise || pricingConfig.poolHourlyRatePaise || 25000;
     }
   }
 
@@ -204,7 +211,8 @@ export const NewEntryModal: React.FC<NewEntryModalProps> = ({
         stationId,
         billingType,
         startTimeISO,
-        isMultiplayer: gamingType === 'ps5' ? isMultiplayer : false,
+        controllersCount: gamingType === 'ps5' ? controllersCount : undefined,
+        isMultiplayer: gamingType === 'ps5' ? controllersCount > 1 : false,
         fixedPlanId: billingType === 'fixed' && gamingType === 'ps5' ? fixedPlanId : undefined,
         framesCount: billingType === 'fixed' && gamingType === 'pool' ? framesCount : undefined,
         initialSnacks,
@@ -332,7 +340,7 @@ export const NewEntryModal: React.FC<NewEntryModalProps> = ({
               }`}
             >
               <CircleDot className="w-4 h-4 text-red-400" />
-              <span>8-Ball Pool</span>
+              <span>Snooker Table</span>
             </button>
           </div>
         </div>
@@ -347,7 +355,7 @@ export const NewEntryModal: React.FC<NewEntryModalProps> = ({
             className="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-slate-100 text-sm focus:border-red-500 outline-none"
           >
             {availableStationsOfType.length === 0 ? (
-              <option value="">No {gamingType.toUpperCase()} stations available</option>
+              <option value="">No {gamingType === 'pool' ? 'SNOOKER' : 'PS5'} stations available</option>
             ) : (
               availableStationsOfType.map((st) => (
                 <option key={st.id} value={st.id}>
@@ -393,30 +401,55 @@ export const NewEntryModal: React.FC<NewEntryModalProps> = ({
         {billingType === 'hourly' && (
           <div className="pt-2 border-t border-slate-800/80">
             {gamingType === 'ps5' ? (
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-medium text-slate-200">
-                    {isMultiplayer ? 'PS5 Multiplayer (2-4 Players)' : 'PS5 Single Player'}
-                  </p>
-                  <p className="text-2xs text-slate-400 font-mono">
-                    Rate: {formatRupees(isMultiplayer ? pricingConfig.ps5MultiplayerHourlyRatePaise : pricingConfig.ps5HourlyRatePaise)}/hr
-                  </p>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-medium text-slate-300">
+                    Number of Players / Joysticks (VAULT Rate):
+                  </label>
+                  <span className="text-2xs font-mono font-bold text-red-400">
+                    {controllersCount === 1 && `1 Player — ${formatRupees(pricingConfig.ps5Rate1PlayerPaise || 15000)}/hr`}
+                    {controllersCount === 2 && `2 Players — ${formatRupees(pricingConfig.ps5Rate2PlayersPaise || 30000)}/hr`}
+                    {controllersCount === 3 && `3 Players — ${formatRupees(pricingConfig.ps5Rate3PlayersPaise || 40000)}/hr`}
+                    {controllersCount === 4 && `4 Players — ${formatRupees(pricingConfig.ps5Rate4PlayersPaise || 50000)}/hr`}
+                  </span>
                 </div>
-                <label className="flex items-center gap-2 cursor-pointer text-xs text-slate-300 select-none">
-                  <input
-                    type="checkbox"
-                    checked={isMultiplayer}
-                    onChange={(e) => setIsMultiplayer(e.target.checked)}
-                    className="w-4 h-4 rounded bg-slate-900 border-slate-700 text-red-600 focus:ring-red-500"
-                  />
-                  <span>Multiplayer (+₹70/hr)</span>
-                </label>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  {[
+                    { count: 1, label: '1 Joystick', sub: '1 Player', rate: pricingConfig.ps5Rate1PlayerPaise || 15000 },
+                    { count: 2, label: '2 Joysticks', sub: '2 Players', rate: pricingConfig.ps5Rate2PlayersPaise || 30000 },
+                    { count: 3, label: '3 Joysticks', sub: '3 Players', rate: pricingConfig.ps5Rate3PlayersPaise || 40000 },
+                    { count: 4, label: '4 Joysticks', sub: '4 Players', rate: pricingConfig.ps5Rate4PlayersPaise || 50000 },
+                  ].map((opt) => (
+                    <button
+                      key={opt.count}
+                      type="button"
+                      onClick={() => {
+                        setControllersCount(opt.count);
+                        setIsMultiplayer(opt.count > 1);
+                      }}
+                      className={`p-2 rounded-lg border text-center transition-all ${
+                        controllersCount === opt.count
+                          ? 'bg-red-600/25 border-red-500 text-white shadow-sm'
+                          : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-200'
+                      }`}
+                    >
+                      <div className="text-xs font-bold">{opt.label}</div>
+                      <div className="text-3xs text-slate-400">{opt.sub}</div>
+                      <div className="text-xs font-mono font-bold text-red-400 mt-0.5">
+                        {formatRupees(opt.rate)}/h
+                      </div>
+                    </button>
+                  ))}
+                </div>
               </div>
             ) : (
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-slate-300">Standard Pool Table Rate</span>
-                <span className="font-semibold text-red-400 font-mono">
-                  {formatRupees(pricingConfig.poolHourlyRatePaise)} / hour
+              <div className="flex items-center justify-between text-xs py-1">
+                <div>
+                  <span className="text-slate-200 font-medium block">Snooker Table Rate</span>
+                  <span className="text-3xs text-slate-400 font-mono">Monday - Sunday standard rate</span>
+                </div>
+                <span className="font-bold text-red-400 font-mono text-sm">
+                  {formatRupees(pricingConfig.snookerHourlyRatePaise || pricingConfig.poolHourlyRatePaise || 25000)} / hour
                 </span>
               </div>
             )}
@@ -574,23 +607,44 @@ export const NewEntryModal: React.FC<NewEntryModalProps> = ({
             </div>
 
             {/* Snacks Grid */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-36 overflow-y-auto pr-1">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-40 overflow-y-auto pr-1">
               {filteredSnacks.map((snk) => {
                 const qty = selectedSnacks[snk.id] || 0;
+                const isOutOfStock = snk.stock !== undefined && snk.stock <= 0;
+                const isLowStock = snk.stock !== undefined && snk.stock > 0 && snk.stock <= (snk.lowStockThreshold ?? 5);
+                const isMaxReached = snk.stock !== undefined && qty >= snk.stock;
+
                 return (
                   <div
                     key={snk.id}
                     className={`p-2 rounded-lg border text-left flex flex-col justify-between ${
-                      qty > 0
+                      isOutOfStock
+                        ? 'bg-slate-950/60 border-slate-900 opacity-60'
+                        : qty > 0
                         ? 'bg-red-950/30 border-red-600/50'
                         : 'bg-slate-900 border-slate-800'
                     }`}
                   >
                     <div>
                       <p className="text-2xs font-medium text-slate-200 truncate">{snk.name}</p>
-                      <p className="text-3xs font-mono text-slate-400">
-                        {formatRupees(snk.pricePaise)}
-                      </p>
+                      <div className="flex items-center justify-between mt-0.5">
+                        <span className="text-3xs font-mono text-slate-400">
+                          {formatRupees(snk.pricePaise)}
+                        </span>
+                        {snk.stock !== undefined && (
+                          <span
+                            className={`text-3xs font-mono font-semibold px-1 rounded ${
+                              isOutOfStock
+                                ? 'bg-red-950 text-red-400 border border-red-800/60'
+                                : isLowStock
+                                ? 'bg-amber-950/80 text-amber-300 border border-amber-800/60'
+                                : 'text-slate-500'
+                            }`}
+                          >
+                            {isOutOfStock ? 'Out of stock' : `${snk.stock} left`}
+                          </span>
+                        )}
+                      </div>
                     </div>
                     <div className="flex items-center justify-between mt-1.5 pt-1 border-t border-slate-800/60">
                       <button
@@ -605,7 +659,8 @@ export const NewEntryModal: React.FC<NewEntryModalProps> = ({
                       <button
                         type="button"
                         onClick={() => handleSnackQtyChange(snk.id, 1)}
-                        className="w-7 h-7 sm:w-6 sm:h-6 rounded bg-slate-800 flex items-center justify-center text-slate-400 hover:text-white"
+                        disabled={isOutOfStock || isMaxReached}
+                        className="w-7 h-7 sm:w-6 sm:h-6 rounded bg-slate-800 flex items-center justify-center text-slate-400 hover:text-white disabled:opacity-30"
                       >
                         <Plus className="w-3.5 h-3.5" />
                       </button>
