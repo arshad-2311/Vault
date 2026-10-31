@@ -1,12 +1,12 @@
 -- Seed Data for Vault Gaming POS
 
 INSERT INTO public.stations (id, name, gaming_type, status, display_order) VALUES
-('ps5-1', 'PS5 Station 01 (4K OLED)', 'ps5', 'available', 1),
-('ps5-2', 'PS5 Station 02 (4K OLED)', 'ps5', 'available', 2),
-('ps5-3', 'PS5 Station 03 (Gaming Chair)', 'ps5', 'available', 3),
-('pool-1', 'Snooker Table 01 (Tournament)', 'pool', 'available', 4),
-('pool-2', 'Snooker Table 02 (Standard)', 'pool', 'available', 5),
-('pool-3', 'Snooker Table 03 (Standard)', 'pool', 'available', 6)
+('ps5-1', 'PS5 Station 1', 'ps5', 'available', 1),
+('ps5-2', 'PS5 Station 2', 'ps5', 'available', 2),
+('ps5-3', 'PS5 Station 3', 'ps5', 'available', 3),
+('pool-1', 'Snooker Table 1', 'pool', 'available', 4),
+('pool-2', 'Snooker Table 2', 'pool', 'available', 5),
+('pool-3', 'Snooker Table 3', 'pool', 'available', 6)
 ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, gaming_type = EXCLUDED.gaming_type;
 
 INSERT INTO public.products (id, name, category, price_paise, is_active) VALUES

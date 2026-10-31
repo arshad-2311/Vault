@@ -8,11 +8,13 @@ import {
   User as UserIcon,
   LogOut,
   Plus,
+  ShoppingBag,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
 interface NavbarProps {
   onOpenNewEntry?: () => void;
+  onOpenWalkInPos?: () => void;
   stations?: any[];
   mobileMenuOpen?: boolean;
   onToggleMobileMenu?: () => void;
@@ -20,6 +22,7 @@ interface NavbarProps {
 
 export const Navbar: React.FC<NavbarProps> = ({
   onOpenNewEntry,
+  onOpenWalkInPos,
   mobileMenuOpen,
   onToggleMobileMenu,
 }) => {
@@ -41,9 +44,11 @@ export const Navbar: React.FC<NavbarProps> = ({
           </button>
         )}
         <div className="flex items-center gap-2.5">
-          <div className="flex items-center justify-center w-8 h-8 rounded bg-red-600 text-white font-black shadow-sm">
-            <Gamepad2 className="w-4 h-4 stroke-[2.5]" />
-          </div>
+          <img
+            src="/vault-logo.png"
+            alt="VAULT 147"
+            className="w-8 h-8 object-contain shrink-0"
+          />
           <div className="flex items-baseline gap-1.5">
             <span className="text-base font-black tracking-wider text-white font-microgramma">VAULT 147</span>
             <span className="text-2xs text-red-500 font-microgramma font-bold tracking-widest">POS</span>
@@ -51,8 +56,19 @@ export const Navbar: React.FC<NavbarProps> = ({
         </div>
       </div>
 
-      {/* Right Controls: Start Session [+] & Profile Switch */}
+      {/* Right Controls: Walk-in Snacks, Start Session [+], & Profile Switch */}
       <div className="flex items-center gap-2">
+        {onOpenWalkInPos && (
+          <button
+            type="button"
+            onClick={onOpenWalkInPos}
+            className="flex items-center justify-center w-8 h-8 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-300 hover:text-white transition-colors"
+            title="Walk-in Snack Sale"
+          >
+            <ShoppingBag className="w-4 h-4 text-red-500" />
+          </button>
+        )}
+
         {onOpenNewEntry && (
           <button
             type="button"

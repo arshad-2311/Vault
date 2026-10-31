@@ -80,8 +80,12 @@ export const LoginPage: React.FC<LoginPageProps> = ({ sessionExpiredMessage }) =
       <div className="w-full max-w-md space-y-6">
         {/* Brand Header */}
         <div className="text-center space-y-2">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-red-600 shadow-xl shadow-red-950/60 mb-2">
-            <Gamepad2 className="w-7 h-7 text-white stroke-[2.5]" />
+          <div className="flex items-center justify-center mb-2">
+            <img
+              src="/vault-logo.png"
+              alt="VAULT 147"
+              className="w-16 h-16 object-contain drop-shadow-[0_0_20px_rgba(220,38,38,0.35)]"
+            />
           </div>
           <div className="flex items-center justify-center gap-2">
             <span className="text-2xl font-black tracking-wider text-white font-microgramma">VAULT 147</span>

@@ -133,12 +133,12 @@ export const DEFAULT_PRICING_CONFIG: PricingConfig = {
 };
 
 export const INITIAL_STATIONS: Station[] = [
-  { id: 'ps5-1', name: 'PS5 Station 01 (4K OLED)', gamingType: 'ps5', status: 'occupied', activeSessionId: 'sess-active-1', displayOrder: 1 },
-  { id: 'ps5-2', name: 'PS5 Station 02 (4K OLED)', gamingType: 'ps5', status: 'available', activeSessionId: null, displayOrder: 2 },
-  { id: 'ps5-3', name: 'PS5 Station 03 (Gaming Chair)', gamingType: 'ps5', status: 'available', activeSessionId: null, displayOrder: 3 },
-  { id: 'pool-1', name: 'Snooker Table 01 (Tournament)', gamingType: 'pool', status: 'occupied', activeSessionId: 'sess-active-2', displayOrder: 4 },
-  { id: 'pool-2', name: 'Snooker Table 02 (Match Table)', gamingType: 'pool', status: 'available', activeSessionId: null, displayOrder: 5 },
-  { id: 'pool-3', name: 'Snooker Table 03 (Classic Table)', gamingType: 'pool', status: 'available', activeSessionId: null, displayOrder: 6 },
+  { id: 'ps5-1', name: 'PS5 Station 1', gamingType: 'ps5', status: 'occupied', activeSessionId: 'sess-active-1', displayOrder: 1 },
+  { id: 'ps5-2', name: 'PS5 Station 2', gamingType: 'ps5', status: 'available', activeSessionId: null, displayOrder: 2 },
+  { id: 'ps5-3', name: 'PS5 Station 3', gamingType: 'ps5', status: 'available', activeSessionId: null, displayOrder: 3 },
+  { id: 'pool-1', name: 'Snooker Table 1', gamingType: 'pool', status: 'occupied', activeSessionId: 'sess-active-2', displayOrder: 4 },
+  { id: 'pool-2', name: 'Snooker Table 2', gamingType: 'pool', status: 'available', activeSessionId: null, displayOrder: 5 },
+  { id: 'pool-3', name: 'Snooker Table 3', gamingType: 'pool', status: 'available', activeSessionId: null, displayOrder: 6 },
 ];
 
 export const INITIAL_USERS: User[] = [
@@ -197,7 +197,7 @@ function generateInitialSessions(): Session[] {
       customerPhone: '9876543210',
       gamingType: 'ps5',
       stationId: 'ps5-2',
-      stationName: 'PS5 Station 02 (4K OLED)',
+      stationName: 'PS5 Station 2',
       billingType: 'hourly',
       isMultiplayer: false,
       startTime: todayMorning,
@@ -264,7 +264,7 @@ function generateInitialSessions(): Session[] {
       customerPhone: '9822334455',
       gamingType: 'pool',
       stationId: 'pool-2',
-      stationName: 'Snooker Table 02 (Match Table)',
+      stationName: 'Snooker Table 2',
       billingType: 'hourly',
       startTime: new Date(now.getTime() - 150 * 60 * 1000).toISOString(),
       endTime: new Date(now.getTime() - 90 * 60 * 1000).toISOString(),
@@ -320,7 +320,7 @@ function generateInitialSessions(): Session[] {
       customerPhone: '9811223344',
       gamingType: 'ps5',
       stationId: 'ps5-3',
-      stationName: 'PS5 Station 03 (Gaming Chair)',
+      stationName: 'PS5 Station 3',
       billingType: 'fixed',
       fixedPlanId: 'plan-1h',
       fixedPlanName: '1-Hour Fixed Pass',
@@ -377,7 +377,7 @@ function generateInitialSessions(): Session[] {
       customerPhone: '9711223344',
       gamingType: 'ps5',
       stationId: 'ps5-1',
-      stationName: 'PS5 Station 01 (4K OLED)',
+      stationName: 'PS5 Station 1',
       billingType: 'hourly',
       controllersCount: 2,
       isMultiplayer: true,
@@ -418,7 +418,7 @@ function generateInitialSessions(): Session[] {
       customerPhone: '9844556677',
       gamingType: 'pool',
       stationId: 'pool-1',
-      stationName: 'Snooker Table 01 (Tournament)',
+      stationName: 'Snooker Table 1',
       billingType: 'hourly',
       startTime: twentyMinsAgo,
       endTime: null,
@@ -951,9 +951,26 @@ class PosStorageEngine {
     const raw = safeStorage.getItem(STORAGE_KEYS.STATIONS);
     const stations: Station[] = raw ? JSON.parse(raw) : INITIAL_STATIONS;
 
+    // Clean any legacy station names like (4K OLED), (Gaming Chair), (Tournament), etc.
+    let namesModified = false;
+    stations.forEach((st) => {
+      const cleaned = st.name
+        .replace(/\s*\((4K OLED|Gaming Chair|Tournament|Match Table|Classic Table|OLED)[^)]*\)/gi, '')
+        .replace(/Station 0(\d)/g, 'Station $1')
+        .replace(/Table 0(\d)/g, 'Table $1')
+        .trim();
+      if (st.name !== cleaned) {
+        st.name = cleaned;
+        namesModified = true;
+      }
+    });
+
     // Single source of truth: synchronize station status with actual active sessions
     const sessionsRaw = safeStorage.getItem(STORAGE_KEYS.SESSIONS);
-    if (!sessionsRaw) return stations;
+    if (!sessionsRaw) {
+      if (namesModified) safeStorage.setItem(STORAGE_KEYS.STATIONS, JSON.stringify(stations));
+      return stations;
+    }
 
     try {
       const sessions: Session[] = JSON.parse(sessionsRaw);
@@ -964,7 +981,7 @@ class PosStorageEngine {
         }
       });
 
-      let modified = false;
+      let modified = namesModified;
       const synced = stations.map((st) => {
         if (st.status === 'maintenance') return st;
         const active = activeByStation.get(st.id);
@@ -1579,6 +1596,230 @@ class PosStorageEngine {
     } finally {
       this.inFlightCheckouts.delete(sessionId);
     }
+  }
+
+  /**
+   * Creates a completed sale record for a walk-in snack/drink customer (no gaming station needed).
+   */
+  createWalkInSnackSale(params: {
+    customerName?: string;
+    customerPhone?: string;
+    items: Array<{ snackId: string; quantity: number }>;
+    discountPaise?: number;
+    discountReason?: string;
+    paymentMethod: 'gpay' | 'cash' | 'split';
+    gpayAmountPaise: number;
+    cashAmountPaise: number;
+    notes?: string;
+    actor: User;
+  }): Session {
+    const {
+      customerName = 'Walk-in Customer',
+      customerPhone,
+      items,
+      discountPaise = 0,
+      discountReason,
+      paymentMethod,
+      gpayAmountPaise,
+      cashAmountPaise,
+      notes,
+      actor,
+    } = params;
+
+    if (!items || items.length === 0) {
+      throw new Error('Please select at least one snack or drink.');
+    }
+
+    const allSnacks = this.getSnacks();
+    const sessionItems: SessionItem[] = [];
+    const sessionId = `snk-sale-${Date.now()}`;
+    let snackSubtotalPaise = 0;
+    let inventoryChanged = false;
+
+    for (const it of items) {
+      if (it.quantity <= 0) continue;
+      const product = allSnacks.find((s) => s.id === it.snackId);
+      if (!product) continue;
+
+      const lineTotal = product.pricePaise * it.quantity;
+      snackSubtotalPaise += lineTotal;
+
+      sessionItems.push({
+        id: `it-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+        sessionId,
+        productId: product.id,
+        name: product.name,
+        quantity: it.quantity,
+        unitPricePaise: product.pricePaise,
+        lineTotalPaise: lineTotal,
+        isCustom: false,
+      });
+
+      // Deduct inventory stock
+      if (product.stock !== undefined) {
+        product.stock = Math.max(0, product.stock - it.quantity);
+        inventoryChanged = true;
+      }
+    }
+
+    if (sessionItems.length === 0) {
+      throw new Error('No valid items were selected.');
+    }
+
+    if (inventoryChanged) {
+      safeStorage.setItem(STORAGE_KEYS.SNACKS, JSON.stringify(allSnacks));
+    }
+
+    const billBreakdown = calculateFinalBill({
+      gamingChargePaise: 0,
+      snackSubtotalPaise,
+      discountPaise,
+    });
+
+    const config = this.getPricingConfig();
+    const paymentValidation = validatePaymentAmounts({
+      method: paymentMethod,
+      finalBillPaise: billBreakdown.finalBillPaise,
+      gpayAmountPaise,
+      cashAmountPaise,
+      allowPartial: config.allowPartialPayments,
+    });
+
+    if (!paymentValidation.isValid) {
+      throw new Error(paymentValidation.error || 'Payment validation failed.');
+    }
+
+    const nowISO = new Date().toISOString();
+    const paymentRecord: PaymentRecord = {
+      id: `pay-${Date.now()}`,
+      sessionId,
+      method: paymentMethod,
+      gpayAmountPaise,
+      cashAmountPaise,
+      totalReceivedPaise: gpayAmountPaise + cashAmountPaise,
+      finalBillPaise: billBreakdown.finalBillPaise,
+      outstandingBalancePaise: paymentValidation.outstandingBalancePaise,
+      changeDuePaise: paymentValidation.changeDuePaise,
+      recordedBy: actor.id,
+      recordedByName: actor.displayName,
+      timestamp: nowISO,
+      status: paymentValidation.paymentStatus,
+      notes,
+    };
+
+    const walkInSession: Session = {
+      id: sessionId,
+      customerName: customerName.trim() || 'Walk-in Customer',
+      customerPhone: customerPhone?.trim() || undefined,
+      gamingType: 'pool',
+      stationId: 'station-walk-in',
+      stationName: 'Walk-in Snack Counter',
+      billingType: 'fixed',
+      startTime: nowISO,
+      endTime: nowISO,
+      durationMinutes: 0,
+      status: 'completed',
+      rateSnapshot: {
+        description: 'Walk-in Snack Purchase',
+        roundingPolicy: 'exact',
+      },
+      gamingChargePaise: 0,
+      items: sessionItems,
+      snackSubtotalPaise,
+      discountPaise: billBreakdown.discountPaise,
+      discountReason,
+      finalBillPaise: billBreakdown.finalBillPaise,
+      payment: paymentRecord,
+      createdBy: actor.id,
+      createdByName: actor.displayName,
+      completedBy: actor.id,
+      completedByName: actor.displayName,
+      notes,
+      createdAt: nowISO,
+      updatedAt: nowISO,
+    };
+
+    const sessions = this.getSessions();
+    sessions.unshift(walkInSession);
+    safeStorage.setItem(STORAGE_KEYS.SESSIONS, JSON.stringify(sessions));
+
+    this.addAuditLog({
+      actorId: actor.id,
+      actorName: actor.displayName,
+      actorRole: actor.role,
+      action: 'WALK_IN_SNACK_SALE',
+      entityType: 'session',
+      entityId: sessionId,
+      details: `Walk-in snack sale completed for ${walkInSession.customerName} (${sessionItems.length} item(s)). Total: ₹${(billBreakdown.finalBillPaise / 100).toFixed(0)} via ${paymentMethod.toUpperCase()}`,
+      newState: walkInSession,
+    });
+
+    emitDataChanged();
+    return walkInSession;
+  }
+
+  /**
+   * Switches payment method of a finalized session (e.g. employee mistakenly clicked GPay instead of Cash or vice versa).
+   */
+  switchPaymentMethod(params: {
+    sessionId: string;
+    targetMethod: 'gpay' | 'cash';
+    actor: User;
+  }): Session {
+    const { sessionId, targetMethod, actor } = params;
+    const sessions = this.getSessions();
+    const index = sessions.findIndex((s) => s.id === sessionId);
+    if (index === -1) throw new Error('Session not found.');
+
+    const session = sessions[index];
+    if (session.status !== 'completed' || !session.payment) {
+      throw new Error('Can only switch payment method for finalized sessions.');
+    }
+    if (session.isVoided) {
+      throw new Error('Cannot modify a voided session.');
+    }
+
+    const oldMethod = session.payment.method;
+    if (oldMethod === targetMethod) {
+      return session;
+    }
+
+    const finalBill = session.payment.finalBillPaise;
+    if (targetMethod === 'cash') {
+      session.payment.method = 'cash';
+      session.payment.cashAmountPaise = finalBill;
+      session.payment.gpayAmountPaise = 0;
+      session.payment.totalReceivedPaise = finalBill;
+      session.payment.outstandingBalancePaise = 0;
+      session.payment.changeDuePaise = 0;
+      session.payment.status = 'PAID';
+    } else if (targetMethod === 'gpay') {
+      session.payment.method = 'gpay';
+      session.payment.gpayAmountPaise = finalBill;
+      session.payment.cashAmountPaise = 0;
+      session.payment.totalReceivedPaise = finalBill;
+      session.payment.outstandingBalancePaise = 0;
+      session.payment.changeDuePaise = 0;
+      session.payment.status = 'PAID';
+    }
+
+    session.updatedAt = new Date().toISOString();
+    sessions[index] = session;
+    safeStorage.setItem(STORAGE_KEYS.SESSIONS, JSON.stringify(sessions));
+
+    this.addAuditLog({
+      actorId: actor.id,
+      actorName: actor.displayName,
+      actorRole: actor.role,
+      action: 'PAYMENT_METHOD_SWITCHED',
+      entityType: 'session',
+      entityId: sessionId,
+      details: `Switched payment method from ${oldMethod.toUpperCase()} to ${targetMethod.toUpperCase()} for ${session.customerName} (Bill: ₹${(finalBill / 100).toFixed(0)})`,
+      newState: session,
+    });
+
+    emitDataChanged();
+    return session;
   }
 
   /**

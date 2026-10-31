@@ -10,12 +10,14 @@ import {
   ShieldAlert,
   LogOut,
   X,
+  ShoppingBag,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
 export type NavTab =
   | 'dashboard'
   | 'active-sessions'
+  | 'walk-in-pos'
   | 'transactions'
   | 'snacks'
   | 'settings'
@@ -54,6 +56,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       icon: PlayCircle,
       badge: activeCount > 0 ? activeCount : undefined,
     },
+    { id: 'walk-in-pos', label: 'Walk-in Snack POS', icon: ShoppingBag },
     { id: 'transactions', label: 'Transactions', icon: ReceiptText },
   ];
 
@@ -231,6 +234,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
           {activeCount > 0 && (
             <span className="absolute top-0.5 right-1.5 w-2 h-2 rounded-full bg-red-500 ring-2 ring-[#08080c] animate-pulse" />
           )}
+        </button>
+
+        <button
+          onClick={() => handleTabClick('walk-in-pos')}
+          className={`flex flex-col items-center py-1 px-3 text-2xs transition-colors ${
+            activeTab === 'walk-in-pos' ? 'text-red-400 font-bold' : 'text-slate-400'
+          }`}
+        >
+          <ShoppingBag className="w-4 h-4 mb-0.5" />
+          <span>Snack POS</span>
         </button>
 
         <button

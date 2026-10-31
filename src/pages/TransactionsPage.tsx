@@ -52,6 +52,27 @@ export const TransactionsPage: React.FC = () => {
     setSessions(db.getSessions());
   };
 
+  const handleSwitchPaymentMethod = (sessionId: string, targetMethod: 'gpay' | 'cash') => {
+    const s = sessions.find((item) => item.id === sessionId);
+    const targetLabel = targetMethod === 'cash' ? 'Cash' : 'GPay / UPI';
+    if (!window.confirm(`Switch payment method for ${s ? s.customerName : 'this transaction'} to ${targetLabel}?`)) {
+      return;
+    }
+    try {
+      const updated = db.switchPaymentMethod({
+        sessionId,
+        targetMethod,
+        actor: currentUser,
+      });
+      loadData();
+      if (selectedSession && selectedSession.id === sessionId) {
+        setSelectedSession(updated);
+      }
+    } catch (err: any) {
+      alert(err.message || 'Failed to switch payment method.');
+    }
+  };
+
   useEffect(() => {
     loadData();
     const handleDataChanged = () => {
@@ -375,7 +396,7 @@ export const TransactionsPage: React.FC = () => {
                     <td className="px-4 py-3 font-sans">
                       {s.payment ? (
                         <div>
-                          <div className="flex items-center gap-1">
+                          <div className="flex items-center gap-1.5 flex-wrap">
                             <Badge
                               variant={
                                 s.payment.method === 'gpay'
@@ -388,6 +409,25 @@ export const TransactionsPage: React.FC = () => {
                             >
                               {s.payment.method.toUpperCase()}
                             </Badge>
+                            {!s.isVoided && s.status === 'completed' && s.payment && s.payment.method !== 'split' && (
+                              <button
+                                type="button"
+                                title={`Accidentally selected wrong method? Click to switch to ${
+                                  s.payment.method === 'gpay' ? 'Cash' : 'GPay'
+                                }`}
+                                onClick={() => {
+                                  if (s.payment) {
+                                    handleSwitchPaymentMethod(
+                                      s.id,
+                                      s.payment.method === 'gpay' ? 'cash' : 'gpay'
+                                    );
+                                  }
+                                }}
+                                className="px-1.5 py-0.5 rounded text-3xs font-mono font-bold border border-zinc-700 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white transition-colors"
+                              >
+                                ⇄ {s.payment.method === 'gpay' ? 'Cash' : 'GPay'}
+                              </button>
+                            )}
                           </div>
                           {s.payment.method === 'split' && (
                             <span className="text-3xs text-slate-400 font-mono block mt-0.5">
@@ -579,40 +619,66 @@ export const TransactionsPage: React.FC = () => {
 
             {/* Payment Record */}
             {selectedSession.payment && (
-              <div className="p-3 rounded-lg bg-slate-950 border border-slate-800 font-mono space-y-1 text-2xs">
-                <span className="text-3xs font-semibold uppercase text-slate-400 block font-sans">
-                  Payment Settlement
-                </span>
-                <div className="flex justify-between">
-                  <span className="text-slate-400">Method:</span>
-                  <span className="text-slate-200 font-semibold uppercase">
-                    {selectedSession.payment.method}
+              <div className="p-3 rounded-lg bg-slate-950 border border-slate-800 font-mono space-y-2 text-2xs">
+                <div className="flex items-center justify-between">
+                  <span className="text-3xs font-semibold uppercase text-slate-400 block font-sans">
+                    Payment Settlement
                   </span>
+                  {!selectedSession.isVoided && selectedSession.status === 'completed' && (
+                    <div className="flex items-center gap-1.5 font-sans">
+                      {selectedSession.payment.method !== 'cash' && (
+                        <button
+                          type="button"
+                          onClick={() => handleSwitchPaymentMethod(selectedSession.id, 'cash')}
+                          className="px-2 py-0.5 rounded bg-zinc-800 hover:bg-zinc-700 text-emerald-400 border border-zinc-700 text-3xs font-semibold transition-colors"
+                        >
+                          ⇄ Switch to Cash
+                        </button>
+                      )}
+                      {selectedSession.payment.method !== 'gpay' && (
+                        <button
+                          type="button"
+                          onClick={() => handleSwitchPaymentMethod(selectedSession.id, 'gpay')}
+                          className="px-2 py-0.5 rounded bg-zinc-800 hover:bg-zinc-700 text-sky-400 border border-zinc-700 text-3xs font-semibold transition-colors"
+                        >
+                          ⇄ Switch to GPay
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-400">GPay Received:</span>
-                  <span className="text-zinc-200 font-semibold">
-                    {formatRupees(selectedSession.payment.gpayAmountPaise)}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-400">Cash Received:</span>
-                  <span className="text-zinc-200 font-semibold">
-                    {formatRupees(selectedSession.payment.cashAmountPaise)}
-                  </span>
-                </div>
-                <div className="flex justify-between font-bold">
-                  <span className="text-slate-300">Total Received:</span>
-                  <span className="text-white">
-                    {formatRupees(selectedSession.payment.totalReceivedPaise)}
-                  </span>
-                </div>
-                {selectedSession.payment.outstandingBalancePaise > 0 && (
-                  <div className="flex justify-between text-red-400 font-bold">
-                    <span>Outstanding Due:</span>
-                    <span>{formatRupees(selectedSession.payment.outstandingBalancePaise)}</span>
+                <div className="space-y-1">
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Method:</span>
+                    <span className="text-slate-200 font-semibold uppercase">
+                      {selectedSession.payment.method}
+                    </span>
                   </div>
-                )}
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">GPay Received:</span>
+                    <span className="text-zinc-200 font-semibold">
+                      {formatRupees(selectedSession.payment.gpayAmountPaise)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Cash Received:</span>
+                    <span className="text-zinc-200 font-semibold">
+                      {formatRupees(selectedSession.payment.cashAmountPaise)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between font-bold">
+                    <span className="text-slate-300">Total Received:</span>
+                    <span className="text-white">
+                      {formatRupees(selectedSession.payment.totalReceivedPaise)}
+                    </span>
+                  </div>
+                  {selectedSession.payment.outstandingBalancePaise > 0 && (
+                    <div className="flex justify-between text-red-400 font-bold">
+                      <span>Outstanding Due:</span>
+                      <span>{formatRupees(selectedSession.payment.outstandingBalancePaise)}</span>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
 

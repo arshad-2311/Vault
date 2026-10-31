@@ -31,7 +31,7 @@ export default {
       fontFamily: {
         microgramma: ['"Microgramma Bold Extended"', '"Microgramma Bold"', 'Microgramma', '"Eurostile Extended"', 'Eurostile', 'Michroma', 'sans-serif'],
         sans: ['Inter', 'ui-sans-serif', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
-        mono: ['JetBrains Mono', 'ui-monospace', 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', 'monospace'],
+        mono: ['Inter', 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', 'sans-serif'],
       },
       fontSize: {
         '2xs': '0.6875rem',

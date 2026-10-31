@@ -45,9 +45,14 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     overflow-x: hidden;
+    font-feature-settings: "zero" 0;
   }
 
-  /* Force tabular numbers for all prices and financial figures */
+  /* Force clean non-dotted zeros and tabular numbers for financial figures */
+  *, .font-mono, .tabular-nums {
+    font-feature-settings: "zero" 0;
+  }
+
   .tabular-nums {
     font-variant-numeric: tabular-nums;
   }

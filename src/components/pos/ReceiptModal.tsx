@@ -76,6 +76,11 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
         >
           {/* Header */}
           <div className="text-center pb-3 border-b border-dashed border-slate-700">
+            <img
+              src="/vault-logo.png"
+              alt="VAULT 147"
+              className="w-10 h-10 object-contain mx-auto mb-1.5"
+            />
             <h3 className="font-extrabold text-base tracking-widest text-white">VAULT 147</h3>
             <p className="text-3xs text-slate-400 tracking-wider">PS5 & 8-BALL SNOOKER LOUNGE</p>
             <p className="text-3xs text-slate-500 mt-1">Receipt ID: {session.id}</p>
@@ -97,15 +102,21 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
               </div>
             )}
             <div className="flex justify-between">
-              <span className="text-slate-400">Station / Table:</span>
+              <span className="text-slate-400">
+                {session.stationId === 'station-walk-in' ? 'Order Type:' : 'Station / Table:'}
+              </span>
               <span className="font-semibold text-slate-200">
-                {session.stationName} ({session.gamingType.toUpperCase()})
+                {session.stationId === 'station-walk-in'
+                  ? 'Walk-in Counter Purchase'
+                  : `${session.stationName} (${session.gamingType.toUpperCase()})`}
               </span>
             </div>
-            <div className="flex justify-between">
-              <span className="text-slate-400">Billed Duration:</span>
-              <span>{formatDuration(session.durationMinutes)}</span>
-            </div>
+            {session.stationId !== 'station-walk-in' && (
+              <div className="flex justify-between">
+                <span className="text-slate-400">Billed Duration:</span>
+                <span>{formatDuration(session.durationMinutes)}</span>
+              </div>
+            )}
             <div className="flex justify-between">
               <span className="text-slate-400">Staff Operator:</span>
               <span>{session.completedByName || session.createdByName}</span>
@@ -118,12 +129,14 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
               <span>Description</span>
               <span>Amount</span>
             </div>
-            <div className="flex justify-between text-2xs">
-              <span className="truncate max-w-[200px]">
-                Gaming ({session.rateSnapshot?.description || session.gamingType.toUpperCase()})
-              </span>
-              <span className="font-semibold">{formatRupees(session.gamingChargePaise)}</span>
-            </div>
+            {session.gamingChargePaise > 0 && (
+              <div className="flex justify-between text-2xs">
+                <span className="truncate max-w-[200px]">
+                  Gaming ({session.rateSnapshot?.description || session.gamingType.toUpperCase()})
+                </span>
+                <span className="font-semibold">{formatRupees(session.gamingChargePaise)}</span>
+              </div>
+            )}
             {session.items.map((it) => (
               <div key={it.id} className="flex justify-between text-2xs text-slate-400 pl-2">
                 <span>

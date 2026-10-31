@@ -5,14 +5,15 @@
 
 export function formatRupees(paise: number | undefined | null): string {
   if (paise === undefined || paise === null || isNaN(paise)) {
-    return '₹0.00';
+    return '₹0';
   }
   const rupees = paise / 100;
+  const isWhole = rupees % 1 === 0;
   return new Intl.NumberFormat('en-IN', {
     style: 'currency',
     currency: 'INR',
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
+    minimumFractionDigits: isWhole ? 0 : 2,
+    maximumFractionDigits: isWhole ? 0 : 2,
   }).format(rupees);
 }
 

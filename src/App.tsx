@@ -11,6 +11,7 @@ import { DashboardPage } from './pages/DashboardPage';
 import { ActiveSessionsPage } from './pages/ActiveSessionsPage';
 import { TransactionsPage } from './pages/TransactionsPage';
 import { SnacksPage } from './pages/SnacksPage';
+import { WalkInSnackPosPage } from './pages/WalkInSnackPosPage';
 import { ReportsPage } from './pages/ReportsPage';
 import { CashClosingPage } from './pages/CashClosingPage';
 import { EmployeesPage } from './pages/EmployeesPage';
@@ -135,6 +136,7 @@ export const AppContent: React.FC = () => {
           setPreselectedStationId(null);
           setNewEntryOpen(true);
         }}
+        onOpenWalkInPos={() => setActiveTab('walk-in-pos')}
         stations={stations}
         mobileMenuOpen={mobileMenuOpen}
         onToggleMobileMenu={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -198,9 +200,15 @@ export const AppContent: React.FC = () => {
                   />
                 )}
 
+                {activeTab === 'walk-in-pos' && (
+                  <WalkInSnackPosPage onPrintReceipt={handlePrintReceipt} />
+                )}
+
                 {activeTab === 'transactions' && <TransactionsPage />}
 
-                {activeTab === 'snacks' && <SnacksPage />}
+                {activeTab === 'snacks' && (
+                  <SnacksPage onOpenWalkInPos={() => setActiveTab('walk-in-pos')} />
+                )}
 
                 {activeTab === 'reports' && <ReportsPage />}
 

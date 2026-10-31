@@ -146,6 +146,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   // Quick payment method selectors
   const handleSetMethod = (method: PaymentMethod) => {
     setPaymentMethod(method);
+    setError(null);
     const exactBillStr = formatPaiseToInputRupees(billBreakdown.finalBillPaise);
 
     if (method === 'gpay') {
@@ -647,6 +648,30 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                 <span>Split</span>
               </button>
             </div>
+          </div>
+
+          {/* Quick Accidental Switch Pill */}
+          <div className="flex items-center justify-between text-2xs p-2 rounded-lg bg-zinc-900/60 border border-zinc-800">
+            <span className="text-zinc-400">Accidental click?</span>
+            {paymentMethod === 'gpay' ? (
+              <button
+                type="button"
+                onClick={() => handleSetMethod('cash')}
+                className="px-2.5 py-1 rounded-md bg-zinc-800 hover:bg-zinc-700 text-red-400 hover:text-red-300 font-bold font-mono transition-colors flex items-center gap-1.5"
+              >
+                <span>⇄ Switch to Cash</span>
+              </button>
+            ) : paymentMethod === 'cash' ? (
+              <button
+                type="button"
+                onClick={() => handleSetMethod('gpay')}
+                className="px-2.5 py-1 rounded-md bg-zinc-800 hover:bg-zinc-700 text-red-400 hover:text-red-300 font-bold font-mono transition-colors flex items-center gap-1.5"
+              >
+                <span>⇄ Switch to GPay / UPI</span>
+              </button>
+            ) : (
+              <span className="text-3xs text-zinc-500 font-mono">Split payment active</span>
+            )}
           </div>
 
           {/* Payment Inputs */}

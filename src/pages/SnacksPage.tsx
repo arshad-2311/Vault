@@ -12,6 +12,7 @@ import {
   Filter,
   Boxes,
   AlertTriangle,
+  ShoppingBag,
 } from 'lucide-react';
 import { SnackItem } from '../types';
 import { Button } from '../components/common/Button';
@@ -21,7 +22,11 @@ import { useAuth } from '../context/AuthContext';
 import { db } from '../services/storage';
 import { formatRupees, rupeesToPaise, paiseToRupees } from '../utils/formatters';
 
-export const SnacksPage: React.FC = () => {
+interface SnacksPageProps {
+  onOpenWalkInPos?: () => void;
+}
+
+export const SnacksPage: React.FC<SnacksPageProps> = ({ onOpenWalkInPos }) => {
   const { currentUser, isAdmin } = useAuth();
   const [snacks, setSnacks] = useState<SnackItem[]>(() => db.getSnacks());
   const [search, setSearch] = useState('');
@@ -172,21 +177,34 @@ export const SnacksPage: React.FC = () => {
           </p>
         </div>
 
-        {isAdmin ? (
-          <Button
-            variant="primary"
-            size="md"
-            onClick={handleOpenAdd}
-            leftIcon={<Plus className="w-4 h-4" />}
-            className="font-semibold"
-          >
-            Add New Item
-          </Button>
-        ) : (
-          <Badge variant="neutral" size="md">
-            VIEW ONLY (STAFF)
-          </Badge>
-        )}
+        <div className="flex items-center gap-2 flex-wrap">
+          {onOpenWalkInPos && (
+            <Button
+              variant="secondary"
+              size="md"
+              onClick={onOpenWalkInPos}
+              leftIcon={<ShoppingBag className="w-4 h-4 text-red-500" />}
+              className="font-semibold"
+            >
+              Walk-in Snack Sale
+            </Button>
+          )}
+          {isAdmin ? (
+            <Button
+              variant="primary"
+              size="md"
+              onClick={handleOpenAdd}
+              leftIcon={<Plus className="w-4 h-4" />}
+              className="font-semibold"
+            >
+              Add New Item
+            </Button>
+          ) : (
+            <Badge variant="neutral" size="md">
+              VIEW ONLY (STAFF)
+            </Badge>
+          )}
+        </div>
       </div>
 
       {/* Stock Reminder Banner */}
