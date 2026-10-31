@@ -79,18 +79,17 @@ export const LoginPage: React.FC<LoginPageProps> = ({ sessionExpiredMessage }) =
     <div className="min-h-screen bg-[#060608] flex flex-col justify-center items-center p-4 sm:p-6 text-zinc-100 font-sans select-none">
       <div className="w-full max-w-md space-y-6">
         {/* Brand Header */}
-        <div className="text-center space-y-2">
-          <div className="flex items-center justify-center mb-2">
+        <div className="text-center space-y-3">
+          <div className="flex items-center justify-center">
             <img
-              src="/vault-logo.png"
+              src="/vault-logo-full.png"
               alt="VAULT 147"
-              className="w-16 h-16 object-contain drop-shadow-[0_0_20px_rgba(220,38,38,0.35)]"
+              className="w-48 sm:w-56 h-auto object-contain drop-shadow-[0_0_25px_rgba(220,38,38,0.35)]"
             />
           </div>
-          <div className="flex items-center justify-center gap-2">
-            <span className="text-2xl font-black tracking-wider text-white font-microgramma">VAULT 147</span>
-            <span className="text-xs text-red-500 font-microgramma font-bold tracking-widest px-1.5 py-0.5 rounded bg-red-950/60 border border-red-900/60">
-              POS
+          <div className="flex items-center justify-center">
+            <span className="text-2xs text-red-500 font-mono font-bold tracking-widest px-2.5 py-0.5 rounded bg-red-950/60 border border-red-900/60">
+              STAFF POS TERMINAL
             </span>
           </div>
           <p className="text-xs text-zinc-400 font-medium">

@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import {
-  Gamepad2,
   ChevronDown,
   Shield,
   Menu,
@@ -43,16 +42,15 @@ export const Navbar: React.FC<NavbarProps> = ({
             {mobileMenuOpen ? <X className="w-5 h-5 text-red-500" /> : <Menu className="w-5 h-5" />}
           </button>
         )}
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2">
           <img
-            src="/vault-logo.png"
+            src="/vault-logo-horizontal.png"
             alt="VAULT 147"
-            className="w-8 h-8 object-contain shrink-0"
+            className="h-8 sm:h-9 w-auto object-contain shrink-0"
           />
-          <div className="flex items-baseline gap-1.5">
-            <span className="text-base font-black tracking-wider text-white font-microgramma">VAULT 147</span>
-            <span className="text-2xs text-red-500 font-microgramma font-bold tracking-widest">POS</span>
-          </div>
+          <span className="text-3xs text-red-500 font-mono font-bold tracking-widest px-1.5 py-0.5 rounded bg-red-950/60 border border-red-900/60 hidden xs:inline-block">
+            POS
+          </span>
         </div>
       </div>
 

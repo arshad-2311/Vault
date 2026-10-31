@@ -714,3 +714,4 @@ export const WalkInSnackPosPage: React.FC<WalkInSnackPosPageProps> = ({ onPrintR
     </div>
   );
 };
+

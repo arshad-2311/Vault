@@ -77,11 +77,10 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
           {/* Header */}
           <div className="text-center pb-3 border-b border-dashed border-slate-700">
             <img
-              src="/vault-logo.png"
+              src="/vault-logo-full.png"
               alt="VAULT 147"
-              className="w-10 h-10 object-contain mx-auto mb-1.5"
+              className="w-32 h-auto object-contain mx-auto mb-2"
             />
-            <h3 className="font-extrabold text-base tracking-widest text-white">VAULT 147</h3>
             <p className="text-3xs text-slate-400 tracking-wider">PS5 & 8-BALL SNOOKER LOUNGE</p>
             <p className="text-3xs text-slate-500 mt-1">Receipt ID: {session.id}</p>
             <p className="text-3xs text-slate-500">

@@ -195,10 +195,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
           />
           <aside className="relative w-64 max-w-[80vw] bg-[#08080c] border-r border-red-950/40 h-full flex flex-col justify-between p-1 z-10 shadow-2xl animate-in slide-in-from-left duration-200">
             <div className="flex items-center justify-between p-2.5 border-b border-white/[0.06]">
-              <span className="text-xs font-bold font-mono text-white flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-red-500" />
-                <span>VAULT 147 MENU</span>
-              </span>
+              <div className="flex items-center gap-2">
+                <img
+                  src="/vault-logo-horizontal.png"
+                  alt="VAULT 147"
+                  className="h-6 w-auto object-contain"
+                />
+              </div>
               <button
                 onClick={onCloseMobile}
                 className="p-1 rounded text-slate-400 hover:text-white hover:bg-white/[0.06]"
