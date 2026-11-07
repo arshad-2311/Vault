@@ -269,7 +269,7 @@ export const WalkInSnackPosPage: React.FC<WalkInSnackPosPageProps> = ({ onPrintR
         {lastCompletedSale && (
           <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-emerald-950/60 border border-emerald-800/80 text-emerald-300 text-xs">
             <CheckCircle className="w-4 h-4 text-emerald-400" />
-            <span>Sale recorded: {formatRupees(lastCompletedSale.finalBillPaise)}</span>
+            <span>Sale recorded & synced to cloud: {formatRupees(lastCompletedSale.finalBillPaise)}</span>
             <button
               type="button"
               onClick={() => onPrintReceipt?.(lastCompletedSale)}

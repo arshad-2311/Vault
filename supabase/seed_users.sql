@@ -130,3 +130,4 @@ BEGIN
     is_active = EXCLUDED.is_active;
 
 END $$;
+

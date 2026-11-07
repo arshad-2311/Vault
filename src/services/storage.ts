@@ -16,6 +16,7 @@ import {
   validatePaymentAmounts,
 } from '../utils/pricing';
 import { formatRupees, formatDateTime } from '../utils/formatters';
+import { syncSessionToSupabase } from './supabase';
 
 export interface UserCredential {
   userId: string;
@@ -1320,6 +1321,9 @@ class PosStorageEngine {
     });
 
     emitDataChanged();
+    try {
+      syncSessionToSupabase(newSession).catch(() => {});
+    } catch {}
     return newSession;
   }
 
@@ -1393,6 +1397,9 @@ class PosStorageEngine {
     });
 
     emitDataChanged();
+    try {
+      syncSessionToSupabase(session).catch(() => {});
+    } catch {}
     return session;
   }
 
@@ -1451,6 +1458,9 @@ class PosStorageEngine {
     });
 
     emitDataChanged();
+    try {
+      syncSessionToSupabase(session).catch(() => {});
+    } catch {}
     return session;
   }
 
@@ -1597,6 +1607,9 @@ class PosStorageEngine {
       });
 
       emitDataChanged();
+      try {
+        syncSessionToSupabase(session).catch(() => {});
+      } catch {}
       return session;
     } finally {
       this.inFlightCheckouts.delete(sessionId);
@@ -1760,6 +1773,9 @@ class PosStorageEngine {
     });
 
     emitDataChanged();
+    try {
+      syncSessionToSupabase(walkInSession).catch(() => {});
+    } catch {}
     return walkInSession;
   }
 
@@ -1824,6 +1840,9 @@ class PosStorageEngine {
     });
 
     emitDataChanged();
+    try {
+      syncSessionToSupabase(session).catch(() => {});
+    } catch {}
     return session;
   }
 
@@ -1874,6 +1893,9 @@ class PosStorageEngine {
     });
 
     emitDataChanged();
+    try {
+      syncSessionToSupabase(session).catch(() => {});
+    } catch {}
     return session;
   }
 

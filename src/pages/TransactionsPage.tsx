@@ -13,6 +13,7 @@ import {
   ShieldAlert,
   Printer,
   Clock,
+  Cloud,
 } from 'lucide-react';
 import { Session, PaymentMethod, GamingType } from '../types';
 import { Button } from '../components/common/Button';
@@ -22,6 +23,7 @@ import { ReceiptModal } from '../components/pos/ReceiptModal';
 import { useAuth } from '../context/AuthContext';
 import { db, VAULT_DATA_CHANGED_EVENT } from '../services/storage';
 import { formatRupees, formatDateTime, formatDuration, maskPhoneNumber } from '../utils/formatters';
+import { syncAllSessionsToSupabase } from '../services/supabase';
 
 export const TransactionsPage: React.FC = () => {
   const { currentUser, isAdmin } = useAuth();
@@ -47,6 +49,27 @@ export const TransactionsPage: React.FC = () => {
   const [voidModalOpen, setVoidModalOpen] = useState(false);
   const [voidReason, setVoidReason] = useState('');
   const [voidError, setVoidError] = useState<string | null>(null);
+
+  // Cloud Sync State
+  const [isSyncing, setIsSyncing] = useState(false);
+
+  const handleSyncToCloud = async () => {
+    setIsSyncing(true);
+    try {
+      const res = await syncAllSessionsToSupabase(sessions);
+      if (res.synced > 0 && res.failed === 0) {
+        alert(`Successfully synced ${res.synced} transaction(s) to Supabase Cloud!`);
+      } else if (res.failed > 0) {
+        alert(`Synced ${res.synced} transaction(s). ${res.failed} failed. Tip: Run supabase/enable_cloud_sync.sql in Supabase SQL Editor if RLS blocks.`);
+      } else {
+        alert('No sessions to sync or Supabase is not configured.');
+      }
+    } catch (err: any) {
+      alert(`Sync error: ${err.message || 'Unknown error'}`);
+    } finally {
+      setIsSyncing(false);
+    }
+  };
 
   const loadData = () => {
     setSessions(db.getSessions());
@@ -166,15 +189,27 @@ export const TransactionsPage: React.FC = () => {
           </p>
         </div>
 
-        <Button
-          variant="secondary"
-          size="md"
-          onClick={handleExportCSV}
-          leftIcon={<Download className="w-4 h-4 text-zinc-300" />}
-          className="font-medium"
-        >
-          Export Filtered CSV ({filtered.length})
-        </Button>
+        <div className="flex items-center gap-2 flex-wrap">
+          <Button
+            variant="secondary"
+            size="md"
+            onClick={handleSyncToCloud}
+            disabled={isSyncing}
+            leftIcon={<Cloud className={`w-4 h-4 text-sky-400 ${isSyncing ? 'animate-pulse' : ''}`} />}
+            className="font-medium"
+          >
+            {isSyncing ? 'Syncing...' : 'Sync to Cloud'}
+          </Button>
+          <Button
+            variant="secondary"
+            size="md"
+            onClick={handleExportCSV}
+            leftIcon={<Download className="w-4 h-4 text-zinc-300" />}
+            className="font-medium"
+          >
+            Export Filtered CSV ({filtered.length})
+          </Button>
+        </div>
       </div>
 
       {/* Filter Toolbar with generous touch targets and spacing */}
