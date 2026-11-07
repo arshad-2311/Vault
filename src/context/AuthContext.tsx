@@ -137,20 +137,32 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children, initialUse
       let authenticatedUser: User;
 
       if (isSupabaseConfigured && supabase) {
-        const { user: authUser } = await supabaseSignIn(email, password);
-        if (!authUser) throw new Error('Authentication failed.');
-        const profile = await supabaseGetUserProfile(authUser.id);
-        const mappedUser: User = {
-          id: authUser.id,
-          email: authUser.email || email,
-          displayName: profile?.display_name || authUser.email?.split('@')[0] || 'Staff',
-          role: profile?.role || 'employee',
-          isActive: profile?.is_active ?? true,
-          createdAt: authUser.created_at || new Date().toISOString(),
-          lastLoginAt: new Date().toISOString(),
-        };
-        db.setCurrentUser(mappedUser);
-        authenticatedUser = mappedUser;
+        try {
+          const { user: authUser } = await supabaseSignIn(email, password);
+          if (authUser) {
+            const profile = await supabaseGetUserProfile(authUser.id);
+            const mappedUser: User = {
+              id: authUser.id,
+              email: authUser.email || email,
+              displayName: profile?.display_name || authUser.email?.split('@')[0] || 'Staff',
+              role: profile?.role || 'employee',
+              isActive: profile?.is_active ?? true,
+              createdAt: authUser.created_at || new Date().toISOString(),
+              lastLoginAt: new Date().toISOString(),
+            };
+            db.setCurrentUser(mappedUser);
+            authenticatedUser = mappedUser;
+          } else {
+            throw new Error('Authentication failed.');
+          }
+        } catch (supabaseErr: any) {
+          // Fallback to local user authentication if the account only exists in local directory
+          try {
+            authenticatedUser = await db.authenticateUser(email, password);
+          } catch {
+            throw supabaseErr;
+          }
+        }
       } else {
         authenticatedUser = await db.authenticateUser(email, password);
       }

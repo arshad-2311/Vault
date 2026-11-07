@@ -10,12 +10,15 @@ import {
   CheckCircle2,
   AlertTriangle,
   Lock,
+  Database,
 } from 'lucide-react';
 import { PricingConfig, FixedPricingPlan } from '../types';
 import { Button } from '../components/common/Button';
+import { Badge } from '../components/common/Badge';
 import { useAuth } from '../context/AuthContext';
 import { db } from '../services/storage';
 import { formatRupees, rupeesToPaise } from '../utils/formatters';
+import { getSupabaseStatus } from '../services/supabase';
 
 export const SettingsPage: React.FC = () => {
   const { currentUser, isAdmin } = useAuth();
@@ -409,6 +412,52 @@ export const SettingsPage: React.FC = () => {
             </label>
           </div>
         </div>
+
+        {/* Database & Cloud Architecture Status */}
+        {(() => {
+          const sbStatus = getSupabaseStatus();
+          return (
+            <div className="p-4 sm:p-5 rounded-xl bg-slate-900/60 border border-slate-800 space-y-3">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+                <div className="flex items-center gap-2.5">
+                  <div className="p-2 rounded-lg bg-red-950/60 border border-red-800/80 text-red-400">
+                    <Database className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h2 className="text-sm font-bold text-white uppercase tracking-wider font-mono">
+                      Supabase Cloud Database & Auth
+                    </h2>
+                    <p className="text-3xs text-slate-400">
+                      PostgreSQL 15+ backend synchronization & cloud credentials
+                    </p>
+                  </div>
+                </div>
+
+                <Badge variant={sbStatus.configured ? 'success' : 'neutral'} size="sm">
+                  {sbStatus.configured ? 'LIVE SUPABASE CONNECTED' : 'OFFLINE LOCAL STORAGE'}
+                </Badge>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs font-mono">
+                <div className="p-3 rounded-lg bg-slate-950 border border-slate-800">
+                  <span className="text-3xs text-slate-500 uppercase block mb-1">Target Endpoint</span>
+                  <span className="text-slate-200 text-2xs truncate block">{sbStatus.url}</span>
+                </div>
+                <div className="p-3 rounded-lg bg-slate-950 border border-slate-800">
+                  <span className="text-3xs text-slate-500 uppercase block mb-1">Publishable / Anon API Key</span>
+                  <span className="text-emerald-400 text-2xs font-semibold">
+                    {sbStatus.hasKey ? 'Key Installed & Active' : 'No Key Detected'}
+                  </span>
+                </div>
+              </div>
+
+              <p className="text-3xs text-slate-500">
+                Tip: When running online, staff authenticate against Supabase Auth. Run{' '}
+                <code className="text-red-400 font-mono">supabase/full_schema_setup.sql</code> in your Supabase SQL Editor to provision all tables.
+              </p>
+            </div>
+          );
+        })()}
 
         <div className="flex items-center justify-end">
           <Button
