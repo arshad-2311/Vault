@@ -478,3 +478,90 @@ ON CONFLICT (id) DO UPDATE SET
   ps5_multiplayer_hourly_rate_paise = EXCLUDED.ps5_multiplayer_hourly_rate_paise,
   business_name = EXCLUDED.business_name;
 
+-- --------------------------------------------------------------------------------------
+-- 6. SEED AUTH USERS & PROFILES
+-- --------------------------------------------------------------------------------------
+
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
+DO $$
+DECLARE
+  admin_id UUID := 'a0000000-0000-0000-0000-000000000001';
+  rahul_id UUID := 'a0000000-0000-0000-0000-000000000002';
+  priya_id UUID := 'a0000000-0000-0000-0000-000000000003';
+BEGIN
+  -- 1. Admin: Vikram Sethi (admin@vaultgaming.in / vault147admin)
+  IF NOT EXISTS (SELECT 1 FROM auth.users WHERE email = 'admin@vaultgaming.in') THEN
+    INSERT INTO auth.users (
+      instance_id, id, aud, role, email, encrypted_password,
+      email_confirmed_at, recovery_sent_at, last_sign_in_at,
+      raw_app_meta_data, raw_user_meta_data, created_at, updated_at,
+      confirmation_token, email_change, email_change_token_new, recovery_token
+    ) VALUES (
+      '00000000-0000-0000-0000-000000000000', admin_id, 'authenticated', 'authenticated',
+      'admin@vaultgaming.in', crypt('vault147admin', gen_salt('bf')),
+      now(), now(), now(),
+      '{"provider":"email","providers":["email"]}'::jsonb,
+      '{"display_name":"Vikram Sethi (Admin)","role":"admin"}'::jsonb,
+      now(), now(), '', '', '', ''
+    );
+  ELSE
+    UPDATE auth.users
+    SET encrypted_password = crypt('vault147admin', gen_salt('bf')), email_confirmed_at = now()
+    WHERE email = 'admin@vaultgaming.in';
+  END IF;
+
+  -- 2. Staff: Rahul Sharma (rahul@vaultgaming.in / vault147staff)
+  IF NOT EXISTS (SELECT 1 FROM auth.users WHERE email = 'rahul@vaultgaming.in') THEN
+    INSERT INTO auth.users (
+      instance_id, id, aud, role, email, encrypted_password,
+      email_confirmed_at, recovery_sent_at, last_sign_in_at,
+      raw_app_meta_data, raw_user_meta_data, created_at, updated_at,
+      confirmation_token, email_change, email_change_token_new, recovery_token
+    ) VALUES (
+      '00000000-0000-0000-0000-000000000000', rahul_id, 'authenticated', 'authenticated',
+      'rahul@vaultgaming.in', crypt('vault147staff', gen_salt('bf')),
+      now(), now(), now(),
+      '{"provider":"email","providers":["email"]}'::jsonb,
+      '{"display_name":"Rahul Sharma","role":"employee"}'::jsonb,
+      now(), now(), '', '', '', ''
+    );
+  ELSE
+    UPDATE auth.users
+    SET encrypted_password = crypt('vault147staff', gen_salt('bf')), email_confirmed_at = now()
+    WHERE email = 'rahul@vaultgaming.in';
+  END IF;
+
+  -- 3. Staff: Priya Patel (priya@vaultgaming.in / vault147staff)
+  IF NOT EXISTS (SELECT 1 FROM auth.users WHERE email = 'priya@vaultgaming.in') THEN
+    INSERT INTO auth.users (
+      instance_id, id, aud, role, email, encrypted_password,
+      email_confirmed_at, recovery_sent_at, last_sign_in_at,
+      raw_app_meta_data, raw_user_meta_data, created_at, updated_at,
+      confirmation_token, email_change, email_change_token_new, recovery_token
+    ) VALUES (
+      '00000000-0000-0000-0000-000000000000', priya_id, 'authenticated', 'authenticated',
+      'priya@vaultgaming.in', crypt('vault147staff', gen_salt('bf')),
+      now(), now(), now(),
+      '{"provider":"email","providers":["email"]}'::jsonb,
+      '{"display_name":"Priya Patel","role":"employee"}'::jsonb,
+      now(), now(), '', '', '', ''
+    );
+  ELSE
+    UPDATE auth.users
+    SET encrypted_password = crypt('vault147staff', gen_salt('bf')), email_confirmed_at = now()
+    WHERE email = 'priya@vaultgaming.in';
+  END IF;
+
+  -- 4. Ensure matching public profiles
+  INSERT INTO public.profiles (id, email, display_name, role, is_active)
+  VALUES 
+    ((SELECT id FROM auth.users WHERE email = 'admin@vaultgaming.in'), 'admin@vaultgaming.in', 'Vikram Sethi (Admin)', 'admin', true),
+    ((SELECT id FROM auth.users WHERE email = 'rahul@vaultgaming.in'), 'rahul@vaultgaming.in', 'Rahul Sharma', 'employee', true),
+    ((SELECT id FROM auth.users WHERE email = 'priya@vaultgaming.in'), 'priya@vaultgaming.in', 'Priya Patel', 'employee', true)
+  ON CONFLICT (id) DO UPDATE SET
+    role = EXCLUDED.role, display_name = EXCLUDED.display_name, is_active = EXCLUDED.is_active;
+
+END $$;
+
+

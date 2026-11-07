@@ -71,7 +71,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ sessionExpiredMessage }) =
 
   const handleQuickSelectEmail = (quickEmail: string) => {
     setEmail(quickEmail);
-    setPassword('');
+    setPassword(quickEmail.includes('admin') ? 'vault147admin' : 'vault147staff');
     setError(null);
   };
 
