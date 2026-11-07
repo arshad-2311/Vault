@@ -60,7 +60,8 @@ export const TransactionsPage: React.FC = () => {
       if (res.synced > 0 && res.failed === 0) {
         alert(`Successfully synced ${res.synced} transaction(s) to Supabase Cloud!`);
       } else if (res.failed > 0) {
-        alert(`Synced ${res.synced} transaction(s). ${res.failed} failed. Tip: Run supabase/enable_cloud_sync.sql in Supabase SQL Editor if RLS blocks.`);
+        const errorDetail = res.error ? `\n\nSupabase response:\n"${res.error}"` : '';
+        alert(`Synced ${res.synced} transaction(s). ${res.failed} failed.${errorDetail}\n\nTo fix: Run the SQL in Supabase SQL Editor.`);
       } else {
         alert('No sessions to sync or Supabase is not configured.');
       }

@@ -61,3 +61,4 @@ DROP POLICY IF EXISTS "Authenticated users can read products" ON public.products
 DROP POLICY IF EXISTS "Allow read products" ON public.products;
 CREATE POLICY "Allow read products" ON public.products
   FOR SELECT TO anon, authenticated USING (true);
+

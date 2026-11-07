@@ -200,14 +200,19 @@ export async function syncAllSessionsToSupabase(sessions: Session[]): Promise<{
 
   let synced = 0;
   let failed = 0;
+  let lastError: string | undefined = undefined;
+
   for (const s of sessions) {
     const res = await syncSessionToSupabase(s);
     if (res.success) {
       synced++;
     } else {
       failed++;
+      if (res.error && !lastError) {
+        lastError = res.error;
+      }
     }
   }
 
-  return { total: sessions.length, synced, failed };
+  return { total: sessions.length, synced, failed, error: lastError };
 }
