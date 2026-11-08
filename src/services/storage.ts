@@ -146,7 +146,7 @@ export const INITIAL_USERS: User[] = [
   {
     id: 'usr-admin-1',
     email: 'admin@vaultgaming.in',
-    displayName: 'Vikram Sethi (Admin)',
+    displayName: 'Ruwaidh (Admin)',
     role: 'admin',
     isActive: true,
     createdAt: '2026-10-01T10:00:00Z',
@@ -490,8 +490,23 @@ class PosStorageEngine {
   }
 
   private init() {
-    if (!safeStorage.getItem(STORAGE_KEYS.USERS)) {
+    const usersRaw = safeStorage.getItem(STORAGE_KEYS.USERS);
+    if (!usersRaw) {
       safeStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(INITIAL_USERS));
+    } else {
+      try {
+        const users: User[] = JSON.parse(usersRaw);
+        let updated = false;
+        users.forEach((u) => {
+          if (u.id === 'usr-admin-1' && (u.displayName.includes('Vikram') || u.displayName !== 'Ruwaidh (Admin)')) {
+            u.displayName = 'Ruwaidh (Admin)';
+            updated = true;
+          }
+        });
+        if (updated) {
+          safeStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(users));
+        }
+      } catch {}
     }
     if (!safeStorage.getItem(STORAGE_KEYS.CREDENTIALS)) {
       safeStorage.setItem(STORAGE_KEYS.CREDENTIALS, JSON.stringify(INITIAL_CREDENTIALS));
@@ -535,7 +550,7 @@ class PosStorageEngine {
         {
           id: 'log-init-1',
           actorId: 'usr-admin-1',
-          actorName: 'Vikram Sethi (Admin)',
+          actorName: 'Ruwaidh (Admin)',
           actorRole: 'admin',
           action: 'SYSTEM_INITIALIZED',
           entityType: 'pricing',
@@ -546,8 +561,17 @@ class PosStorageEngine {
       ];
       safeStorage.setItem(STORAGE_KEYS.AUDIT_LOGS, JSON.stringify(initialLogs));
     }
-    if (!safeStorage.getItem(STORAGE_KEYS.CURRENT_USER)) {
+    const curRaw = safeStorage.getItem(STORAGE_KEYS.CURRENT_USER);
+    if (!curRaw) {
       safeStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(INITIAL_USERS[0]));
+    } else {
+      try {
+        const cur: User = JSON.parse(curRaw);
+        if (cur.id === 'usr-admin-1' && (cur.displayName.includes('Vikram') || cur.displayName !== 'Ruwaidh (Admin)')) {
+          cur.displayName = 'Ruwaidh (Admin)';
+          safeStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(cur));
+        }
+      } catch {}
     }
   }
 

@@ -149,7 +149,7 @@ describe('UI Pages & Modals Rendering Integrity Test Suite', () => {
     );
 
     expect(html).toContain('Staff &amp; Employee Management');
-    expect(html).toContain('Vikram Sethi');
+    expect(html).toContain('Ruwaidh');
   });
 
   it('renders SettingsPage pricing and policies form', () => {

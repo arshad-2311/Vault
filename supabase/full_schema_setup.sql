@@ -490,7 +490,7 @@ DECLARE
   rahul_id UUID := 'a0000000-0000-0000-0000-000000000002';
   priya_id UUID := 'a0000000-0000-0000-0000-000000000003';
 BEGIN
-  -- 1. Admin: Vikram Sethi (admin@vaultgaming.in / vault147admin)
+  -- 1. Admin: Ruwaidh (admin@vaultgaming.in / vault147admin)
   IF NOT EXISTS (SELECT 1 FROM auth.users WHERE email = 'admin@vaultgaming.in') THEN
     INSERT INTO auth.users (
       instance_id, id, aud, role, email, encrypted_password,
@@ -502,7 +502,7 @@ BEGIN
       'admin@vaultgaming.in', crypt('vault147admin', gen_salt('bf')),
       now(), now(), now(),
       '{"provider":"email","providers":["email"]}'::jsonb,
-      '{"display_name":"Vikram Sethi (Admin)","role":"admin"}'::jsonb,
+      '{"display_name":"Ruwaidh (Admin)","role":"admin"}'::jsonb,
       now(), now(), '', '', '', ''
     );
   ELSE
@@ -556,7 +556,7 @@ BEGIN
   -- 4. Ensure matching public profiles
   INSERT INTO public.profiles (id, email, display_name, role, is_active)
   VALUES 
-    ((SELECT id FROM auth.users WHERE email = 'admin@vaultgaming.in'), 'admin@vaultgaming.in', 'Vikram Sethi (Admin)', 'admin', true),
+    ((SELECT id FROM auth.users WHERE email = 'admin@vaultgaming.in'), 'admin@vaultgaming.in', 'Ruwaidh (Admin)', 'admin', true),
     ((SELECT id FROM auth.users WHERE email = 'rahul@vaultgaming.in'), 'rahul@vaultgaming.in', 'Rahul Sharma', 'employee', true),
     ((SELECT id FROM auth.users WHERE email = 'priya@vaultgaming.in'), 'priya@vaultgaming.in', 'Priya Patel', 'employee', true)
   ON CONFLICT (id) DO UPDATE SET

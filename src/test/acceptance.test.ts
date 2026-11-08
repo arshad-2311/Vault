@@ -17,7 +17,7 @@ import { DEFAULT_PRICING_CONFIG, db, INITIAL_USERS, subscribeToDataChanges } fro
 import { SessionItem, User } from '../types';
 
 describe('VAULT POS Acceptance & Financial Correctness Test Suite', () => {
-  const adminUser = INITIAL_USERS[0]; // Vikram Admin
+  const adminUser = INITIAL_USERS[0]; // Ruwaidh Admin
   const empUser = INITIAL_USERS[1]; // Rahul Sharma
 
   beforeEach(() => {

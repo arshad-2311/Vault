@@ -101,7 +101,7 @@ The top-right header contains an interactive **Role Switcher** allowing instant 
 
 | Name | Role | Email | Permissions |
 |---|---|---|---|
-| **Vikram Sethi** | `admin` | `admin@vaultgaming.in` | Full system access, Pricing, Rates, Staff Management, Voids, Audits |
+| **Ruwaidh** | `admin` | `admin@vaultgaming.in` | Full system access, Pricing, Rates, Staff Management, Voids, Audits |
 | **Rahul Sharma** | `employee` | `rahul@vaultgaming.in` | Digital Entry, Active Sessions, Add Snacks, Cash Closing, Checkout |
 | **Priya Patel** | `employee` | `priya@vaultgaming.in` | Digital Entry, Active Sessions, Add Snacks, Cash Closing, Checkout |
 

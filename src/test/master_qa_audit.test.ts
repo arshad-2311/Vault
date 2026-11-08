@@ -5,7 +5,7 @@ import { formatRupees, rupeesToPaise, maskPhoneNumber } from '../utils/formatter
 import { User, Session } from '../types';
 
 describe('VAULT 147 POS — MASTER QUALITY ASSURANCE & END-TO-END AUDIT SUITE', () => {
-  const adminActor: User = INITIAL_USERS[0]; // Vikram (Admin)
+  const adminActor: User = INITIAL_USERS[0]; // Ruwaidh (Admin)
   const employeeActor: User = INITIAL_USERS[1]; // Rahul Sharma (Employee)
 
   beforeEach(() => {

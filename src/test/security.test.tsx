@@ -9,7 +9,7 @@ import { User } from '../types';
 import { maskPhoneNumber } from '../utils/formatters';
 
 describe('VAULT 147 POS — Lightweight Security Layer Verification Suite', () => {
-  const admin = INITIAL_USERS[0]; // Vikram (Admin)
+  const admin = INITIAL_USERS[0]; // Ruwaidh (Admin)
   const employee = INITIAL_USERS[1]; // Rahul (Employee)
 
   beforeEach(() => {
@@ -129,7 +129,7 @@ describe('VAULT 147 POS — Lightweight Security Layer Verification Suite', () =
     it('allows owner/admin to modify pricing configurations and logs audit trail', () => {
       const updated = db.updatePricingConfig(
         { ps5HourlyRatePaise: 16000 },
-        admin // Vikram (Admin)
+        admin // Ruwaidh (Admin)
       );
       expect(updated.ps5HourlyRatePaise).toBe(16000);
 
@@ -322,7 +322,7 @@ describe('VAULT 147 POS — Lightweight Security Layer Verification Suite', () =
       );
 
       expect(html).toContain('Staff: Rahul');
-      expect(html).toContain('Admin: Vikram');
+      expect(html).toContain('Admin: Ruwaidh');
       // Plaintext passwords must NOT be embedded in HTML attributes or labels
       expect(html).not.toContain('vault147admin');
       expect(html).not.toContain('vault147staff');

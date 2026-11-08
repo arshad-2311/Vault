@@ -12,7 +12,7 @@ DECLARE
   priya_id UUID := 'a0000000-0000-0000-0000-000000000003';
 BEGIN
   -- -----------------------------------------------------------------------------------
-  -- 1. Create or Update Admin: Vikram Sethi (admin@vaultgaming.in)
+  -- 1. Create or Update Admin: Ruwaidh (admin@vaultgaming.in)
   -- Password: vault147admin (also works with password123)
   -- -----------------------------------------------------------------------------------
   IF NOT EXISTS (SELECT 1 FROM auth.users WHERE email = 'admin@vaultgaming.in') THEN
@@ -30,7 +30,7 @@ BEGIN
       crypt('vault147admin', gen_salt('bf')),
       now(), now(), now(),
       '{"provider":"email","providers":["email"]}'::jsonb,
-      '{"display_name":"Vikram Sethi (Admin)","role":"admin"}'::jsonb,
+      '{"display_name":"Ruwaidh (Admin)","role":"admin"}'::jsonb,
       now(), now(), '', '', '', ''
     );
   ELSE
@@ -106,7 +106,7 @@ BEGIN
     (
       (SELECT id FROM auth.users WHERE email = 'admin@vaultgaming.in'),
       'admin@vaultgaming.in',
-      'Vikram Sethi (Admin)',
+      'Ruwaidh (Admin)',
       'admin',
       true
     ),

@@ -10,7 +10,7 @@ import {
 import { formatRupees, formatDateTime, formatDateOnly, formatTimeOnly } from '../utils/formatters';
 
 describe('Comprehensive Backend, Storage & Edge Case Test Suite', () => {
-  const admin = INITIAL_USERS[0]; // Vikram Admin
+  const admin = INITIAL_USERS[0]; // Ruwaidh Admin
   const employee = INITIAL_USERS[1]; // Rahul Counter Staff
 
   beforeEach(() => {

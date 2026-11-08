@@ -205,7 +205,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ sessionExpiredMessage }) =
                 className="flex items-center justify-center gap-1.5 px-2.5 py-2 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-2xs text-red-400 hover:text-red-300 transition-colors"
               >
                 <ShieldCheck className="w-3.5 h-3.5 text-red-500" />
-                <span>Admin: Vikram</span>
+                <span>Admin: Ruwaidh</span>
               </button>
             </div>
           </div>
