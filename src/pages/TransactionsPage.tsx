@@ -23,7 +23,7 @@ import { ReceiptModal } from '../components/pos/ReceiptModal';
 import { useAuth } from '../context/AuthContext';
 import { db, VAULT_DATA_CHANGED_EVENT } from '../services/storage';
 import { formatRupees, formatDateTime, formatDuration, maskPhoneNumber } from '../utils/formatters';
-import { syncAllSessionsToSupabase } from '../services/supabase';
+import { syncAllSessionsToSupabase, isSupabaseConfigured } from '../services/supabase';
 
 export const TransactionsPage: React.FC = () => {
   const { currentUser, isAdmin } = useAuth();
@@ -54,6 +54,15 @@ export const TransactionsPage: React.FC = () => {
   const [isSyncing, setIsSyncing] = useState(false);
 
   const handleSyncToCloud = async () => {
+    if (!isSupabaseConfigured) {
+      alert('Supabase is not configured. Please check your Supabase connection.');
+      return;
+    }
+    if (sessions.length === 0) {
+      alert('No closed transactions found on this device to sync.');
+      return;
+    }
+
     setIsSyncing(true);
     try {
       const res = await syncAllSessionsToSupabase(sessions);
@@ -63,7 +72,7 @@ export const TransactionsPage: React.FC = () => {
         const errorDetail = res.error ? `\n\nSupabase response:\n"${res.error}"` : '';
         alert(`Synced ${res.synced} transaction(s). ${res.failed} failed.${errorDetail}\n\nTo fix: Run the SQL in Supabase SQL Editor.`);
       } else {
-        alert('No sessions to sync or Supabase is not configured.');
+        alert('Sync completed with 0 transactions.');
       }
     } catch (err: any) {
       alert(`Sync error: ${err.message || 'Unknown error'}`);
