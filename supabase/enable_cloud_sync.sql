@@ -1,7 +1,7 @@
 -- =====================================================================================
--- VAULT 147 POS: ENABLE CLOUD SYNC & SEED STATIONS IN SUPABASE
+-- VAULT 147 POS: ENABLE CLOUD SYNC & AUTO-CALCULATED DECIMAL RUPEES IN SUPABASE
 -- Run this in Supabase SQL Editor (Dashboard -> SQL Editor -> New Query -> Run)
--- Fixes: "violates foreign key constraint sessions_station_id_fkey"
+-- Adds: Decimal columns (e.g. 150.00 instead of 15000 paise) + Clean Decimal View
 -- =====================================================================================
 
 -- 1. Grant Schema, Table, & Sequence Privileges to anon and authenticated roles
@@ -146,3 +146,65 @@ DROP POLICY IF EXISTS "Allow read profiles" ON public.profiles;
 CREATE POLICY "Allow read profiles" ON public.profiles FOR SELECT TO anon, authenticated USING (true);
 DROP POLICY IF EXISTS "Allow write profiles" ON public.profiles;
 CREATE POLICY "Allow write profiles" ON public.profiles FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
+
+-- -------------------------------------------------------------------------------------
+-- 10. AUTO-GENERATED DECIMAL RUPEES COLUMNS (e.g. 150.00 instead of 15000)
+-- PostgreSQL automatically computes and stores these whenever rows are inserted or synced.
+-- -------------------------------------------------------------------------------------
+
+-- Sessions: Add decimal columns
+ALTER TABLE public.sessions
+  ADD COLUMN IF NOT EXISTS final_bill_rupees NUMERIC(10,2) GENERATED ALWAYS AS (final_bill_paise::numeric / 100.0) STORED,
+  ADD COLUMN IF NOT EXISTS gaming_charge_rupees NUMERIC(10,2) GENERATED ALWAYS AS (gaming_charge_paise::numeric / 100.0) STORED,
+  ADD COLUMN IF NOT EXISTS snack_subtotal_rupees NUMERIC(10,2) GENERATED ALWAYS AS (snack_subtotal_paise::numeric / 100.0) STORED,
+  ADD COLUMN IF NOT EXISTS discount_rupees NUMERIC(10,2) GENERATED ALWAYS AS (discount_paise::numeric / 100.0) STORED;
+
+-- Payments: Add decimal columns
+ALTER TABLE public.payments
+  ADD COLUMN IF NOT EXISTS final_bill_rupees NUMERIC(10,2) GENERATED ALWAYS AS (final_bill_paise::numeric / 100.0) STORED,
+  ADD COLUMN IF NOT EXISTS total_received_rupees NUMERIC(10,2) GENERATED ALWAYS AS (total_received_paise::numeric / 100.0) STORED,
+  ADD COLUMN IF NOT EXISTS gpay_amount_rupees NUMERIC(10,2) GENERATED ALWAYS AS (gpay_amount_paise::numeric / 100.0) STORED,
+  ADD COLUMN IF NOT EXISTS cash_amount_rupees NUMERIC(10,2) GENERATED ALWAYS AS (cash_amount_paise::numeric / 100.0) STORED,
+  ADD COLUMN IF NOT EXISTS outstanding_balance_rupees NUMERIC(10,2) GENERATED ALWAYS AS (outstanding_balance_paise::numeric / 100.0) STORED;
+
+-- Products: Add decimal price column
+ALTER TABLE public.products
+  ADD COLUMN IF NOT EXISTS price_rupees NUMERIC(10,2) GENERATED ALWAYS AS (price_paise::numeric / 100.0) STORED;
+
+-- Session Items: Add decimal price and total columns
+ALTER TABLE public.session_items
+  ADD COLUMN IF NOT EXISTS unit_price_rupees NUMERIC(10,2) GENERATED ALWAYS AS (unit_price_paise::numeric / 100.0) STORED,
+  ADD COLUMN IF NOT EXISTS line_total_rupees NUMERIC(10,2) GENERATED ALWAYS AS (line_total_paise::numeric / 100.0) STORED;
+
+-- -------------------------------------------------------------------------------------
+-- 11. USER-FRIENDLY DECIMAL VIEW FOR SUPABASE TABLE EDITOR
+-- Appears under "Views" in Supabase with clean ₹ currency values
+-- -------------------------------------------------------------------------------------
+CREATE OR REPLACE VIEW public.sessions_decimal_view AS
+SELECT
+  s.id AS session_id,
+  s.customer_name,
+  s.customer_phone,
+  s.gaming_type,
+  s.station_name,
+  s.billing_type,
+  s.start_time,
+  s.end_time,
+  s.duration_minutes,
+  s.status,
+  (s.gaming_charge_paise::numeric / 100.0) AS gaming_charge_rupees,
+  (s.snack_subtotal_paise::numeric / 100.0) AS snack_subtotal_rupees,
+  (s.discount_paise::numeric / 100.0) AS discount_rupees,
+  (s.final_bill_paise::numeric / 100.0) AS final_bill_rupees,
+  p.method AS payment_method,
+  (COALESCE(p.gpay_amount_paise, 0)::numeric / 100.0) AS gpay_paid_rupees,
+  (COALESCE(p.cash_amount_paise, 0)::numeric / 100.0) AS cash_paid_rupees,
+  (COALESCE(p.total_received_paise, 0)::numeric / 100.0) AS total_received_rupees,
+  (COALESCE(p.outstanding_balance_paise, 0)::numeric / 100.0) AS outstanding_rupees,
+  s.created_by_name AS staff_name,
+  s.created_at
+FROM public.sessions s
+LEFT JOIN public.payments p ON p.session_id = s.id
+ORDER BY s.created_at DESC;
+
+GRANT SELECT ON public.sessions_decimal_view TO anon, authenticated, service_role;
