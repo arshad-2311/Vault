@@ -149,9 +149,9 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         </div>
       </div>
 
-      {/* 2. Coherent Sales Summary Bar (4 Distinct Financial Pillars with generous spacing) */}
+      {/* 2. Coherent Sales Summary Bar (Row order: Total Sales + Cash Drawer in Row 1, GPay/UPI + Pending Dues in Row 2) */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-4.5">
-        {/* Total Billed Sales */}
+        {/* Total Billed Sales (Row 1, Col 1) */}
         <div className="p-4 sm:p-5 rounded-xl bg-[#0c0c12] border border-zinc-800/80 shadow-lg shadow-black/40 space-y-1.5">
           <div className="flex items-center justify-between text-zinc-400">
             <span className="text-3xs sm:text-2xs font-mono uppercase tracking-wider text-zinc-400 font-bold">
@@ -167,21 +167,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           </p>
         </div>
 
-        {/* GPay / UPI Collections */}
-        <div className="p-4 sm:p-5 rounded-xl bg-[#0c0c12] border border-zinc-800/80 shadow-lg shadow-black/40 space-y-1.5">
-          <div className="flex items-center justify-between text-zinc-400">
-            <span className="text-3xs sm:text-2xs font-mono uppercase tracking-wider text-zinc-400 font-bold">
-              GPay / UPI
-            </span>
-            <CreditCard className="w-4 h-4 text-zinc-400" />
-          </div>
-          <div className="text-xl sm:text-2xl font-black font-mono tracking-tight text-white tabular-nums">
-            {formatRupees(metrics.gpayCollectionsPaise)}
-          </div>
-          <p className="text-3xs text-zinc-500 font-mono">Digital bank intake</p>
-        </div>
-
-        {/* Physical Cash Collections */}
+        {/* Physical Cash Collections (Row 1, Col 2) */}
         <div className="p-4 sm:p-5 rounded-xl bg-[#0c0c12] border border-zinc-800/80 shadow-lg shadow-black/40 space-y-1.5">
           <div className="flex items-center justify-between text-zinc-400">
             <span className="text-3xs sm:text-2xs font-mono uppercase tracking-wider text-zinc-400 font-bold">
@@ -195,7 +181,21 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           <p className="text-3xs text-zinc-500 font-mono">Cash in register</p>
         </div>
 
-        {/* Outstanding Due */}
+        {/* GPay / UPI Collections (Row 2, Col 1) */}
+        <div className="p-4 sm:p-5 rounded-xl bg-[#0c0c12] border border-zinc-800/80 shadow-lg shadow-black/40 space-y-1.5">
+          <div className="flex items-center justify-between text-zinc-400">
+            <span className="text-3xs sm:text-2xs font-mono uppercase tracking-wider text-zinc-400 font-bold">
+              GPay / UPI
+            </span>
+            <CreditCard className="w-4 h-4 text-zinc-400" />
+          </div>
+          <div className="text-xl sm:text-2xl font-black font-mono tracking-tight text-white tabular-nums">
+            {formatRupees(metrics.gpayCollectionsPaise)}
+          </div>
+          <p className="text-3xs text-zinc-500 font-mono">Digital bank intake</p>
+        </div>
+
+        {/* Outstanding Due (Row 2, Col 2) */}
         <div className="p-4 sm:p-5 rounded-xl bg-[#0c0c12] border border-red-950/60 shadow-lg shadow-black/40 space-y-1.5">
           <div className="flex items-center justify-between text-red-500">
             <span className="text-3xs sm:text-2xs font-mono uppercase tracking-wider text-red-400 font-bold">
@@ -213,12 +213,12 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
       {/* 3. Station Board (Compact, Responsive Grid with Mobile Quick Filter) */}
       <div className="space-y-4 pt-1">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <h2 className="text-xs sm:text-sm font-bold uppercase tracking-wider text-zinc-200 font-microgramma">
+          <div className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-2.5 sm:gap-3 w-full sm:w-auto">
+            <h2 className="text-xs sm:text-sm font-bold uppercase tracking-wider text-zinc-200 font-microgramma whitespace-nowrap">
               Gaming Stations
             </h2>
             {/* Filter pills - Super easy on phone! */}
-            <div className="flex items-center p-1 rounded-xl bg-black/60 border border-white/[0.08] text-xs font-mono gap-1">
+            <div className="flex items-center p-1 rounded-xl bg-black/60 border border-white/[0.08] text-xs font-mono gap-1 shrink-0">
               <button
                 type="button"
                 onClick={() => setStationFilter('all')}
