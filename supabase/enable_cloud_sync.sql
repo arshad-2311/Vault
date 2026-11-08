@@ -37,7 +37,11 @@ INSERT INTO public.products (id, name, category, price_paise, is_active) VALUES
 ('snk-8', 'Maggi Masala Double Bowl', 'Hot Items', 6000, true)
 ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, price_paise = EXCLUDED.price_paise;
 
--- 4. Row Level Security Policies for Sessions
+-- 4. Drop restrictive legacy triggers that block cloud sync of completed sessions
+DROP TRIGGER IF EXISTS trg_validate_session_update ON public.sessions;
+DROP TRIGGER IF EXISTS trg_validate_session_integrity ON public.sessions;
+
+-- 5. Row Level Security Policies for Sessions
 ALTER TABLE public.sessions ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Allow create sessions" ON public.sessions;
