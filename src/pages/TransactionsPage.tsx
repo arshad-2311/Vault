@@ -151,7 +151,7 @@ export const TransactionsPage: React.FC = () => {
   const employees = db.getUsers();
 
   const handleExportCSV = () => {
-    const csvContent = db.exportSessionsToCSV(filtered);
+    const csvContent = db.exportSessionsToCSV(filtered, currentUser);
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');

@@ -17,10 +17,12 @@ import {
 import { DashboardMetrics, Session } from '../types';
 import { Button } from '../components/common/Button';
 import { Badge } from '../components/common/Badge';
+import { useAuth } from '../context/AuthContext';
 import { db, VAULT_DATA_CHANGED_EVENT } from '../services/storage';
 import { formatRupees, getTodayDateString, formatDateOnly } from '../utils/formatters';
 
 export const ReportsPage: React.FC = () => {
+  const { currentUser } = useAuth();
   const [rangeMode, setRangeMode] = useState<'daily' | 'weekly' | 'monthly' | 'custom'>('daily');
   const [selectedDate, setSelectedDate] = useState<string>(getTodayDateString());
   const [customStart, setCustomStart] = useState<string>(getTodayDateString());
@@ -75,7 +77,7 @@ export const ReportsPage: React.FC = () => {
   }, [rangeMode, selectedDate, customStart, customEnd]);
 
   const handleExportCSV = () => {
-    const csvContent = db.exportSessionsToCSV(reportSessions);
+    const csvContent = db.exportSessionsToCSV(reportSessions, currentUser);
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');

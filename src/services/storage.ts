@@ -15,7 +15,7 @@ import {
   calculateFinalBill,
   validatePaymentAmounts,
 } from '../utils/pricing';
-import { formatRupees, formatDateTime } from '../utils/formatters';
+import { formatRupees, formatDateTime, maskPhoneNumber } from '../utils/formatters';
 import { syncSessionToSupabase } from './supabase';
 
 export interface UserCredential {
@@ -652,9 +652,10 @@ class PosStorageEngine {
 
     // Create cryptographically signed auth session
     const sessionToken = generateSecureToken(16);
+    const activeSalt = userCred?.salt || 's4lt_v4ult_general_2026';
     const signature = await hashPassword(
       `${sessionToken}:${user.id}:${user.role}:${user.email}`,
-      userCred.salt
+      activeSalt
     );
     const authSession: AuthSession = {
       token: sessionToken,
@@ -1199,7 +1200,7 @@ class PosStorageEngine {
     }
 
     const config = this.getPricingConfig();
-    const sessionId = `sess-${Date.now()}`;
+    const sessionId = `sess-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
 
     // Prepare snack items with price snapshots and decrement inventory stock
     const items: SessionItem[] = [];
@@ -1554,7 +1555,7 @@ class PosStorageEngine {
       const totalReceivedPaise = gpayAmountPaise + cashAmountPaise;
 
       const paymentRecord: PaymentRecord = {
-        id: `pay-${Date.now()}`,
+        id: `pay-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
         sessionId,
         method: paymentMethod,
         gpayAmountPaise,
@@ -1650,7 +1651,7 @@ class PosStorageEngine {
 
     const allSnacks = this.getSnacks();
     const sessionItems: SessionItem[] = [];
-    const sessionId = `snk-sale-${Date.now()}`;
+    const sessionId = `snk-sale-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
     let snackSubtotalPaise = 0;
     let inventoryChanged = false;
 
@@ -1709,7 +1710,7 @@ class PosStorageEngine {
 
     const nowISO = new Date().toISOString();
     const paymentRecord: PaymentRecord = {
-      id: `pay-${Date.now()}`,
+      id: `pay-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
       sessionId,
       method: paymentMethod,
       gpayAmountPaise,
@@ -1879,6 +1880,24 @@ class PosStorageEngine {
       activeSessionId: null,
     });
 
+    // Restore catalogue inventory stock for consumed snacks upon void
+    if (session.items && session.items.length > 0) {
+      const allSnacks = this.getSnacks();
+      let snacksModified = false;
+      for (const item of session.items) {
+        if (item.productId) {
+          const p = allSnacks.find((s) => s.id === item.productId);
+          if (p && p.stock !== undefined) {
+            p.stock = (p.stock || 0) + item.quantity;
+            snacksModified = true;
+          }
+        }
+      }
+      if (snacksModified) {
+        safeStorage.setItem(STORAGE_KEYS.SNACKS, JSON.stringify(allSnacks));
+      }
+    }
+
     sessions[index] = session;
     safeStorage.setItem(STORAGE_KEYS.SESSIONS, JSON.stringify(sessions));
 
@@ -1928,7 +1947,8 @@ class PosStorageEngine {
 
     daysSessions.forEach((s) => {
       if (s.payment) {
-        expectedCashPaise += s.payment.cashAmountPaise;
+        const netCashPaise = s.payment.cashAmountPaise - (s.payment.changeDuePaise || 0);
+        expectedCashPaise += netCashPaise;
         gpayTotalPaise += s.payment.gpayAmountPaise;
         totalSalesPaise += s.finalBillPaise;
       }
@@ -2078,8 +2098,9 @@ class PosStorageEngine {
         }
 
         if (s.payment) {
+          const netCashPaise = s.payment.cashAmountPaise - (s.payment.changeDuePaise || 0);
           gpayCollectionsPaise += s.payment.gpayAmountPaise;
-          cashCollectionsPaise += s.payment.cashAmountPaise;
+          cashCollectionsPaise += netCashPaise;
           outstandingBalancePaise += s.payment.outstandingBalancePaise;
         }
 
@@ -2097,7 +2118,8 @@ class PosStorageEngine {
         current.sessionCount++;
         current.totalSalesPaise += s.finalBillPaise;
         if (s.payment) {
-          current.cashCollectedPaise += s.payment.cashAmountPaise;
+          const netEmpCash = s.payment.cashAmountPaise - (s.payment.changeDuePaise || 0);
+          current.cashCollectedPaise += netEmpCash;
           current.gpayCollectedPaise += s.payment.gpayAmountPaise;
         }
         employeeMap.set(empId, current);
@@ -2126,7 +2148,7 @@ class PosStorageEngine {
   }
 
   // --- CSV EXPORT ---
-  exportSessionsToCSV(sessions: Session[]): string {
+  exportSessionsToCSV(sessions: Session[], actor?: User): string {
     const headers = [
       'Session ID',
       'Customer Name',
@@ -2144,7 +2166,9 @@ class PosStorageEngine {
       'Final Bill (INR)',
       'Payment Method',
       'GPay Amount (INR)',
-      'Cash Amount (INR)',
+      'Cash Tendered (INR)',
+      'Change Returned (INR)',
+      'Net Cash (INR)',
       'Outstanding Balance (INR)',
       'Created By',
       'Completed By',
@@ -2152,30 +2176,41 @@ class PosStorageEngine {
       'Void Reason',
     ];
 
-    const rows = sessions.map((s) => [
-      s.id,
-      `"${s.customerName.replace(/"/g, '""')}"`,
-      s.customerPhone || '',
-      s.gamingType.toUpperCase(),
-      `"${s.stationName}"`,
-      s.billingType,
-      formatDateTime(s.startTime),
-      s.endTime ? formatDateTime(s.endTime) : 'Active',
-      s.durationMinutes ?? '—',
-      s.status.toUpperCase(),
-      (s.gamingChargePaise / 100).toFixed(2),
-      (s.snackSubtotalPaise / 100).toFixed(2),
-      (s.discountPaise / 100).toFixed(2),
-      (s.finalBillPaise / 100).toFixed(2),
-      s.payment ? s.payment.method.toUpperCase() : 'PENDING',
-      s.payment ? (s.payment.gpayAmountPaise / 100).toFixed(2) : '0.00',
-      s.payment ? (s.payment.cashAmountPaise / 100).toFixed(2) : '0.00',
-      s.payment ? (s.payment.outstandingBalancePaise / 100).toFixed(2) : '0.00',
-      `"${s.createdByName}"`,
-      `"${s.completedByName || ''}"`,
-      s.isVoided ? 'YES' : 'NO',
-      `"${(s.voidReason || '').replace(/"/g, '""')}"`,
-    ]);
+    const isStaffMasked = actor && actor.role !== 'admin';
+
+    const rows = sessions.map((s) => {
+      const phoneDisplay = isStaffMasked ? maskPhoneNumber(s.customerPhone) : (s.customerPhone || '');
+      const cashTendered = s.payment ? (s.payment.cashAmountPaise / 100).toFixed(2) : '0.00';
+      const changeReturned = s.payment && s.payment.changeDuePaise ? (s.payment.changeDuePaise / 100).toFixed(2) : '0.00';
+      const netCash = s.payment ? ((s.payment.cashAmountPaise - (s.payment.changeDuePaise || 0)) / 100).toFixed(2) : '0.00';
+
+      return [
+        s.id,
+        `"${s.customerName.replace(/"/g, '""')}"`,
+        phoneDisplay,
+        s.gamingType.toUpperCase(),
+        `"${s.stationName}"`,
+        s.billingType,
+        formatDateTime(s.startTime),
+        s.endTime ? formatDateTime(s.endTime) : 'Active',
+        s.durationMinutes ?? '—',
+        s.status.toUpperCase(),
+        (s.gamingChargePaise / 100).toFixed(2),
+        (s.snackSubtotalPaise / 100).toFixed(2),
+        (s.discountPaise / 100).toFixed(2),
+        (s.finalBillPaise / 100).toFixed(2),
+        s.payment ? s.payment.method.toUpperCase() : 'PENDING',
+        s.payment ? (s.payment.gpayAmountPaise / 100).toFixed(2) : '0.00',
+        cashTendered,
+        changeReturned,
+        netCash,
+        s.payment ? (s.payment.outstandingBalancePaise / 100).toFixed(2) : '0.00',
+        `"${s.createdByName}"`,
+        `"${s.completedByName || ''}"`,
+        s.isVoided ? 'YES' : 'NO',
+        `"${(s.voidReason || '').replace(/"/g, '""')}"`,
+      ];
+    });
 
     return [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
   }

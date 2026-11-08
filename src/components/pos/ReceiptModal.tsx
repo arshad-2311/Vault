@@ -209,6 +209,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
           {/* Footer note */}
           <div className="text-center pt-2.5 border-t border-dashed border-slate-700 text-3xs text-slate-500">
             <p className="font-medium text-slate-400">Thank you for gaming at VAULT 147!</p>
+            <p className="text-red-400/90 font-mono font-medium mt-0.5">📞 +91 88075 00147</p>
             <p className="mt-0.5">Please visit us again soon.</p>
           </div>
         </div>
