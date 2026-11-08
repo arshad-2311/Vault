@@ -384,17 +384,6 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
               <div className="flex items-center gap-1">
                 <button
                   type="button"
-                  title="Subtract 5 minutes"
-                  onClick={() => {
-                    const cur = customMinutes ?? chargeCalc.billedMinutes;
-                    setCustomMinutes(Math.max(1, cur - 5));
-                  }}
-                  className="px-2 py-0.5 rounded bg-zinc-800 hover:bg-zinc-700 text-xs font-mono font-bold text-zinc-200"
-                >
-                  -5m
-                </button>
-                <button
-                  type="button"
                   title="Subtract 1 minute"
                   onClick={() => {
                     const cur = customMinutes ?? chargeCalc.billedMinutes;
@@ -425,17 +414,6 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                   className="px-2 py-0.5 rounded bg-zinc-800 hover:bg-zinc-700 text-xs font-mono font-bold text-zinc-200"
                 >
                   +1m
-                </button>
-                <button
-                  type="button"
-                  title="Add 5 minutes"
-                  onClick={() => {
-                    const cur = customMinutes ?? chargeCalc.billedMinutes;
-                    setCustomMinutes(cur + 5);
-                  }}
-                  className="px-2 py-0.5 rounded bg-zinc-800 hover:bg-zinc-700 text-xs font-mono font-bold text-zinc-200"
-                >
-                  +5m
                 </button>
                 {customMinutes !== null && (
                   <button

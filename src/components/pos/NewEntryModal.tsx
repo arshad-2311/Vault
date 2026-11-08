@@ -484,17 +484,19 @@ export const NewEntryModal: React.FC<NewEntryModalProps> = ({
               </button>
               <button
                 type="button"
-                onClick={() => handleAdjustMinutes(5)}
-                className="px-1.5 py-0.5 rounded bg-zinc-800 hover:bg-zinc-700 text-3xs font-mono text-zinc-300"
+                onClick={() => handleAdjustMinutes(-1)}
+                className="px-2 py-0.5 rounded bg-zinc-800 hover:bg-zinc-700 text-3xs font-mono font-bold text-zinc-300 transition-colors"
+                title="Subtract 1 minute"
               >
-                +5m
+                -1m
               </button>
               <button
                 type="button"
-                onClick={() => handleAdjustMinutes(-5)}
-                className="px-1.5 py-0.5 rounded bg-zinc-800 hover:bg-zinc-700 text-3xs font-mono text-zinc-300"
+                onClick={() => handleAdjustMinutes(1)}
+                className="px-2 py-0.5 rounded bg-zinc-800 hover:bg-zinc-700 text-3xs font-mono font-bold text-zinc-300 transition-colors"
+                title="Add 1 minute"
               >
-                -5m
+                +1m
               </button>
             </div>
           </div>
