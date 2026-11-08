@@ -119,10 +119,6 @@ export const WalkInSnackPosPage: React.FC<WalkInSnackPosPageProps> = ({ onPrintR
     const product = snacks.find((s) => s.id === snackId);
     if (!product) return;
     const currentQty = cart[snackId] || 0;
-    if (product.stock !== undefined && currentQty >= product.stock) {
-      setError(`Only ${product.stock} units available in stock.`);
-      return;
-    }
 
     const nextCart = { ...cart, [snackId]: currentQty + 1 };
     setCart(nextCart);
@@ -140,12 +136,6 @@ export const WalkInSnackPosPage: React.FC<WalkInSnackPosPageProps> = ({ onPrintR
   const handleUpdateQty = (snackId: string, delta: number) => {
     const currentQty = cart[snackId] || 0;
     const nextQty = Math.max(0, currentQty + delta);
-    const product = snacks.find((s) => s.id === snackId);
-
-    if (delta > 0 && product && product.stock !== undefined && nextQty > product.stock) {
-      setError(`Only ${product.stock} units available in stock.`);
-      return;
-    }
 
     const nextCart = { ...cart };
     if (nextQty === 0) {
@@ -342,7 +332,7 @@ export const WalkInSnackPosPage: React.FC<WalkInSnackPosPageProps> = ({ onPrintR
                   }`}
                 >
                   <div
-                    onClick={() => !isOutOfStock && handleAddToCart(snk.id)}
+                    onClick={() => handleAddToCart(snk.id)}
                     className="cursor-pointer"
                   >
                     <p className="text-xs font-bold text-white line-clamp-2 leading-tight">{snk.name}</p>
@@ -355,7 +345,7 @@ export const WalkInSnackPosPage: React.FC<WalkInSnackPosPageProps> = ({ onPrintR
                         <span
                           className={`text-3xs font-mono font-bold px-1.5 py-0.5 rounded ${
                             isOutOfStock
-                              ? 'bg-red-950 text-red-400'
+                              ? 'bg-amber-950/80 text-amber-400 border border-amber-900/40'
                               : snk.stock <= 5
                               ? 'bg-amber-950/80 text-amber-300'
                               : 'text-zinc-500'
@@ -392,7 +382,6 @@ export const WalkInSnackPosPage: React.FC<WalkInSnackPosPageProps> = ({ onPrintR
                     ) : (
                       <button
                         type="button"
-                        disabled={isOutOfStock}
                         onClick={() => handleAddToCart(snk.id)}
                         className="w-full py-1.5 px-2 rounded-lg bg-zinc-900 hover:bg-red-600 text-zinc-300 hover:text-white text-2xs font-bold transition-colors flex items-center justify-center gap-1"
                       >

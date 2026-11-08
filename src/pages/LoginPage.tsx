@@ -82,7 +82,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ sessionExpiredMessage }) =
         <div className="text-center space-y-3">
           <div className="flex items-center justify-center">
             <img
-              src="/vault-logo-full.png"
+              src="/vault-logo.png"
               alt="VAULT 147"
               className="w-48 sm:w-56 h-auto object-contain drop-shadow-[0_0_25px_rgba(220,38,38,0.35)]"
             />

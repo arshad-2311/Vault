@@ -77,7 +77,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
           {/* Header */}
           <div className="text-center pb-3 border-b border-dashed border-slate-700">
             <img
-              src="/vault-logo-full.png"
+              src="/vault-logo.png"
               alt="VAULT 147"
               className="w-32 h-auto object-contain mx-auto mb-2"
             />

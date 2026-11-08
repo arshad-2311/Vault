@@ -78,7 +78,7 @@ export const TransactionsPage: React.FC = () => {
 
   const handleSwitchPaymentMethod = (sessionId: string, targetMethod: 'gpay' | 'cash') => {
     const s = sessions.find((item) => item.id === sessionId);
-    const targetLabel = targetMethod === 'cash' ? 'Cash' : 'GPay / UPI';
+    const targetLabel = targetMethod === 'cash' ? 'Cash' : 'GPay';
     if (!window.confirm(`Switch payment method for ${s ? s.customerName : 'this transaction'} to ${targetLabel}?`)) {
       return;
     }
@@ -246,7 +246,7 @@ export const TransactionsPage: React.FC = () => {
             className="px-3 py-2 sm:py-2.5 rounded-lg bg-zinc-950 border border-zinc-700 text-xs text-zinc-200 focus:border-red-500 outline-none"
           >
             <option value="all">All Payment Methods</option>
-            <option value="gpay">GPay / UPI</option>
+            <option value="gpay">GPay</option>
             <option value="cash">Cash Only</option>
             <option value="split">Split Payment</option>
           </select>

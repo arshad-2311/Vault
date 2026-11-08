@@ -628,8 +628,7 @@ export const NewEntryModal: React.FC<NewEntryModalProps> = ({
                           <button
                             type="button"
                             onClick={() => handleSnackQtyChange(snk.id, 1)}
-                            disabled={isOutOfStock || isMaxReached}
-                            className="w-6 h-6 rounded bg-zinc-800 flex items-center justify-center text-zinc-400 hover:text-white disabled:opacity-30"
+                            className="w-6 h-6 rounded bg-zinc-800 flex items-center justify-center text-zinc-400 hover:text-white"
                           >
                             <Plus className="w-3 h-3" />
                           </button>

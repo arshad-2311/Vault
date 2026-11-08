@@ -173,14 +173,14 @@ export const INITIAL_USERS: User[] = [
 ];
 
 export const INITIAL_SNACKS: SnackItem[] = [
-  { id: 'snk-1', name: 'Red Bull Energy Drink (250ml)', category: 'Beverages', pricePaise: 12500, isActive: true, stock: 24, lowStockThreshold: 5 },
-  { id: 'snk-2', name: 'Mountain Dew Can (300ml)', category: 'Beverages', pricePaise: 4000, isActive: true, stock: 30, lowStockThreshold: 5 },
-  { id: 'snk-3', name: 'Coca-Cola Zero Can (300ml)', category: 'Beverages', pricePaise: 4000, isActive: true, stock: 18, lowStockThreshold: 5 },
-  { id: 'snk-4', name: 'Kinley Mineral Water (500ml)', category: 'Beverages', pricePaise: 2000, isActive: true, stock: 50, lowStockThreshold: 10 },
-  { id: 'snk-5', name: "Lay's Magic Masala (Large)", category: 'Chips & Savouries', pricePaise: 3000, isActive: true, stock: 12, lowStockThreshold: 5 },
-  { id: 'snk-6', name: 'Doritos Cheese Supreme (75g)', category: 'Chips & Savouries', pricePaise: 5000, isActive: true, stock: 4, lowStockThreshold: 5 },
-  { id: 'snk-7', name: 'Snickers Chocolate Bar', category: 'Chocolates', pricePaise: 5000, isActive: true, stock: 3, lowStockThreshold: 5 },
-  { id: 'snk-8', name: 'Maggi Masala Double Bowl', category: 'Hot Items', pricePaise: 6000, isActive: true, stock: 15, lowStockThreshold: 5 },
+  { id: 'snk-1', name: 'Red Bull Energy Drink (250ml)', category: 'Beverages', pricePaise: 12500, isActive: true, stock: 100, lowStockThreshold: 5 },
+  { id: 'snk-2', name: 'Mountain Dew Can (300ml)', category: 'Beverages', pricePaise: 4000, isActive: true, stock: 100, lowStockThreshold: 5 },
+  { id: 'snk-3', name: 'Coca-Cola Zero Can (300ml)', category: 'Beverages', pricePaise: 4000, isActive: true, stock: 100, lowStockThreshold: 5 },
+  { id: 'snk-4', name: 'Kinley Mineral Water (500ml)', category: 'Beverages', pricePaise: 2000, isActive: true, stock: 100, lowStockThreshold: 10 },
+  { id: 'snk-5', name: "Lay's Magic Masala (Large)", category: 'Chips & Savouries', pricePaise: 3000, isActive: true, stock: 100, lowStockThreshold: 5 },
+  { id: 'snk-6', name: 'Doritos Cheese Supreme (75g)', category: 'Chips & Savouries', pricePaise: 5000, isActive: true, stock: 100, lowStockThreshold: 5 },
+  { id: 'snk-7', name: 'Snickers Chocolate Bar', category: 'Chocolates', pricePaise: 5000, isActive: true, stock: 100, lowStockThreshold: 5 },
+  { id: 'snk-8', name: 'Maggi Masala Double Bowl', category: 'Hot Items', pricePaise: 6000, isActive: true, stock: 100, lowStockThreshold: 5 },
 ];
 
 function generateInitialSessions(): Session[] {
@@ -522,8 +522,23 @@ class PosStorageEngine {
         }
       } catch {}
     }
-    if (!safeStorage.getItem(STORAGE_KEYS.SNACKS)) {
+    const snacksRaw = safeStorage.getItem(STORAGE_KEYS.SNACKS);
+    if (!snacksRaw) {
       safeStorage.setItem(STORAGE_KEYS.SNACKS, JSON.stringify(INITIAL_SNACKS));
+    } else {
+      try {
+        const parsedSnacks: SnackItem[] = JSON.parse(snacksRaw);
+        let updated = false;
+        parsedSnacks.forEach((s) => {
+          if (s.stock !== undefined && s.stock <= 0) {
+            s.stock = 50;
+            updated = true;
+          }
+        });
+        if (updated) {
+          safeStorage.setItem(STORAGE_KEYS.SNACKS, JSON.stringify(parsedSnacks));
+        }
+      } catch {}
     }
     const pricingRaw = safeStorage.getItem(STORAGE_KEYS.PRICING);
     if (!pricingRaw) {
@@ -1137,6 +1152,26 @@ class PosStorageEngine {
     });
 
     emitDataChanged();
+  }
+
+  restockAllSnacks(amount = 50, actor?: User): void {
+    const snacks = this.getSnacks();
+    snacks.forEach((s) => {
+      s.stock = (s.stock || 0) + amount;
+    });
+    safeStorage.setItem(STORAGE_KEYS.SNACKS, JSON.stringify(snacks));
+    emitDataChanged();
+    if (actor) {
+      this.addAuditLog({
+        actorId: actor.id,
+        actorName: actor.displayName,
+        actorRole: actor.role,
+        action: 'SNACK_UPDATED',
+        entityType: 'snack',
+        entityId: 'all',
+        details: `Bulk restocked all snacks (+${amount} units each)`,
+      });
+    }
   }
 
   // --- PRICING CONFIG ---

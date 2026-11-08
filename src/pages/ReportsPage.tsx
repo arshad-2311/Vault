@@ -214,7 +214,7 @@ export const ReportsPage: React.FC = () => {
 
             <div className="p-4 rounded-xl bg-slate-900 border border-slate-800">
               <span className="text-3xs uppercase tracking-wider text-zinc-400 font-semibold block">
-                GPay / UPI Collections
+                GPay Collections
               </span>
               <div className="text-2xl font-bold font-mono text-white mt-1 tabular-nums">
                 {formatRupees(metrics.gpayCollectionsPaise)}
@@ -344,7 +344,7 @@ export const ReportsPage: React.FC = () => {
               <div className="space-y-2 text-xs">
                 <div>
                   <div className="flex justify-between font-mono mb-1">
-                    <span className="text-slate-300">GPay / UPI (Digital):</span>
+                    <span className="text-slate-300">GPay (Digital):</span>
                     <span className="text-white font-bold">
                       {formatRupees(metrics.gpayCollectionsPaise)}
                     </span>

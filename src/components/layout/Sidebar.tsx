@@ -197,9 +197,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <div className="flex items-center justify-between p-2.5 border-b border-white/[0.06]">
               <div className="flex items-center gap-2">
                 <img
-                  src="/vault-logo-horizontal.png"
+                  src="/vault-logo.png"
                   alt="VAULT 147"
-                  className="h-6 w-auto object-contain"
+                  className="h-10 w-auto object-contain"
                 />
               </div>
               <button

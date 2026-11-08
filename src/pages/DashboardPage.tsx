@@ -171,7 +171,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         <div className="p-4 sm:p-5 rounded-xl bg-[#0c0c12] border border-zinc-800/80 shadow-lg shadow-black/40 space-y-1.5">
           <div className="flex items-center justify-between text-zinc-400">
             <span className="text-3xs sm:text-2xs font-mono uppercase tracking-wider text-zinc-400 font-bold">
-              Cash Drawer
+              Cash
             </span>
             <Banknote className="w-4 h-4 text-zinc-400" />
           </div>
@@ -181,11 +181,11 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           <p className="text-3xs text-zinc-500 font-mono">Cash in register</p>
         </div>
 
-        {/* GPay / UPI Collections (Row 2, Col 1) */}
+        {/* GPay Collections (Row 2, Col 1) */}
         <div className="p-4 sm:p-5 rounded-xl bg-[#0c0c12] border border-zinc-800/80 shadow-lg shadow-black/40 space-y-1.5">
           <div className="flex items-center justify-between text-zinc-400">
             <span className="text-3xs sm:text-2xs font-mono uppercase tracking-wider text-zinc-400 font-bold">
-              GPay / UPI
+              GPay
             </span>
             <CreditCard className="w-4 h-4 text-zinc-400" />
           </div>
@@ -195,11 +195,11 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           <p className="text-3xs text-zinc-500 font-mono">Digital bank intake</p>
         </div>
 
-        {/* Outstanding Due (Row 2, Col 2) */}
+        {/* Outstanding Pending (Row 2, Col 2) */}
         <div className="p-4 sm:p-5 rounded-xl bg-[#0c0c12] border border-red-950/60 shadow-lg shadow-black/40 space-y-1.5">
           <div className="flex items-center justify-between text-red-500">
             <span className="text-3xs sm:text-2xs font-mono uppercase tracking-wider text-red-400 font-bold">
-              Pending Dues
+              Pending
             </span>
             <AlertCircle className="w-4 h-4 text-red-500" />
           </div>

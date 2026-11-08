@@ -128,11 +128,6 @@ export const AddSnackModal: React.FC<AddSnackModalProps> = ({
           return;
         }
 
-        if (selectedProduct.stock !== undefined && quantity > selectedProduct.stock) {
-          setError(`Cannot add ${quantity} items. Only ${selectedProduct.stock} left in stock.`);
-          return;
-        }
-
         db.addSnackToSession({
           sessionId: activeSession.id,
           productId: selectedProduct.id,
@@ -332,13 +327,12 @@ export const AddSnackModal: React.FC<AddSnackModalProps> = ({
                 <button
                   key={snk.id}
                   type="button"
-                  disabled={isOutOfStock}
                   onClick={() => setSelectedSnackId(snk.id)}
                   className={`p-2.5 rounded-xl border text-left transition-all ${
-                    isOutOfStock
-                      ? 'bg-slate-950/40 border-slate-900 opacity-40 cursor-not-allowed'
-                      : isSelected
+                    isSelected
                       ? 'bg-red-950/50 border-red-500 text-white shadow-md shadow-red-950/40'
+                      : isOutOfStock
+                      ? 'bg-[#08080c] border-amber-900/40 text-slate-300 hover:text-white'
                       : 'bg-[#08080c] border-white/[0.08] text-slate-300 hover:text-white hover:border-red-500/30'
                   }`}
                 >

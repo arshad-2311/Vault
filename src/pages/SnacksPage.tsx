@@ -38,13 +38,19 @@ export const SnacksPage: React.FC<SnacksPageProps> = ({ onOpenWalkInPos }) => {
   const [nameInput, setNameInput] = useState('');
   const [categoryInput, setCategoryInput] = useState('Beverages');
   const [priceInput, setPriceInput] = useState('40');
-  const [stockInput, setStockInput] = useState('20');
+  const [stockInput, setStockInput] = useState('100');
   const [thresholdInput, setThresholdInput] = useState('5');
   const [isActiveInput, setIsActiveInput] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const loadData = () => {
     setSnacks(db.getSnacks());
+  };
+
+  const handleRestockAll = () => {
+    if (!isAdmin) return;
+    db.restockAllSnacks(50, currentUser);
+    loadData();
   };
 
   useEffect(() => {
@@ -187,6 +193,17 @@ export const SnacksPage: React.FC<SnacksPageProps> = ({ onOpenWalkInPos }) => {
               className="font-semibold"
             >
               Walk-in Snack Sale
+            </Button>
+          )}
+          {isAdmin && (
+            <Button
+              variant="secondary"
+              size="md"
+              onClick={handleRestockAll}
+              className="font-semibold text-amber-400 hover:text-amber-300 border-amber-900/60"
+              title="Add 50 units of stock to every snack item instantly"
+            >
+              ⚡ Restock (+50 All)
             </Button>
           )}
           {isAdmin ? (

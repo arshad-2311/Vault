@@ -64,9 +64,9 @@ describe('UI Pages & Modals Rendering Integrity Test Suite', () => {
 
     expect(html).toContain('Operations Dashboard');
     expect(html).toContain('Total Sales');
-    expect(html).toContain('GPay / UPI');
-    expect(html).toContain('Cash Drawer');
-    expect(html).toContain('Pending Dues');
+    expect(html).toContain('GPay');
+    expect(html).toContain('Cash');
+    expect(html).toContain('Pending');
     expect(html).toContain('Gaming Stations');
     // Recent Settlements must be removed
     expect(html).not.toContain('Recent Settlements');
@@ -136,7 +136,7 @@ describe('UI Pages & Modals Rendering Integrity Test Suite', () => {
       </AuthProvider>
     );
 
-    expect(html).toContain('Cash Drawer Reconciliation');
+    expect(html).toContain('Cash Reconciliation');
     expect(html).toContain('System Expected Cash');
     expect(html).toContain('Physical Cash Breakdown');
   });

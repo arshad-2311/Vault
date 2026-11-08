@@ -150,7 +150,7 @@ export const CashClosingPage: React.FC = () => {
         <div>
           <h1 className="text-xl font-bold tracking-tight text-white flex items-center gap-2">
             <Banknote className="w-5 h-5 text-red-500" />
-            <span>Cash Drawer Reconciliation</span>
+            <span>Cash Reconciliation</span>
           </h1>
           <p className="text-2xs text-slate-400 mt-0.5">
             End-of-shift register count, expected drawer cash verification, and audit sign-off.
@@ -196,7 +196,7 @@ export const CashClosingPage: React.FC = () => {
 
         <div>
           <span className="text-3xs uppercase tracking-wider text-slate-400 font-mono block">
-            GPay / UPI Digital
+            GPay Digital
           </span>
           <span className="text-lg font-bold font-mono text-zinc-300 tabular-nums">
             {formatRupees(totalGpayPaise)}

@@ -44,9 +44,9 @@ export const Navbar: React.FC<NavbarProps> = ({
         )}
         <div className="flex items-center gap-2">
           <img
-            src="/vault-logo-horizontal.png"
+            src="/vault-logo.png"
             alt="VAULT 147"
-            className="h-8 sm:h-9 w-auto object-contain shrink-0"
+            className="h-10 sm:h-12 w-auto object-contain shrink-0"
           />
           <span className="text-3xs text-red-500 font-mono font-bold tracking-widest px-1.5 py-0.5 rounded bg-red-950/60 border border-red-900/60 hidden xs:inline-block">
             POS

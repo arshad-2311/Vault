@@ -667,7 +667,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                 onClick={() => handleSetMethod('gpay')}
                 className="px-2.5 py-1 rounded-md bg-zinc-800 hover:bg-zinc-700 text-red-400 hover:text-red-300 font-bold font-mono transition-colors flex items-center gap-1.5"
               >
-                <span>⇄ Switch to GPay / UPI</span>
+                <span>⇄ Switch to GPay</span>
               </button>
             ) : (
               <span className="text-3xs text-zinc-500 font-mono">Split payment active</span>
@@ -761,7 +761,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
 
             {changeDuePaise > 0 && (
               <div className="p-2 rounded bg-zinc-900 border border-zinc-800 text-2xs text-zinc-300 font-mono">
-                Cash drawer transaction: Tendered {formatRupees(cashPaise)} - Return {formatRupees(changeDuePaise)} change = Net {formatRupees(cashPaise - changeDuePaise)} drawer cash.
+                Cash transaction: Tendered {formatRupees(cashPaise)} - Return {formatRupees(changeDuePaise)} change = Net {formatRupees(cashPaise - changeDuePaise)} cash.
               </div>
             )}
           </div>
