@@ -80,17 +80,17 @@ export async function syncSessionToSupabase(session: Session): Promise<{ success
   try {
     const stationId = session.stationId || 'station-walk-in';
 
-    // 1. Ensure 'station-walk-in' exists in stations table
-    if (stationId === 'station-walk-in') {
-      try {
-        await supabase.from('stations').upsert({
-          id: 'station-walk-in',
-          name: 'Walk-in Snack Counter',
-          gaming_type: 'pool',
-          status: 'available',
-          display_order: 99,
-        });
-      } catch {}
+    // 1. Ensure the station exists in Supabase stations table before inserting session
+    try {
+      await supabase.from('stations').upsert({
+        id: stationId,
+        name: session.stationName || (stationId === 'station-walk-in' ? 'Walk-in Snack Counter' : stationId),
+        gaming_type: session.gamingType || 'pool',
+        status: 'available',
+        display_order: stationId === 'station-walk-in' ? 99 : 1,
+      });
+    } catch (stErr) {
+      console.warn('Could not upsert station prerequisite:', stErr);
     }
 
     // 2. Upsert session row
