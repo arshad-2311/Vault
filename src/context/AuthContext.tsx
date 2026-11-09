@@ -150,7 +150,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children, initialUse
               createdAt: authUser.created_at || new Date().toISOString(),
               lastLoginAt: new Date().toISOString(),
             };
-            db.setCurrentUser(mappedUser);
+            await db.createAuthSessionForUser(mappedUser);
             authenticatedUser = mappedUser;
           } else {
             throw new Error('Authentication failed.');

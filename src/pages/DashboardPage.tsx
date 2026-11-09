@@ -9,6 +9,7 @@ import {
 import { Station, Session, DashboardMetrics } from '../types';
 import { StationCard } from '../components/pos/StationCard';
 import { db, VAULT_DATA_CHANGED_EVENT } from '../services/storage';
+import { isSupabaseConfigured, fetchSessionsFromSupabase } from '../services/supabase';
 import { formatRupees, getTodayDateString } from '../utils/formatters';
 
 interface DashboardPageProps {
@@ -35,9 +36,18 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   });
   const [isLoading, setIsLoading] = useState(false);
 
-  const loadData = () => {
+  const loadData = async () => {
     setIsLoading(true);
     try {
+      if (isSupabaseConfigured) {
+        try {
+          const res = await fetchSessionsFromSupabase();
+          if (res.success && res.sessions) {
+            db.syncWithRemoteSessions(res.sessions);
+          }
+        } catch {}
+      }
+
       const allStations = db.getStations();
       const allSessions = db.getSessions();
       setStations(allStations);

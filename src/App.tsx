@@ -20,6 +20,7 @@ import { AuditLogPage } from './pages/AuditLogPage';
 
 import { Station, Session } from './types';
 import { db, VAULT_DATA_CHANGED_EVENT } from './services/storage';
+import { isSupabaseConfigured, fetchSessionsFromSupabase, subscribeToSupabaseSessions } from './services/supabase';
 import { CheckCircle, Printer, X, ShieldAlert } from 'lucide-react';
 import { formatRupees } from './utils/formatters';
 import { LoginPage } from './pages/LoginPage';
@@ -45,23 +46,56 @@ export const AppContent: React.FC = () => {
   const [receiptModalSession, setReceiptModalSession] = useState<Session | null>(null);
   const [autoPrintReceipt, setAutoPrintReceipt] = useState(false);
 
-  // Sync state from database
-  const refreshData = () => {
+  // Sync state from local storage and Supabase cloud
+  const refreshData = async () => {
+    // 1. Instant local update
     setStations(db.getStations());
     setSessions(db.getSessions());
+
+    // 2. Fetch remote sessions from Supabase to keep multi-browser/multi-device in sync
+    if (isSupabaseConfigured) {
+      try {
+        const res = await fetchSessionsFromSupabase();
+        if (res.success && res.sessions) {
+          db.syncWithRemoteSessions(res.sessions);
+          setStations(db.getStations());
+          setSessions(db.getSessions());
+        }
+      } catch {}
+    }
   };
 
   useEffect(() => {
     refreshData();
     const handleDataChanged = () => {
-      refreshData();
+      setStations(db.getStations());
+      setSessions(db.getSessions());
     };
     window.addEventListener(VAULT_DATA_CHANGED_EVENT, handleDataChanged);
-    // Auto sync periodically
-    const timer = setInterval(refreshData, 15000);
+
+    // Sync on tab focus / returning to app after phone lock or switching apps
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        refreshData();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('focus', refreshData);
+
+    // Auto sync periodically (every 10 seconds)
+    const timer = setInterval(refreshData, 10000);
+
+    // Realtime Supabase change stream
+    const unsubRealtime = subscribeToSupabaseSessions(() => {
+      refreshData();
+    });
+
     return () => {
       window.removeEventListener(VAULT_DATA_CHANGED_EVENT, handleDataChanged);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', refreshData);
       clearInterval(timer);
+      unsubRealtime();
     };
   }, []);
 

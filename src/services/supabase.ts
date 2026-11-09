@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import { Session } from '../types';
+import { Session, SessionItem, PaymentRecord } from '../types';
 
 const supabaseUrl =
   (import.meta.env.VITE_SUPABASE_URL as string | undefined) ||
@@ -215,4 +215,130 @@ export async function syncAllSessionsToSupabase(sessions: Session[]): Promise<{
   }
 
   return { total: sessions.length, synced, failed, error: lastError };
+}
+
+function mapSupabaseRowToSession(row: any): Session {
+  const items: SessionItem[] = Array.isArray(row.items)
+    ? row.items.map((it: any) => ({
+        id: it.id,
+        sessionId: it.session_id,
+        productId: it.product_id,
+        name: it.name,
+        quantity: it.quantity,
+        unitPricePaise: it.unit_price_paise,
+        lineTotalPaise: it.line_total_paise,
+        isCustom: Boolean(it.is_custom),
+      }))
+    : [];
+
+  let payment: PaymentRecord | undefined;
+  const payRecord = Array.isArray(row.payment) ? row.payment[0] : row.payment;
+  if (payRecord) {
+    payment = {
+      id: payRecord.id,
+      sessionId: payRecord.session_id,
+      method: payRecord.method,
+      gpayAmountPaise: payRecord.gpay_amount_paise || 0,
+      cashAmountPaise: payRecord.cash_amount_paise || 0,
+      totalReceivedPaise: payRecord.total_received_paise || 0,
+      finalBillPaise: payRecord.final_bill_paise || 0,
+      outstandingBalancePaise: payRecord.outstanding_balance_paise || 0,
+      recordedBy: payRecord.recorded_by || 'usr-admin-1',
+      recordedByName: payRecord.recorded_by_name || 'Staff',
+      timestamp: payRecord.timestamp,
+      status: payRecord.status,
+      notes: payRecord.notes,
+    };
+  }
+
+  return {
+    id: row.id,
+    customerName: row.customer_name,
+    customerPhone: row.customer_phone || undefined,
+    gamingType: row.gaming_type,
+    stationId: row.station_id,
+    stationName: row.station_name,
+    billingType: row.billing_type,
+    isMultiplayer: Boolean(row.is_multiplayer),
+    fixedPlanId: row.fixed_plan_id || undefined,
+    fixedPlanName: row.fixed_plan_name || undefined,
+    framesCount: row.frames_count,
+    startTime: row.start_time,
+    endTime: row.end_time || null,
+    durationMinutes: row.duration_minutes ?? null,
+    status: row.status,
+    rateSnapshot: row.rate_snapshot || {},
+    gamingChargePaise: row.gaming_charge_paise || 0,
+    items,
+    snackSubtotalPaise: row.snack_subtotal_paise || 0,
+    discountPaise: row.discount_paise || 0,
+    discountReason: row.discount_reason || undefined,
+    finalBillPaise: row.final_bill_paise || 0,
+    payment,
+    createdBy: row.created_by || 'usr-admin-1',
+    createdByName: row.created_by_name || 'Staff',
+    completedBy: row.completed_by || undefined,
+    completedByName: row.completed_by_name || undefined,
+    notes: row.notes || undefined,
+    isVoided: Boolean(row.is_voided),
+    voidReason: row.void_reason || undefined,
+    voidedAt: row.voided_at || undefined,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+/**
+ * Fetches all sessions from Supabase cloud database to synchronize across browsers and devices.
+ */
+export async function fetchSessionsFromSupabase(): Promise<{
+  success: boolean;
+  sessions?: Session[];
+  error?: string;
+}> {
+  if (!supabase || !isSupabaseConfigured) {
+    return { success: false, error: 'Supabase not configured' };
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('sessions')
+      .select('*, items:session_items(*), payment:payments(*)')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      return { success: false, error: error.message };
+    }
+
+    const sessions = (data || []).map(mapSupabaseRowToSession);
+    return { success: true, sessions };
+  } catch (err: any) {
+    return { success: false, error: err.message || 'Fetch failed' };
+  }
+}
+
+/**
+ * Listens for real-time Supabase postgres changes to notify connected devices.
+ */
+export function subscribeToSupabaseSessions(onUpdate: () => void): () => void {
+  if (!supabase || !isSupabaseConfigured) return () => {};
+
+  try {
+    const channel = supabase
+      .channel('pos-sessions-sync')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'sessions' },
+        () => {
+          onUpdate();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase?.removeChannel(channel);
+    };
+  } catch {
+    return () => {};
+  }
 }
