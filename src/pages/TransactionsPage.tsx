@@ -410,19 +410,21 @@ export const TransactionsPage: React.FC = () => {
             <option value="cancelled">Voided / Cancelled</option>
           </select>
 
-          {/* Staff Member */}
-          <select
-            value={employeeFilter}
-            onChange={(e) => setEmployeeFilter(e.target.value)}
-            className="px-3 py-2 sm:py-2.5 rounded-lg bg-zinc-950 border border-zinc-700 text-xs text-zinc-200 focus:border-red-500 outline-none"
-          >
-            <option value="all">All Staff Members</option>
-            {employees.map((u) => (
-              <option key={u.id} value={u.id}>
-                {u.displayName}
-              </option>
-            ))}
-          </select>
+          {/* Staff Member (Only show if multiple staff exist) */}
+          {employees.length > 1 && (
+            <select
+              value={employeeFilter}
+              onChange={(e) => setEmployeeFilter(e.target.value)}
+              className="px-3 py-2 sm:py-2.5 rounded-lg bg-zinc-950 border border-zinc-700 text-xs text-zinc-200 focus:border-red-500 outline-none"
+            >
+              <option value="all">All Staff Members</option>
+              {employees.map((u) => (
+                <option key={u.id} value={u.id}>
+                  {u.displayName}
+                </option>
+              ))}
+            </select>
+          )}
         </div>
       </div>
 

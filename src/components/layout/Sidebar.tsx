@@ -72,7 +72,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
   }> = [
     { id: 'snacks', label: 'Snacks', icon: UtensilsCrossed },
     { id: 'settings', label: 'Pricing & Rates', icon: Settings, adminOnly: true },
-    { id: 'employees', label: 'Employees', icon: Users, adminOnly: true },
   ];
 
   const reportingNav: Array<{

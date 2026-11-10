@@ -159,64 +159,72 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         </div>
       </div>
 
-      {/* 2. Coherent Sales Summary Bar (Row order: Total Sales + Cash Drawer in Row 1, GPay/UPI + Pending Dues in Row 2) */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-4.5">
-        {/* Total Billed Sales (Row 1, Col 1) */}
-        <div className="p-4 sm:p-5 rounded-xl bg-[#0c0c12] border border-zinc-800/80 shadow-lg shadow-black/40 space-y-1.5">
+      {/* 2. Coherent Sales Summary Bar (Vertical on mobile, 2-col on tablet, 4-col on desktop) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4.5">
+        {/* Total Billed Sales */}
+        <div className="p-3.5 sm:p-5 rounded-xl bg-[#0c0c12] border border-zinc-800/80 shadow-lg shadow-black/40 space-y-1 sm:space-y-1.5">
           <div className="flex items-center justify-between text-zinc-400">
             <span className="text-3xs sm:text-2xs font-mono uppercase tracking-wider text-zinc-400 font-bold">
               Total Sales
             </span>
             <TrendingUp className="w-4 h-4 text-red-500" />
           </div>
-          <div className="text-xl sm:text-2xl font-black font-mono tracking-tight text-white tabular-nums">
-            {formatRupees(metrics.totalSalesPaise)}
+          <div className="flex items-baseline justify-between sm:block">
+            <div className="text-xl sm:text-2xl font-black font-mono tracking-tight text-white tabular-nums">
+              {formatRupees(metrics.totalSalesPaise)}
+            </div>
+            <p className="text-3xs text-zinc-500 font-mono">
+              {metrics.completedSessionsCount} closed session(s)
+            </p>
           </div>
-          <p className="text-3xs text-zinc-500 font-mono">
-            {metrics.completedSessionsCount} closed session(s)
-          </p>
         </div>
 
-        {/* Physical Cash Collections (Row 1, Col 2) */}
-        <div className="p-4 sm:p-5 rounded-xl bg-[#0c0c12] border border-zinc-800/80 shadow-lg shadow-black/40 space-y-1.5">
+        {/* Physical Cash Collections */}
+        <div className="p-3.5 sm:p-5 rounded-xl bg-[#0c0c12] border border-zinc-800/80 shadow-lg shadow-black/40 space-y-1 sm:space-y-1.5">
           <div className="flex items-center justify-between text-zinc-400">
             <span className="text-3xs sm:text-2xs font-mono uppercase tracking-wider text-zinc-400 font-bold">
               Cash
             </span>
             <Banknote className="w-4 h-4 text-zinc-400" />
           </div>
-          <div className="text-xl sm:text-2xl font-black font-mono tracking-tight text-white tabular-nums">
-            {formatRupees(metrics.cashCollectionsPaise)}
+          <div className="flex items-baseline justify-between sm:block">
+            <div className="text-xl sm:text-2xl font-black font-mono tracking-tight text-white tabular-nums">
+              {formatRupees(metrics.cashCollectionsPaise)}
+            </div>
+            <p className="text-3xs text-zinc-500 font-mono">Cash in register</p>
           </div>
-          <p className="text-3xs text-zinc-500 font-mono">Cash in register</p>
         </div>
 
-        {/* GPay Collections (Row 2, Col 1) */}
-        <div className="p-4 sm:p-5 rounded-xl bg-[#0c0c12] border border-zinc-800/80 shadow-lg shadow-black/40 space-y-1.5">
+        {/* GPay Collections */}
+        <div className="p-3.5 sm:p-5 rounded-xl bg-[#0c0c12] border border-zinc-800/80 shadow-lg shadow-black/40 space-y-1 sm:space-y-1.5">
           <div className="flex items-center justify-between text-zinc-400">
             <span className="text-3xs sm:text-2xs font-mono uppercase tracking-wider text-zinc-400 font-bold">
               GPay
             </span>
             <CreditCard className="w-4 h-4 text-zinc-400" />
           </div>
-          <div className="text-xl sm:text-2xl font-black font-mono tracking-tight text-white tabular-nums">
-            {formatRupees(metrics.gpayCollectionsPaise)}
+          <div className="flex items-baseline justify-between sm:block">
+            <div className="text-xl sm:text-2xl font-black font-mono tracking-tight text-white tabular-nums">
+              {formatRupees(metrics.gpayCollectionsPaise)}
+            </div>
+            <p className="text-3xs text-zinc-500 font-mono">Digital bank intake</p>
           </div>
-          <p className="text-3xs text-zinc-500 font-mono">Digital bank intake</p>
         </div>
 
-        {/* Outstanding Pending (Row 2, Col 2) */}
-        <div className="p-4 sm:p-5 rounded-xl bg-[#0c0c12] border border-red-950/60 shadow-lg shadow-black/40 space-y-1.5">
+        {/* Outstanding Pending */}
+        <div className="p-3.5 sm:p-5 rounded-xl bg-[#0c0c12] border border-red-950/60 shadow-lg shadow-black/40 space-y-1 sm:space-y-1.5">
           <div className="flex items-center justify-between text-red-500">
             <span className="text-3xs sm:text-2xs font-mono uppercase tracking-wider text-red-400 font-bold">
               Pending
             </span>
             <AlertCircle className="w-4 h-4 text-red-500" />
           </div>
-          <div className="text-xl sm:text-2xl font-black font-mono tracking-tight text-red-400 tabular-nums">
-            {formatRupees(metrics.outstandingBalancePaise)}
+          <div className="flex items-baseline justify-between sm:block">
+            <div className="text-xl sm:text-2xl font-black font-mono tracking-tight text-red-400 tabular-nums">
+              {formatRupees(metrics.outstandingBalancePaise)}
+            </div>
+            <p className="text-3xs text-zinc-500 font-mono">Unsettled balance</p>
           </div>
-          <p className="text-3xs text-zinc-500 font-mono">Unsettled balance</p>
         </div>
       </div>
 

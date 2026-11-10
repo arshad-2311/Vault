@@ -321,8 +321,8 @@ describe('VAULT 147 POS — Lightweight Security Layer Verification Suite', () =
         </AuthProvider>
       );
 
-      expect(html).toContain('Staff: Rahul');
       expect(html).toContain('Admin: Ruwaidh');
+      expect(html).not.toContain('Staff: Rahul');
       // Plaintext passwords must NOT be embedded in HTML attributes or labels
       expect(html).not.toContain('vault147admin');
       expect(html).not.toContain('vault147staff');

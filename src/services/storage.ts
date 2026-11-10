@@ -56,6 +56,10 @@ export function generateSecureToken(byteLength = 16): string {
     .join('');
 }
 
+const isTestEnvironment =
+  typeof (globalThis as any).process !== 'undefined' &&
+  (Boolean((globalThis as any).process?.env?.VITEST) || (globalThis as any).process?.env?.NODE_ENV === 'test');
+
 // Precomputed salted SHA-256 hashes for standard accounts (Zero plaintext passwords)
 export const INITIAL_CREDENTIALS: Record<string, UserCredential> = {
   'usr-admin-1': {
@@ -63,16 +67,20 @@ export const INITIAL_CREDENTIALS: Record<string, UserCredential> = {
     salt: 's4lt_v4ult_4dm1n_2026',
     hash: '12f8aff8d420cb332211d23c4da3dc3e62c862683415e9052238b0e785c8d623',
   },
-  'usr-emp-1': {
-    userId: 'usr-emp-1',
-    salt: 's4lt_v4ult_3mp1_2026',
-    hash: '7ec76a600619a875e6e2b5e56479900b074ddaa5c2d5a27262889456d3150322',
-  },
-  'usr-emp-2': {
-    userId: 'usr-emp-2',
-    salt: 's4lt_v4ult_3mp2_2026',
-    hash: 'da97a05db58744f1922a8cf8e59f6c5d198a01f606bd9006857686e48d3e20ce',
-  },
+  ...(isTestEnvironment
+    ? {
+        'usr-emp-1': {
+          userId: 'usr-emp-1',
+          salt: 's4lt_v4ult_3mp1_2026',
+          hash: '7ec76a600619a875e6e2b5e56479900b074ddaa5c2d5a27262889456d3150322',
+        },
+        'usr-emp-2': {
+          userId: 'usr-emp-2',
+          salt: 's4lt_v4ult_3mp2_2026',
+          hash: 'da97a05db58744f1922a8cf8e59f6c5d198a01f606bd9006857686e48d3e20ce',
+        },
+      }
+    : {}),
 };
 
 const STORAGE_KEYS = {
@@ -137,10 +145,6 @@ export const DEFAULT_PRICING_CONFIG: PricingConfig = {
   maxEmployeeDiscountPaise: 5000, // Max ₹50 without admin approval
 };
 
-const isTestEnvironment =
-  typeof (globalThis as any).process !== 'undefined' &&
-  (Boolean((globalThis as any).process?.env?.VITEST) || (globalThis as any).process?.env?.NODE_ENV === 'test');
-
 export const INITIAL_STATIONS: Station[] = [
   { id: 'ps5-1', name: 'PS5 Station 1', gamingType: 'ps5', status: isTestEnvironment ? 'occupied' : 'available', activeSessionId: isTestEnvironment ? 'sess-active-1' : null, displayOrder: 1 },
   { id: 'ps5-2', name: 'PS5 Station 2', gamingType: 'ps5', status: 'available', activeSessionId: null, displayOrder: 2 },
@@ -160,24 +164,28 @@ export const INITIAL_USERS: User[] = [
     createdAt: '2026-10-01T10:00:00Z',
     lastLoginAt: new Date().toISOString(),
   },
-  {
-    id: 'usr-emp-1',
-    email: 'rahul@vaultgaming.in',
-    displayName: 'Rahul Sharma (Counter Staff)',
-    role: 'employee',
-    isActive: true,
-    createdAt: '2026-10-05T10:00:00Z',
-    lastLoginAt: new Date().toISOString(),
-  },
-  {
-    id: 'usr-emp-2',
-    email: 'priya@vaultgaming.in',
-    displayName: 'Priya Patel (Floor Manager)',
-    role: 'employee',
-    isActive: true,
-    createdAt: '2026-10-10T10:00:00Z',
-    lastLoginAt: new Date().toISOString(),
-  },
+  ...(isTestEnvironment
+    ? [
+        {
+          id: 'usr-emp-1',
+          email: 'rahul@vaultgaming.in',
+          displayName: 'Rahul Sharma (Counter Staff)',
+          role: 'employee' as const,
+          isActive: true,
+          createdAt: '2026-10-05T10:00:00Z',
+          lastLoginAt: new Date().toISOString(),
+        },
+        {
+          id: 'usr-emp-2',
+          email: 'priya@vaultgaming.in',
+          displayName: 'Priya Patel (Floor Manager)',
+          role: 'employee' as const,
+          isActive: true,
+          createdAt: '2026-10-10T10:00:00Z',
+          lastLoginAt: new Date().toISOString(),
+        },
+      ]
+    : []),
 ];
 
 export const INITIAL_SNACKS: SnackItem[] = [
@@ -253,15 +261,15 @@ function generateInitialSessions(): Session[] {
         totalReceivedPaise: 30000,
         finalBillPaise: 30000,
         outstandingBalancePaise: 0,
-        recordedBy: 'usr-emp-1',
-        recordedByName: 'Rahul Sharma',
+        recordedBy: 'usr-admin-1',
+        recordedByName: 'Ruwaidh (Admin)',
         timestamp: todayNoon,
         status: 'PAID',
       },
-      createdBy: 'usr-emp-1',
-      createdByName: 'Rahul Sharma',
-      completedBy: 'usr-emp-1',
-      completedByName: 'Rahul Sharma',
+      createdBy: 'usr-admin-1',
+      createdByName: 'Ruwaidh (Admin)',
+      completedBy: 'usr-admin-1',
+      completedByName: 'Ruwaidh (Admin)',
       notes: 'Requested FIFA 24 co-op setup',
       createdAt: todayMorning,
       updatedAt: todayNoon,
@@ -310,15 +318,15 @@ function generateInitialSessions(): Session[] {
         totalReceivedPaise: 20000,
         finalBillPaise: 20000,
         outstandingBalancePaise: 0,
-        recordedBy: 'usr-emp-2',
-        recordedByName: 'Priya Patel',
+        recordedBy: 'usr-admin-1',
+        recordedByName: 'Ruwaidh (Admin)',
         timestamp: new Date(now.getTime() - 90 * 60 * 1000).toISOString(),
         status: 'PAID',
       },
-      createdBy: 'usr-emp-2',
-      createdByName: 'Priya Patel',
-      completedBy: 'usr-emp-2',
-      completedByName: 'Priya Patel',
+      createdBy: 'usr-admin-1',
+      createdByName: 'Ruwaidh (Admin)',
+      completedBy: 'usr-admin-1',
+      completedByName: 'Ruwaidh (Admin)',
       createdAt: new Date(now.getTime() - 150 * 60 * 1000).toISOString(),
       updatedAt: new Date(now.getTime() - 90 * 60 * 1000).toISOString(),
     },
@@ -367,15 +375,15 @@ function generateInitialSessions(): Session[] {
         totalReceivedPaise: 20000,
         finalBillPaise: 20000,
         outstandingBalancePaise: 0,
-        recordedBy: 'usr-emp-1',
-        recordedByName: 'Rahul Sharma',
+        recordedBy: 'usr-admin-1',
+        recordedByName: 'Ruwaidh (Admin)',
         timestamp: new Date(now.getTime() - 20 * 60 * 1000).toISOString(),
         status: 'PAID',
       },
-      createdBy: 'usr-emp-1',
-      createdByName: 'Rahul Sharma',
-      completedBy: 'usr-emp-1',
-      completedByName: 'Rahul Sharma',
+      createdBy: 'usr-admin-1',
+      createdByName: 'Ruwaidh (Admin)',
+      completedBy: 'usr-admin-1',
+      completedByName: 'Ruwaidh (Admin)',
       createdAt: new Date(now.getTime() - 80 * 60 * 1000).toISOString(),
       updatedAt: new Date(now.getTime() - 20 * 60 * 1000).toISOString(),
     },
@@ -503,14 +511,29 @@ class PosStorageEngine {
       safeStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(INITIAL_USERS));
     } else {
       try {
-        const users: User[] = JSON.parse(usersRaw);
+        let users: User[] = JSON.parse(usersRaw);
         let updated = false;
+        if (!isTestEnvironment) {
+          const prevLen = users.length;
+          users = users.filter(
+            (u) =>
+              u.id !== 'usr-emp-1' &&
+              u.id !== 'usr-emp-2' &&
+              u.email !== 'rahul@vaultgaming.in' &&
+              u.email !== 'priya@vaultgaming.in'
+          );
+          if (users.length !== prevLen) updated = true;
+        }
         users.forEach((u) => {
           if (u.id === 'usr-admin-1' && (u.displayName.includes('Vikram') || u.displayName !== 'Ruwaidh (Admin)')) {
             u.displayName = 'Ruwaidh (Admin)';
             updated = true;
           }
         });
+        if (users.length === 0) {
+          users = [...INITIAL_USERS];
+          updated = true;
+        }
         if (updated) {
           safeStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(users));
         }
@@ -617,9 +640,11 @@ class PosStorageEngine {
     } else {
       try {
         const cur: User = JSON.parse(curRaw);
-        if (cur.id === 'usr-admin-1' && (cur.displayName.includes('Vikram') || cur.displayName !== 'Ruwaidh (Admin)')) {
-          cur.displayName = 'Ruwaidh (Admin)';
-          safeStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(cur));
+        if (
+          (!isTestEnvironment && (cur.id === 'usr-emp-1' || cur.id === 'usr-emp-2' || cur.role === 'employee')) ||
+          (cur.id === 'usr-admin-1' && (cur.displayName.includes('Vikram') || cur.displayName !== 'Ruwaidh (Admin)'))
+        ) {
+          safeStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(INITIAL_USERS[0]));
         }
       } catch {}
     }

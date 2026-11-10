@@ -82,7 +82,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           <button
             onClick={() => setShowUserDropdown(!showUserDropdown)}
             className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-850 border border-zinc-800 text-xs transition-colors"
-            title="Switch Staff Member"
+            title="User Profile & Sign Out"
           >
             <div className="w-6 h-6 rounded bg-zinc-800 flex items-center justify-center text-zinc-300">
               {isAdmin ? (
@@ -100,39 +100,43 @@ export const Navbar: React.FC<NavbarProps> = ({
             <ChevronDown className="w-3.5 h-3.5 text-zinc-500" />
           </button>
 
-          {/* User Switch Dropdown */}
+          {/* User Profile Dropdown */}
           {showUserDropdown && (
             <div className="absolute right-0 mt-2 w-64 rounded-lg bg-[#0e0e14] border border-zinc-800 shadow-2xl py-1 z-50">
               <div className="px-3 py-2 border-b border-zinc-800">
                 <p className="text-3xs font-semibold text-zinc-400 uppercase tracking-wider">
-                  Switch Staff Profile
+                  Signed in as
                 </p>
+                <p className="text-xs font-bold text-white mt-0.5">{currentUser.displayName}</p>
+                <p className="text-3xs text-zinc-400 font-mono">{currentUser.email}</p>
               </div>
 
-              <div className="py-1">
-                {users.map((u) => (
-                  <button
-                    key={u.id}
-                    onClick={() => {
-                      switchUser(u);
-                      setShowUserDropdown(false);
-                    }}
-                    className={`w-full flex items-center justify-between px-3 py-2 text-left text-xs hover:bg-zinc-850 transition-colors ${
-                      u.id === currentUser.id
-                        ? 'bg-red-950/30 text-red-400 font-semibold border-l-2 border-red-500'
-                        : 'text-zinc-300'
-                    }`}
-                  >
-                    <div>
-                      <p className="leading-tight text-white">{u.displayName}</p>
-                      <p className="text-3xs text-zinc-400 font-mono">{u.email}</p>
-                    </div>
-                    <span className="text-3xs font-mono uppercase px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400">
-                      {u.role}
-                    </span>
-                  </button>
-                ))}
-              </div>
+              {users.length > 1 && (
+                <div className="py-1">
+                  {users.map((u) => (
+                    <button
+                      key={u.id}
+                      onClick={() => {
+                        switchUser(u);
+                        setShowUserDropdown(false);
+                      }}
+                      className={`w-full flex items-center justify-between px-3 py-2 text-left text-xs hover:bg-zinc-850 transition-colors ${
+                        u.id === currentUser.id
+                          ? 'bg-red-950/30 text-red-400 font-semibold border-l-2 border-red-500'
+                          : 'text-zinc-300'
+                      }`}
+                    >
+                      <div>
+                        <p className="leading-tight text-white">{u.displayName}</p>
+                        <p className="text-3xs text-zinc-400 font-mono">{u.email}</p>
+                      </div>
+                      <span className="text-3xs font-mono uppercase px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400">
+                        {u.role}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
 
               <div className="pt-1 mt-1 border-t border-zinc-800">
                 <button
