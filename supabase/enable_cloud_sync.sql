@@ -187,3 +187,29 @@ LEFT JOIN public.payments p ON p.session_id = s.id
 ORDER BY s.created_at DESC;
 
 GRANT SELECT ON public.sessions_decimal_view TO anon, authenticated, service_role;
+
+-- -------------------------------------------------------------------------------------
+-- 14. DAILY EXPENSES TABLE & POLICIES
+-- -------------------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS public.daily_expenses (
+  id TEXT PRIMARY KEY,
+  date DATE NOT NULL DEFAULT CURRENT_DATE,
+  title TEXT NOT NULL,
+  category TEXT NOT NULL,
+  amount_paise INTEGER NOT NULL CHECK (amount_paise > 0),
+  payment_method TEXT NOT NULL CHECK (payment_method IN ('cash', 'gpay', 'bank_transfer')),
+  notes TEXT,
+  receipt_number TEXT,
+  recorded_by UUID REFERENCES public.profiles(id),
+  recorded_by_name TEXT NOT NULL,
+  amount_rupees NUMERIC(10,2) GENERATED ALWAYS AS (amount_paise::numeric / 100.0) STORED,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now()),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now())
+);
+
+ALTER TABLE public.daily_expenses ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all on daily_expenses" ON public.daily_expenses;
+CREATE POLICY "Allow all on daily_expenses" ON public.daily_expenses
+  FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
+
+GRANT ALL ON TABLE public.daily_expenses TO anon, authenticated, service_role;

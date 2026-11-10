@@ -17,6 +17,7 @@ import { CashClosingPage } from './pages/CashClosingPage';
 import { EmployeesPage } from './pages/EmployeesPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { AuditLogPage } from './pages/AuditLogPage';
+import { DailyExpensesPage } from './pages/DailyExpensesPage';
 
 import { Station, Session } from './types';
 import { db, VAULT_DATA_CHANGED_EVENT } from './services/storage';
@@ -160,7 +161,7 @@ export const AppContent: React.FC = () => {
   }
 
   const isRestrictedTab =
-    (activeTab === 'employees' || activeTab === 'settings' || activeTab === 'audit-log') && !isAdmin;
+    (activeTab === 'employees' || activeTab === 'settings' || activeTab === 'audit-log' || activeTab === 'expenses') && !isAdmin;
 
   return (
     <div className="flex flex-col min-h-screen bg-[#060608] text-slate-100 font-sans antialiased">
@@ -239,6 +240,8 @@ export const AppContent: React.FC = () => {
                 )}
 
                 {activeTab === 'transactions' && <TransactionsPage />}
+
+                {activeTab === 'expenses' && <DailyExpensesPage />}
 
                 {activeTab === 'snacks' && (
                   <SnacksPage onOpenWalkInPos={() => setActiveTab('walk-in-pos')} />

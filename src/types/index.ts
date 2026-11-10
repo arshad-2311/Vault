@@ -148,6 +148,33 @@ export interface CashDenominations {
   coins: number;
 }
 
+export type ExpenseCategory =
+  | 'Supplies & Groceries'
+  | 'Beverages & Snacks Restock'
+  | 'Equipment & Maintenance'
+  | 'Electricity & Utilities'
+  | 'Staff & Salaries'
+  | 'Rent & Premises'
+  | 'Marketing & Ads'
+  | 'Miscellaneous';
+
+export type ExpensePaymentMethod = 'cash' | 'gpay' | 'bank_transfer';
+
+export interface DailyExpense {
+  id: string;
+  date: string; // YYYY-MM-DD
+  title: string;
+  category: ExpenseCategory;
+  amountPaise: number; // Integer paise (e.g. 15000 = ₹150)
+  paymentMethod: ExpensePaymentMethod;
+  notes?: string;
+  receiptNumber?: string;
+  recordedBy: string;
+  recordedByName: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface DailyClosing {
   id: string;
   closingDate: string; // YYYY-MM-DD
@@ -169,7 +196,7 @@ export interface AuditLog {
   actorName: string;
   actorRole: UserRole;
   action: string;
-  entityType: 'session' | 'payment' | 'pricing' | 'snack' | 'closing' | 'user' | 'auth' | 'audit_log';
+  entityType: 'session' | 'payment' | 'pricing' | 'snack' | 'closing' | 'user' | 'auth' | 'audit_log' | 'expense';
   entityId: string;
   details: string;
   timestamp: string;

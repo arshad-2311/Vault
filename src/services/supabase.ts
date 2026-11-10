@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import { Session, SessionItem, PaymentRecord } from '../types';
+import { Session, SessionItem, PaymentRecord, DailyExpense } from '../types';
 
 const supabaseUrl =
   (import.meta.env.VITE_SUPABASE_URL as string | undefined) ||
@@ -342,3 +342,119 @@ export function subscribeToSupabaseSessions(onUpdate: () => void): () => void {
     return () => {};
   }
 }
+
+/**
+ * Syncs a single daily expense to Supabase cloud.
+ */
+export async function syncExpenseToSupabase(expense: DailyExpense): Promise<{ success: boolean; error?: string }> {
+  if (!supabase || !isSupabaseConfigured) {
+    return { success: false, error: 'Supabase not configured' };
+  }
+  try {
+    const payload = {
+      id: expense.id,
+      date: expense.date,
+      title: expense.title,
+      category: expense.category,
+      amount_paise: expense.amountPaise,
+      payment_method: expense.paymentMethod,
+      notes: expense.notes || null,
+      receipt_number: expense.receiptNumber || null,
+      recorded_by: isValidUUID(expense.recordedBy) ? expense.recordedBy : null,
+      recorded_by_name: expense.recordedByName,
+      created_at: expense.createdAt,
+      updated_at: expense.updatedAt,
+    };
+    const { error } = await supabase.from('daily_expenses').upsert(payload);
+    if (error) {
+      console.warn('Could not sync expense to Supabase:', error.message);
+      return { success: false, error: error.message };
+    }
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err.message };
+  }
+}
+
+/**
+ * Fetches all daily expenses from Supabase cloud database.
+ */
+export async function fetchExpensesFromSupabase(): Promise<{
+  success: boolean;
+  expenses?: DailyExpense[];
+  error?: string;
+}> {
+  if (!supabase || !isSupabaseConfigured) {
+    return { success: false, error: 'Supabase not configured' };
+  }
+  try {
+    const { data, error } = await supabase
+      .from('daily_expenses')
+      .select('*')
+      .order('date', { ascending: false });
+
+    if (error) {
+      return { success: false, error: error.message };
+    }
+
+    const expenses: DailyExpense[] = (data || []).map((row: any) => ({
+      id: row.id,
+      date: row.date,
+      title: row.title,
+      category: row.category,
+      amountPaise: row.amount_paise,
+      paymentMethod: row.payment_method,
+      notes: row.notes || undefined,
+      receiptNumber: row.receipt_number || undefined,
+      recordedBy: row.recorded_by || 'usr-admin-1',
+      recordedByName: row.recorded_by_name || 'Admin',
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+    }));
+
+    return { success: true, expenses };
+  } catch (err: any) {
+    return { success: false, error: err.message };
+  }
+}
+
+/**
+ * Deletes a daily expense record from Supabase cloud database.
+ */
+export async function deleteExpenseFromSupabase(
+  expenseId: string
+): Promise<{ success: boolean; error?: string }> {
+  if (!supabase || !isSupabaseConfigured) {
+    return { success: false, error: 'Supabase not configured' };
+  }
+  try {
+    const { error } = await supabase.from('daily_expenses').delete().eq('id', expenseId);
+    if (error) {
+      console.warn('Could not delete expense from Supabase:', error.message);
+      return { success: false, error: error.message };
+    }
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err.message };
+  }
+}
+
+/**
+ * Bulk syncs an array of daily expenses to Supabase cloud.
+ */
+export async function syncAllExpensesToSupabase(
+  expenses: DailyExpense[]
+): Promise<{ synced: number; failed: number }> {
+  if (!supabase || !isSupabaseConfigured || expenses.length === 0) {
+    return { synced: 0, failed: 0 };
+  }
+  let synced = 0;
+  let failed = 0;
+  for (const exp of expenses) {
+    const res = await syncExpenseToSupabase(exp);
+    if (res.success) synced++;
+    else failed++;
+  }
+  return { synced, failed };
+}
+

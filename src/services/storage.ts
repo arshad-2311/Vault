@@ -9,6 +9,9 @@ import {
   DashboardMetrics,
   PaymentRecord,
   SessionItem,
+  DailyExpense,
+  ExpenseCategory,
+  ExpensePaymentMethod,
 } from '../types';
 import {
   calculateGamingCharge,
@@ -16,7 +19,7 @@ import {
   validatePaymentAmounts,
 } from '../utils/pricing';
 import { formatRupees, formatDateTime, maskPhoneNumber } from '../utils/formatters';
-import { syncSessionToSupabase } from './supabase';
+import { syncSessionToSupabase, syncExpenseToSupabase, deleteExpenseFromSupabase } from './supabase';
 
 export interface UserCredential {
   userId: string;
@@ -82,6 +85,7 @@ const STORAGE_KEYS = {
   PRICING: 'vault_pos_pricing',
   SESSIONS: 'vault_pos_sessions',
   CLOSINGS: 'vault_pos_closings',
+  EXPENSES: 'vault_pos_expenses',
   AUDIT_LOGS: 'vault_pos_audit_logs',
   CURRENT_USER: 'vault_pos_current_user',
 };
@@ -587,6 +591,9 @@ class PosStorageEngine {
     }
     if (!safeStorage.getItem(STORAGE_KEYS.CLOSINGS)) {
       safeStorage.setItem(STORAGE_KEYS.CLOSINGS, JSON.stringify([]));
+    }
+    if (!safeStorage.getItem(STORAGE_KEYS.EXPENSES)) {
+      safeStorage.setItem(STORAGE_KEYS.EXPENSES, JSON.stringify([]));
     }
     if (!safeStorage.getItem(STORAGE_KEYS.AUDIT_LOGS)) {
       const initialLogs: AuditLog[] = [
@@ -1981,6 +1988,261 @@ class PosStorageEngine {
       syncSessionToSupabase(session).catch(() => {});
     } catch {}
     return session;
+  }
+
+  /**
+   * Admin can edit payment details (cash, gpay, split amounts, and notes) for completed sessions.
+   */
+  updatePaymentDetails(params: {
+    sessionId: string;
+    method: 'cash' | 'gpay' | 'split';
+    cashAmountPaise: number;
+    gpayAmountPaise: number;
+    notes?: string;
+    actor: User;
+  }): Session {
+    if (params.actor.role !== 'admin') {
+      throw new Error('Permission denied: Only administrators can modify payment records.');
+    }
+    const { sessionId, method, cashAmountPaise, gpayAmountPaise, notes, actor } = params;
+    const sessions = this.getSessions();
+    const index = sessions.findIndex((s) => s.id === sessionId);
+    if (index === -1) throw new Error('Session not found.');
+
+    const session = sessions[index];
+    if (session.status !== 'completed' || !session.payment) {
+      throw new Error('Can only modify payments for completed sessions.');
+    }
+    if (session.isVoided) {
+      throw new Error('Cannot modify a voided session.');
+    }
+
+    const finalBill = session.payment.finalBillPaise;
+    const totalReceived = cashAmountPaise + gpayAmountPaise;
+
+    if (totalReceived < finalBill) {
+      throw new Error(
+        `Total payment (₹${(totalReceived / 100).toFixed(0)}) cannot be less than the final bill (₹${(finalBill / 100).toFixed(0)}).`
+      );
+    }
+
+    const previousPayment = { ...session.payment };
+
+    session.payment.method = method;
+    session.payment.cashAmountPaise = cashAmountPaise;
+    session.payment.gpayAmountPaise = gpayAmountPaise;
+    session.payment.totalReceivedPaise = totalReceived;
+    session.payment.outstandingBalancePaise = Math.max(0, finalBill - totalReceived);
+    session.payment.changeDuePaise = method === 'cash' ? Math.max(0, cashAmountPaise - finalBill) : 0;
+    session.payment.status = 'PAID';
+    if (notes !== undefined) {
+      session.payment.notes = notes;
+    }
+
+    session.updatedAt = new Date().toISOString();
+    sessions[index] = session;
+    safeStorage.setItem(STORAGE_KEYS.SESSIONS, JSON.stringify(sessions));
+
+    this.addAuditLog({
+      actorId: actor.id,
+      actorName: actor.displayName,
+      actorRole: actor.role,
+      action: 'PAYMENT_UPDATED',
+      entityType: 'payment',
+      entityId: session.payment.id,
+      details: `Admin ${actor.displayName} updated payment method to ${method.toUpperCase()} for ${session.customerName} (Cash: ₹${(cashAmountPaise / 100).toFixed(0)}, GPay: ₹${(gpayAmountPaise / 100).toFixed(0)}). ${notes ? `Note: ${notes}` : ''}`.trim(),
+      previousState: previousPayment,
+      newState: session.payment,
+    });
+
+    emitDataChanged();
+    try {
+      syncSessionToSupabase(session).catch(() => {});
+    } catch {}
+    return session;
+  }
+
+  // --- DAILY EXPENSES ---
+  getExpenses(): DailyExpense[] {
+    const raw = safeStorage.getItem(STORAGE_KEYS.EXPENSES);
+    return raw ? JSON.parse(raw) : [];
+  }
+
+  setExpenses(expenses: DailyExpense[]): void {
+    safeStorage.setItem(STORAGE_KEYS.EXPENSES, JSON.stringify(expenses));
+    emitDataChanged();
+  }
+
+  getExpenseById(id: string): DailyExpense | undefined {
+    return this.getExpenses().find((e) => e.id === id);
+  }
+
+  addExpense(
+    params: {
+      date: string;
+      title: string;
+      category: ExpenseCategory;
+      amountPaise: number;
+      paymentMethod: ExpensePaymentMethod;
+      notes?: string;
+      receiptNumber?: string;
+    },
+    actor: User
+  ): DailyExpense {
+    if (actor.role !== 'admin') {
+      throw new Error('Permission denied: Only administrators can record daily expenses.');
+    }
+    if (!params.title || !params.title.trim()) {
+      throw new Error('Expense title/description is required.');
+    }
+    if (!params.amountPaise || params.amountPaise <= 0) {
+      throw new Error('Expense amount must be greater than zero.');
+    }
+
+    const now = new Date().toISOString();
+    const newExpense: DailyExpense = {
+      id: `exp-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+      date: params.date || now.split('T')[0],
+      title: params.title.trim(),
+      category: params.category,
+      amountPaise: Math.round(params.amountPaise),
+      paymentMethod: params.paymentMethod,
+      notes: params.notes?.trim() || undefined,
+      receiptNumber: params.receiptNumber?.trim() || undefined,
+      recordedBy: actor.id,
+      recordedByName: actor.displayName,
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    const expenses = this.getExpenses();
+    expenses.unshift(newExpense);
+    safeStorage.setItem(STORAGE_KEYS.EXPENSES, JSON.stringify(expenses));
+
+    this.addAuditLog({
+      actorId: actor.id,
+      actorName: actor.displayName,
+      actorRole: actor.role,
+      action: 'EXPENSE_RECORDED',
+      entityType: 'expense',
+      entityId: newExpense.id,
+      details: `Recorded expense "${newExpense.title}" of ₹${(newExpense.amountPaise / 100).toFixed(0)} (${newExpense.category}, paid via ${newExpense.paymentMethod.toUpperCase()})`,
+      newState: newExpense,
+    });
+
+    emitDataChanged();
+    try {
+      syncExpenseToSupabase(newExpense).catch(() => {});
+    } catch {}
+    return newExpense;
+  }
+
+  updateExpense(
+    id: string,
+    updates: Partial<DailyExpense>,
+    actor: User
+  ): DailyExpense {
+    if (actor.role !== 'admin') {
+      throw new Error('Permission denied: Only administrators can edit daily expenses.');
+    }
+    const expenses = this.getExpenses();
+    const index = expenses.findIndex((e) => e.id === id);
+    if (index === -1) throw new Error('Expense record not found.');
+
+    const oldExpense = expenses[index];
+    const updated: DailyExpense = {
+      ...oldExpense,
+      ...updates,
+      updatedAt: new Date().toISOString(),
+    };
+
+    expenses[index] = updated;
+    safeStorage.setItem(STORAGE_KEYS.EXPENSES, JSON.stringify(expenses));
+
+    this.addAuditLog({
+      actorId: actor.id,
+      actorName: actor.displayName,
+      actorRole: actor.role,
+      action: 'EXPENSE_UPDATED',
+      entityType: 'expense',
+      entityId: id,
+      details: `Updated expense "${updated.title}" (Amount: ₹${(updated.amountPaise / 100).toFixed(0)})`,
+      previousState: oldExpense,
+      newState: updated,
+    });
+
+    emitDataChanged();
+    try {
+      syncExpenseToSupabase(updated).catch(() => {});
+    } catch {}
+    return updated;
+  }
+
+  deleteExpense(id: string, actor: User): void {
+    if (actor.role !== 'admin') {
+      throw new Error('Permission denied: Only administrators can delete daily expenses.');
+    }
+    const expenses = this.getExpenses();
+    const index = expenses.findIndex((e) => e.id === id);
+    if (index === -1) throw new Error('Expense record not found.');
+
+    const deleted = expenses[index];
+    expenses.splice(index, 1);
+    safeStorage.setItem(STORAGE_KEYS.EXPENSES, JSON.stringify(expenses));
+
+    this.addAuditLog({
+      actorId: actor.id,
+      actorName: actor.displayName,
+      actorRole: actor.role,
+      action: 'EXPENSE_DELETED',
+      entityType: 'expense',
+      entityId: id,
+      details: `Deleted expense "${deleted.title}" of ₹${(deleted.amountPaise / 100).toFixed(0)}`,
+      previousState: deleted,
+    });
+
+    emitDataChanged();
+    try {
+      deleteExpenseFromSupabase(id).catch(() => {});
+    } catch {}
+  }
+
+  getExpenseMetrics(startDate?: string, endDate?: string): {
+    totalExpensesPaise: number;
+    cashExpensesPaise: number;
+    gpayExpensesPaise: number;
+    count: number;
+    byCategory: Record<string, number>;
+  } {
+    const expenses = this.getExpenses();
+    const filtered = expenses.filter((e) => {
+      if (startDate && e.date < startDate) return false;
+      if (endDate && e.date > endDate) return false;
+      return true;
+    });
+
+    let totalExpensesPaise = 0;
+    let cashExpensesPaise = 0;
+    let gpayExpensesPaise = 0;
+    const byCategory: Record<string, number> = {};
+
+    filtered.forEach((e) => {
+      totalExpensesPaise += e.amountPaise;
+      if (e.paymentMethod === 'cash') {
+        cashExpensesPaise += e.amountPaise;
+      } else {
+        gpayExpensesPaise += e.amountPaise;
+      }
+      byCategory[e.category] = (byCategory[e.category] || 0) + e.amountPaise;
+    });
+
+    return {
+      totalExpensesPaise,
+      cashExpensesPaise,
+      gpayExpensesPaise,
+      count: filtered.length,
+      byCategory,
+    };
   }
 
   /**

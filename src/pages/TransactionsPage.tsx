@@ -14,6 +14,10 @@ import {
   Printer,
   Clock,
   Cloud,
+  Edit2,
+  CreditCard,
+  Banknote,
+  Check,
 } from 'lucide-react';
 import { Session, PaymentMethod, GamingType } from '../types';
 import { Button } from '../components/common/Button';
@@ -23,7 +27,7 @@ import { ReceiptModal } from '../components/pos/ReceiptModal';
 import { useAuth } from '../context/AuthContext';
 import { db, VAULT_DATA_CHANGED_EVENT } from '../services/storage';
 import { formatRupees, formatDateTime, formatDuration, maskPhoneNumber } from '../utils/formatters';
-import { syncAllSessionsToSupabase, isSupabaseConfigured } from '../services/supabase';
+import { syncAllSessionsToSupabase, syncAllExpensesToSupabase, isSupabaseConfigured } from '../services/supabase';
 
 export const TransactionsPage: React.FC = () => {
   const { currentUser, isAdmin } = useAuth();
@@ -52,30 +56,47 @@ export const TransactionsPage: React.FC = () => {
 
   // Cloud Sync State
   const [isSyncing, setIsSyncing] = useState(false);
+  const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
 
-  const handleSyncToCloud = async () => {
+  // Edit Payment Modal State (Admin only)
+  const [editingPaymentSession, setEditingPaymentSession] = useState<Session | null>(null);
+  const [editPaymentMethod, setEditPaymentMethod] = useState<'cash' | 'gpay' | 'split'>('cash');
+  const [editCashAmountRupees, setEditCashAmountRupees] = useState('');
+  const [editGpayAmountRupees, setEditGpayAmountRupees] = useState('');
+  const [editPaymentNotes, setEditPaymentNotes] = useState('');
+  const [editPaymentError, setEditPaymentError] = useState<string | null>(null);
+
+  const handleSyncToCloud = async (silent = false) => {
     if (!isSupabaseConfigured) {
-      alert('Supabase is not configured. Please check your Supabase connection.');
+      if (!silent) alert('Supabase is not configured. Please check your Supabase connection.');
       return;
     }
-    if (sessions.length === 0) {
-      alert('No closed transactions found on this device to sync.');
+    const currentSessions = db.getSessions();
+    if (currentSessions.length === 0) {
+      if (!silent) alert('No closed transactions found on this device to sync.');
       return;
     }
 
     setIsSyncing(true);
     try {
-      const res = await syncAllSessionsToSupabase(sessions);
-      if (res.synced > 0 && res.failed === 0) {
-        alert(`Successfully synced ${res.synced} transaction(s) to Supabase Cloud!`);
-      } else if (res.failed > 0) {
-        const errorDetail = res.error ? `\n\nSupabase response:\n"${res.error}"` : '';
-        alert(`Synced ${res.synced} transaction(s). ${res.failed} failed.${errorDetail}\n\nTo fix: Run the SQL in Supabase SQL Editor.`);
-      } else {
-        alert('Sync completed with 0 transactions.');
+      const res = await syncAllSessionsToSupabase(currentSessions);
+      const currentExpenses = db.getExpenses();
+      if (currentExpenses.length > 0) {
+        await syncAllExpensesToSupabase(currentExpenses);
+      }
+      setLastSyncTime(new Date());
+      if (!silent) {
+        if (res.synced > 0 && res.failed === 0) {
+          alert(`Successfully synced ${res.synced} transaction(s) to Supabase Cloud!`);
+        } else if (res.failed > 0) {
+          const errorDetail = res.error ? `\n\nSupabase response:\n"${res.error}"` : '';
+          alert(`Synced ${res.synced} transaction(s). ${res.failed} failed.${errorDetail}\n\nTo fix: Run the SQL in Supabase SQL Editor.`);
+        } else {
+          alert('Sync completed with 0 transactions.');
+        }
       }
     } catch (err: any) {
-      alert(`Sync error: ${err.message || 'Unknown error'}`);
+      if (!silent) alert(`Sync error: ${err.message || 'Unknown error'}`);
     } finally {
       setIsSyncing(false);
     }
@@ -83,6 +104,88 @@ export const TransactionsPage: React.FC = () => {
 
   const loadData = () => {
     setSessions(db.getSessions());
+  };
+
+  const openEditPaymentModal = (session: Session) => {
+    if (!isAdmin) {
+      alert('Access Restricted: Only Administrators can edit settled payments.');
+      return;
+    }
+    if (!session.payment) {
+      alert('This transaction has no payment record to edit.');
+      return;
+    }
+    setEditingPaymentSession(session);
+    setEditPaymentMethod(session.payment.method);
+    setEditCashAmountRupees((session.payment.cashAmountPaise / 100).toString());
+    setEditGpayAmountRupees((session.payment.gpayAmountPaise / 100).toString());
+    setEditPaymentNotes(session.payment.notes || '');
+    setEditPaymentError(null);
+  };
+
+  const handleMethodSelect = (method: 'cash' | 'gpay' | 'split') => {
+    setEditPaymentMethod(method);
+    if (!editingPaymentSession || !editingPaymentSession.payment) return;
+    const finalRupees = (editingPaymentSession.payment.finalBillPaise / 100).toString();
+
+    if (method === 'cash') {
+      setEditCashAmountRupees(finalRupees);
+      setEditGpayAmountRupees('0');
+    } else if (method === 'gpay') {
+      setEditGpayAmountRupees(finalRupees);
+      setEditCashAmountRupees('0');
+    } else {
+      // Default to 50/50 split if previously pure cash/gpay
+      const total = editingPaymentSession.payment.finalBillPaise / 100;
+      const half = (total / 2).toFixed(2);
+      const otherHalf = (total - parseFloat(half)).toFixed(2);
+      setEditGpayAmountRupees(half);
+      setEditCashAmountRupees(otherHalf);
+    }
+  };
+
+  const handleSavePaymentEdit = () => {
+    if (!editingPaymentSession || !editingPaymentSession.payment) return;
+    try {
+      const finalBillPaise = editingPaymentSession.payment.finalBillPaise;
+      let cashPaise = 0;
+      let gpayPaise = 0;
+
+      if (editPaymentMethod === 'cash') {
+        cashPaise = finalBillPaise;
+        gpayPaise = 0;
+      } else if (editPaymentMethod === 'gpay') {
+        gpayPaise = finalBillPaise;
+        cashPaise = 0;
+      } else {
+        cashPaise = Math.round((parseFloat(editCashAmountRupees) || 0) * 100);
+        gpayPaise = Math.round((parseFloat(editGpayAmountRupees) || 0) * 100);
+        if (cashPaise + gpayPaise < finalBillPaise) {
+          setEditPaymentError(
+            `Total split (₹${((cashPaise + gpayPaise) / 100).toFixed(2)}) must equal or exceed bill total (₹${(finalBillPaise / 100).toFixed(2)}).`
+          );
+          return;
+        }
+      }
+
+      const updated = db.updatePaymentDetails({
+        sessionId: editingPaymentSession.id,
+        method: editPaymentMethod,
+        cashAmountPaise: cashPaise,
+        gpayAmountPaise: gpayPaise,
+        notes: editPaymentNotes.trim() || undefined,
+        actor: currentUser,
+      });
+
+      loadData();
+      if (selectedSession && selectedSession.id === editingPaymentSession.id) {
+        setSelectedSession(updated);
+      }
+      setEditingPaymentSession(null);
+      alert('Payment breakdown updated and synced successfully!');
+    } catch (err: any) {
+      setEditPaymentError(err.message || 'Failed to update payment.');
+    }
   };
 
   const handleSwitchPaymentMethod = (sessionId: string, targetMethod: 'gpay' | 'cash') => {
@@ -112,7 +215,32 @@ export const TransactionsPage: React.FC = () => {
       loadData();
     };
     window.addEventListener(VAULT_DATA_CHANGED_EVENT, handleDataChanged);
-    return () => window.removeEventListener(VAULT_DATA_CHANGED_EVENT, handleDataChanged);
+
+    // Auto-sync every 60 seconds (1 minute)
+    const syncTimer = setInterval(() => {
+      handleSyncToCloud(true);
+    }, 60000);
+
+    // Auto-sync before exit (tab close, reload, or navigating away)
+    const handleBeforeUnload = () => {
+      handleSyncToCloud(true);
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
+    // Auto-sync when tab visibility becomes hidden (mobile app switch or screen lock)
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        handleSyncToCloud(true);
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      window.removeEventListener(VAULT_DATA_CHANGED_EVENT, handleDataChanged);
+      clearInterval(syncTimer);
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, []);
 
   // Filter Logic
@@ -200,16 +328,26 @@ export const TransactionsPage: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
-          <Button
-            variant="secondary"
-            size="md"
-            onClick={handleSyncToCloud}
-            disabled={isSyncing}
-            leftIcon={<Cloud className={`w-4 h-4 text-sky-400 ${isSyncing ? 'animate-pulse' : ''}`} />}
-            className="font-medium"
-          >
-            {isSyncing ? 'Syncing...' : 'Sync to Cloud'}
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="secondary"
+              size="md"
+              onClick={() => handleSyncToCloud(false)}
+              disabled={isSyncing}
+              leftIcon={<Cloud className={`w-4 h-4 text-sky-400 ${isSyncing ? 'animate-spin' : ''}`} />}
+              className="font-medium"
+              title="Continuous cloud backup: Automatically syncs every 1 min and before tab exits"
+            >
+              {isSyncing ? 'Syncing...' : 'Sync to Cloud'}
+            </Button>
+            <span
+              className="text-3xs text-emerald-400 font-mono hidden sm:inline-flex items-center gap-1.5 px-2 py-1 rounded bg-emerald-950/40 border border-emerald-900/50"
+              title="Continuous background cloud backup: syncs every 1 min and automatically before page exit"
+            >
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              Auto-sync: 1m & on exit
+            </span>
+          </div>
           <Button
             variant="secondary"
             size="md"
@@ -454,6 +592,17 @@ export const TransactionsPage: React.FC = () => {
                             >
                               {s.payment.method.toUpperCase()}
                             </Badge>
+                            {isAdmin && !s.isVoided && s.status === 'completed' && (
+                              <button
+                                type="button"
+                                title="Edit payment method, GPay/Cash split breakdown (Admin)"
+                                onClick={() => openEditPaymentModal(s)}
+                                className="px-1.5 py-0.5 rounded text-3xs font-mono font-bold border border-red-900/60 bg-red-950/40 hover:bg-red-900/60 text-red-300 hover:text-white transition-colors flex items-center gap-1"
+                              >
+                                <Edit2 className="w-2.5 h-2.5" />
+                                Edit
+                              </button>
+                            )}
                             {!s.isVoided && s.status === 'completed' && s.payment && s.payment.method !== 'split' && (
                               <button
                                 type="button"
@@ -671,6 +820,16 @@ export const TransactionsPage: React.FC = () => {
                   </span>
                   {!selectedSession.isVoided && selectedSession.status === 'completed' && (
                     <div className="flex items-center gap-1.5 font-sans">
+                      {isAdmin && (
+                        <button
+                          type="button"
+                          onClick={() => openEditPaymentModal(selectedSession)}
+                          className="px-2 py-0.5 rounded bg-red-950/60 hover:bg-red-900/80 text-red-300 border border-red-800 text-3xs font-semibold transition-colors flex items-center gap-1"
+                        >
+                          <Edit2 className="w-3 h-3" />
+                          Edit Payment
+                        </button>
+                      )}
                       {selectedSession.payment.method !== 'cash' && (
                         <button
                           type="button"
@@ -822,6 +981,183 @@ export const TransactionsPage: React.FC = () => {
                 leftIcon={<AlertTriangle className="w-3.5 h-3.5" />}
               >
                 Confirm Void & Audit
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* Admin Edit Payment Modal */}
+      {editingPaymentSession && editingPaymentSession.payment && (
+        <Modal
+          isOpen={Boolean(editingPaymentSession)}
+          onClose={() => setEditingPaymentSession(null)}
+          title="Edit Payment Breakdown"
+          description={`Update payment method and cash/GPay split for ${editingPaymentSession.customerName} • Bill Total: ${formatRupees(
+            editingPaymentSession.payment.finalBillPaise
+          )}`}
+          maxWidth="md"
+        >
+          <div className="space-y-4">
+            {editPaymentError && (
+              <div className="p-3 rounded-lg bg-red-950/60 border border-red-800 text-red-300 text-xs">
+                {editPaymentError}
+              </div>
+            )}
+
+            {/* Bill Info Banner */}
+            <div className="p-3 rounded-xl bg-zinc-900 border border-zinc-800 flex items-center justify-between">
+              <div>
+                <span className="text-3xs font-mono uppercase text-zinc-400 block">Total Final Bill</span>
+                <span className="text-lg font-black font-mono text-white">
+                  {formatRupees(editingPaymentSession.payment.finalBillPaise)}
+                </span>
+              </div>
+              <div className="text-right">
+                <span className="text-3xs font-mono uppercase text-zinc-400 block">Current Method</span>
+                <Badge
+                  variant={
+                    editingPaymentSession.payment.method === 'gpay'
+                      ? 'info'
+                      : editingPaymentSession.payment.method === 'cash'
+                      ? 'success'
+                      : 'neutral'
+                  }
+                  size="sm"
+                >
+                  {editingPaymentSession.payment.method.toUpperCase()}
+                </Badge>
+              </div>
+            </div>
+
+            {/* Method Selector Tabs */}
+            <div>
+              <label className="block text-2xs font-semibold text-zinc-300 uppercase tracking-wider font-mono mb-1.5">
+                Select New Payment Method
+              </label>
+              <div className="grid grid-cols-3 gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleMethodSelect('cash')}
+                  className={`py-2 px-3 rounded-xl border text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+                    editPaymentMethod === 'cash'
+                      ? 'bg-emerald-600 text-white border-emerald-500 shadow-md shadow-emerald-950/60'
+                      : 'bg-zinc-900 text-zinc-400 border-zinc-800 hover:text-white'
+                  }`}
+                >
+                  <Banknote className="w-3.5 h-3.5" />
+                  Full Cash
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleMethodSelect('gpay')}
+                  className={`py-2 px-3 rounded-xl border text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+                    editPaymentMethod === 'gpay'
+                      ? 'bg-sky-600 text-white border-sky-500 shadow-md shadow-sky-950/60'
+                      : 'bg-zinc-900 text-zinc-400 border-zinc-800 hover:text-white'
+                  }`}
+                >
+                  <CreditCard className="w-3.5 h-3.5" />
+                  Full GPay
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleMethodSelect('split')}
+                  className={`py-2 px-3 rounded-xl border text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+                    editPaymentMethod === 'split'
+                      ? 'bg-red-600 text-white border-red-500 shadow-md shadow-red-950/60'
+                      : 'bg-zinc-900 text-zinc-400 border-zinc-800 hover:text-white'
+                  }`}
+                >
+                  Split / Custom
+                </button>
+              </div>
+            </div>
+
+            {/* Split Amounts Inputs */}
+            {editPaymentMethod === 'split' && (
+              <div className="p-3.5 rounded-xl bg-zinc-900/80 border border-zinc-800 space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="block text-3xs font-mono font-bold text-sky-400 uppercase">
+                      GPay Amount (₹)
+                    </label>
+                    <input
+                      type="number"
+                      step="1"
+                      min="0"
+                      value={editGpayAmountRupees}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setEditGpayAmountRupees(val);
+                        const gpayNum = parseFloat(val) || 0;
+                        const totalRupees = editingPaymentSession.payment!.finalBillPaise / 100;
+                        const remainder = Math.max(0, totalRupees - gpayNum);
+                        setEditCashAmountRupees(remainder.toString());
+                      }}
+                      className="w-full px-3 py-2 bg-zinc-950 border border-zinc-700 rounded-lg text-sm text-white font-mono font-bold outline-none focus:border-sky-500"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="block text-3xs font-mono font-bold text-emerald-400 uppercase">
+                      Cash Amount (₹)
+                    </label>
+                    <input
+                      type="number"
+                      step="1"
+                      min="0"
+                      value={editCashAmountRupees}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setEditCashAmountRupees(val);
+                        const cashNum = parseFloat(val) || 0;
+                        const totalRupees = editingPaymentSession.payment!.finalBillPaise / 100;
+                        const remainder = Math.max(0, totalRupees - cashNum);
+                        setEditGpayAmountRupees(remainder.toString());
+                      }}
+                      className="w-full px-3 py-2 bg-zinc-950 border border-zinc-700 rounded-lg text-sm text-white font-mono font-bold outline-none focus:border-emerald-500"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between text-3xs font-mono text-zinc-400 pt-1 border-t border-zinc-800">
+                  <span>
+                    Total Entered: ₹
+                    {(
+                      (parseFloat(editGpayAmountRupees) || 0) +
+                      (parseFloat(editCashAmountRupees) || 0)
+                    ).toFixed(2)}
+                  </span>
+                  <span>Required: {formatRupees(editingPaymentSession.payment.finalBillPaise)}</span>
+                </div>
+              </div>
+            )}
+
+            {/* Admin Notes */}
+            <div className="space-y-1">
+              <label className="block text-2xs font-semibold text-zinc-300 uppercase tracking-wider font-mono">
+                Admin Reason / Notes (Audited)
+              </label>
+              <input
+                type="text"
+                value={editPaymentNotes}
+                onChange={(e) => setEditPaymentNotes(e.target.value)}
+                placeholder="e.g. Customer paid via GPay, staff mistakenly clicked Cash"
+                className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 rounded-lg text-xs text-white placeholder-zinc-500 outline-none focus:border-red-500"
+              />
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <Button variant="secondary" size="sm" onClick={() => setEditingPaymentSession(null)}>
+                Cancel
+              </Button>
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={handleSavePaymentEdit}
+                className="bg-red-600 hover:bg-red-500 text-white font-bold border-red-500 px-4"
+              >
+                Save Payment & Sync
               </Button>
             </div>
           </div>

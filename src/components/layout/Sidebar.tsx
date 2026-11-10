@@ -11,6 +11,7 @@ import {
   LogOut,
   X,
   ShoppingBag,
+  Wallet,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
@@ -19,6 +20,7 @@ export type NavTab =
   | 'active-sessions'
   | 'walk-in-pos'
   | 'transactions'
+  | 'expenses'
   | 'snacks'
   | 'settings'
   | 'employees'
@@ -48,6 +50,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     label: string;
     icon: React.ComponentType<{ className?: string }>;
     badge?: number | string;
+    adminOnly?: boolean;
   }> = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     {
@@ -58,6 +61,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     },
     { id: 'walk-in-pos', label: 'Walk-in Snack POS', icon: ShoppingBag },
     { id: 'transactions', label: 'Transactions', icon: ReceiptText },
+    { id: 'expenses', label: 'Daily Expenses', icon: Wallet, adminOnly: true },
   ];
 
   const managementNav: Array<{
