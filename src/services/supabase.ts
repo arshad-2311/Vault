@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import { Session, SessionItem, PaymentRecord, DailyExpense } from '../types';
+import { Session, SessionItem, PaymentRecord, DailyExpense, SnackItem, PricingConfig } from '../types';
 
 const supabaseUrl =
   (import.meta.env.VITE_SUPABASE_URL as string | undefined) ||
@@ -19,6 +19,18 @@ export const isSupabaseConfigured = Boolean(
   !supabaseUrl.includes('your-project') &&
   supabaseAnonKey !== 'your-anon-key'
 );
+
+const isTest =
+  typeof (globalThis as any).process !== 'undefined' &&
+  Boolean((globalThis as any).process?.env?.VITEST || (globalThis as any).process?.env?.NODE_ENV === 'test');
+
+const logWarn = (...args: any[]) => {
+  if (!isTest) console.warn(...args);
+};
+
+const logError = (...args: any[]) => {
+  if (!isTest) console.error(...args);
+};
 
 export const supabase = isSupabaseConfigured
   ? createClient(supabaseUrl, supabaseAnonKey)
@@ -90,7 +102,7 @@ export async function syncSessionToSupabase(session: Session): Promise<{ success
         display_order: stationId === 'station-walk-in' ? 99 : 1,
       });
     } catch (stErr) {
-      console.warn('Could not upsert station prerequisite:', stErr);
+      logWarn('Could not upsert station prerequisite:', stErr);
     }
 
     // 2. Upsert session row
@@ -130,7 +142,7 @@ export async function syncSessionToSupabase(session: Session): Promise<{ success
 
     const { error: sessionErr } = await supabase.from('sessions').upsert(sessionPayload);
     if (sessionErr) {
-      console.warn('Supabase session sync error:', sessionErr.message);
+      logWarn('Supabase session sync error:', sessionErr.message);
       return { success: false, error: sessionErr.message };
     }
 
@@ -150,7 +162,7 @@ export async function syncSessionToSupabase(session: Session): Promise<{ success
 
       const { error: itemsErr } = await supabase.from('session_items').upsert(itemsPayload);
       if (itemsErr) {
-        console.warn('Supabase items sync warning:', itemsErr.message);
+        logWarn('Supabase items sync warning:', itemsErr.message);
       }
     }
 
@@ -174,13 +186,13 @@ export async function syncSessionToSupabase(session: Session): Promise<{ success
 
       const { error: payErr } = await supabase.from('payments').upsert(paymentPayload);
       if (payErr) {
-        console.warn('Supabase payment sync warning:', payErr.message);
+        logWarn('Supabase payment sync warning:', payErr.message);
       }
     }
 
     return { success: true };
   } catch (err: any) {
-    console.error('Failed to sync session to Supabase:', err);
+    logError('Failed to sync session to Supabase:', err);
     return { success: false, error: err.message || 'Sync failed' };
   }
 }
@@ -367,7 +379,7 @@ export async function syncExpenseToSupabase(expense: DailyExpense): Promise<{ su
     };
     const { error } = await supabase.from('daily_expenses').upsert(payload);
     if (error) {
-      console.warn('Could not sync expense to Supabase:', error.message);
+      logWarn('Could not sync expense to Supabase:', error.message);
       return { success: false, error: error.message };
     }
     return { success: true };
@@ -430,7 +442,7 @@ export async function deleteExpenseFromSupabase(
   try {
     const { error } = await supabase.from('daily_expenses').delete().eq('id', expenseId);
     if (error) {
-      console.warn('Could not delete expense from Supabase:', error.message);
+      logWarn('Could not delete expense from Supabase:', error.message);
       return { success: false, error: error.message };
     }
     return { success: true };
@@ -456,5 +468,199 @@ export async function syncAllExpensesToSupabase(
     else failed++;
   }
   return { synced, failed };
+}
+
+/**
+ * Syncs a single snack/product to Supabase cloud.
+ */
+export async function syncSnackToSupabase(
+  snack: SnackItem
+): Promise<{ success: boolean; error?: string }> {
+  if (!supabase || !isSupabaseConfigured) {
+    return { success: false, error: 'Supabase not configured' };
+  }
+  try {
+    const payload = {
+      id: snack.id,
+      name: snack.name,
+      category: snack.category || 'General',
+      price_paise: snack.pricePaise,
+      is_active: snack.isActive,
+      stock: snack.stock !== undefined ? snack.stock : 100,
+      low_stock_threshold: snack.lowStockThreshold !== undefined ? snack.lowStockThreshold : 5,
+      updated_at: new Date().toISOString(),
+    };
+    const { error } = await supabase.from('products').upsert(payload);
+    if (error) {
+      logWarn('Could not sync snack to Supabase:', error.message);
+      return { success: false, error: error.message };
+    }
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err.message };
+  }
+}
+
+/**
+ * Deletes a snack/product from Supabase cloud database.
+ */
+export async function deleteSnackFromSupabase(
+  snackId: string
+): Promise<{ success: boolean; error?: string }> {
+  if (!supabase || !isSupabaseConfigured) {
+    return { success: false, error: 'Supabase not configured' };
+  }
+  try {
+    const { error } = await supabase.from('products').delete().eq('id', snackId);
+    if (error) {
+      logWarn('Could not delete snack from Supabase:', error.message);
+      return { success: false, error: error.message };
+    }
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err.message };
+  }
+}
+
+/**
+ * Fetches all snacks/products from Supabase cloud database.
+ */
+export async function fetchSnacksFromSupabase(): Promise<{
+  success: boolean;
+  snacks?: SnackItem[];
+  error?: string;
+}> {
+  if (!supabase || !isSupabaseConfigured) {
+    return { success: false, error: 'Supabase not configured' };
+  }
+  try {
+    const { data, error } = await supabase
+      .from('products')
+      .select('*')
+      .order('name', { ascending: true });
+
+    if (error) {
+      return { success: false, error: error.message };
+    }
+
+    const snacks: SnackItem[] = (data || []).map((row: any) => ({
+      id: row.id,
+      name: row.name,
+      category: row.category || 'General',
+      pricePaise: row.price_paise,
+      isActive: row.is_active ?? true,
+      stock: row.stock !== undefined && row.stock !== null ? row.stock : 100,
+      lowStockThreshold: row.low_stock_threshold !== undefined && row.low_stock_threshold !== null ? row.low_stock_threshold : 5,
+    }));
+
+    return { success: true, snacks };
+  } catch (err: any) {
+    return { success: false, error: err.message };
+  }
+}
+
+/**
+ * Bulk syncs an array of snacks to Supabase cloud database.
+ */
+export async function syncAllSnacksToSupabase(
+  snacks: SnackItem[]
+): Promise<{ synced: number; failed: number }> {
+  if (!supabase || !isSupabaseConfigured || snacks.length === 0) {
+    return { synced: 0, failed: 0 };
+  }
+  let synced = 0;
+  let failed = 0;
+  for (const s of snacks) {
+    const res = await syncSnackToSupabase(s);
+    if (res.success) synced++;
+    else failed++;
+  }
+  return { synced, failed };
+}
+
+/**
+ * Syncs business pricing configuration to Supabase cloud database.
+ */
+export async function syncPricingToSupabase(
+  pricing: PricingConfig
+): Promise<{ success: boolean; error?: string }> {
+  if (!supabase || !isSupabaseConfigured) {
+    return { success: false, error: 'Supabase not configured' };
+  }
+  try {
+    const payload = {
+      id: 'cfg-default',
+      business_name: pricing.businessName,
+      business_timezone: pricing.businessTimezone,
+      currency_symbol: pricing.currencySymbol || '₹',
+      ps5_hourly_rate_paise: pricing.ps5HourlyRatePaise || pricing.ps5Rate1PlayerPaise || 15000,
+      ps5_multiplayer_hourly_rate_paise: pricing.ps5MultiplayerHourlyRatePaise || pricing.ps5Rate2PlayersPaise || 22000,
+      ps5_fixed_plans: pricing.ps5FixedPlans || [],
+      pool_hourly_rate_paise: pricing.poolHourlyRatePaise || pricing.snookerHourlyRatePaise || 18000,
+      pool_per_frame_rate_paise: pricing.poolPerFrameRatePaise || 5000,
+      rounding_rule: pricing.roundingRule || 'nearest_5',
+      allow_custom_snacks: pricing.allowCustomSnacks ?? true,
+      allow_partial_payments: pricing.allowPartialPayments ?? true,
+      max_employee_discount_paise: pricing.maxEmployeeDiscountPaise || 5000,
+      updated_at: new Date().toISOString(),
+    };
+    const { error } = await supabase.from('pricing_config').upsert(payload);
+    if (error) {
+      logWarn('Could not sync pricing config to Supabase:', error.message);
+      return { success: false, error: error.message };
+    }
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err.message };
+  }
+}
+
+/**
+ * Fetches business pricing configuration from Supabase cloud database.
+ */
+export async function fetchPricingFromSupabase(): Promise<{
+  success: boolean;
+  pricing?: Partial<PricingConfig>;
+  error?: string;
+}> {
+  if (!supabase || !isSupabaseConfigured) {
+    return { success: false, error: 'Supabase not configured' };
+  }
+  try {
+    const { data, error } = await supabase
+      .from('pricing_config')
+      .select('*')
+      .eq('id', 'cfg-default')
+      .maybeSingle();
+
+    if (error) {
+      return { success: false, error: error.message };
+    }
+
+    if (!data) return { success: false, error: 'No pricing config found' };
+
+    const pricing: Partial<PricingConfig> = {
+      id: 'cfg-default',
+      businessName: data.business_name,
+      businessTimezone: data.business_timezone,
+      currencySymbol: data.currency_symbol,
+      ps5HourlyRatePaise: data.ps5_hourly_rate_paise,
+      ps5Rate1PlayerPaise: data.ps5_hourly_rate_paise,
+      ps5MultiplayerHourlyRatePaise: data.ps5_multiplayer_hourly_rate_paise,
+      ps5Rate2PlayersPaise: data.ps5_multiplayer_hourly_rate_paise,
+      ps5FixedPlans: data.ps5_fixed_plans || [],
+      poolHourlyRatePaise: data.pool_hourly_rate_paise,
+      snookerHourlyRatePaise: data.pool_hourly_rate_paise,
+      poolPerFrameRatePaise: data.pool_per_frame_rate_paise,
+      roundingRule: data.rounding_rule,
+      allowCustomSnacks: data.allow_custom_snacks,
+      allowPartialPayments: data.allow_partial_payments,
+      maxEmployeeDiscountPaise: data.max_employee_discount_paise,
+    };
+
+    return { success: true, pricing };
+  } catch (err: any) {
+    return { success: false, error: err.message };
+  }
 }
 

@@ -27,7 +27,13 @@ import { ReceiptModal } from '../components/pos/ReceiptModal';
 import { useAuth } from '../context/AuthContext';
 import { db, VAULT_DATA_CHANGED_EVENT } from '../services/storage';
 import { formatRupees, formatDateTime, formatDuration, maskPhoneNumber } from '../utils/formatters';
-import { syncAllSessionsToSupabase, syncAllExpensesToSupabase, isSupabaseConfigured } from '../services/supabase';
+import {
+  syncAllSessionsToSupabase,
+  syncAllExpensesToSupabase,
+  syncAllSnacksToSupabase,
+  syncPricingToSupabase,
+  isSupabaseConfigured,
+} from '../services/supabase';
 
 export const TransactionsPage: React.FC = () => {
   const { currentUser, isAdmin } = useAuth();
@@ -84,6 +90,12 @@ export const TransactionsPage: React.FC = () => {
       if (currentExpenses.length > 0) {
         await syncAllExpensesToSupabase(currentExpenses);
       }
+      const currentSnacks = db.getSnacks();
+      if (currentSnacks.length > 0) {
+        await syncAllSnacksToSupabase(currentSnacks);
+      }
+      const currentPricing = db.getPricingConfig();
+      await syncPricingToSupabase(currentPricing);
       setLastSyncTime(new Date());
       if (!silent) {
         if (res.synced > 0 && res.failed === 0) {

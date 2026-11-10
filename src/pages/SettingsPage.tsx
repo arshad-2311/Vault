@@ -43,21 +43,29 @@ export const SettingsPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const current = db.getPricingConfig();
-    setConfig(current);
-    setPs5Rate1PlayerRupees(((current.ps5Rate1PlayerPaise || current.ps5HourlyRatePaise || 15000) / 100).toString());
-    setPs5Rate2PlayersRupees(((current.ps5Rate2PlayersPaise || current.ps5MultiplayerHourlyRatePaise || 30000) / 100).toString());
-    setPs5Rate3PlayersRupees(((current.ps5Rate3PlayersPaise || 40000) / 100).toString());
-    setPs5Rate4PlayersRupees(((current.ps5Rate4PlayersPaise || 50000) / 100).toString());
-    setSnookerHourlyRupees(((current.snookerHourlyRatePaise || current.poolHourlyRatePaise || 25000) / 100).toString());
-    setPoolPerFrameRupees((current.poolPerFrameRatePaise / 100).toString());
-    setRoundingRule(current.roundingRule);
-    setGraceMinutes((current.graceMinutes ?? 5).toString());
-    setAllowCustomSnacks(current.allowCustomSnacks);
-    setAllowPartialPayments(current.allowPartialPayments);
-    setMaxEmployeeDiscountRupees((current.maxEmployeeDiscountPaise / 100).toString());
-    setBusinessName(current.businessName);
-    setBusinessTimezone(current.businessTimezone);
+    const applyConfig = (current: PricingConfig) => {
+      setConfig(current);
+      setPs5Rate1PlayerRupees(((current.ps5Rate1PlayerPaise || current.ps5HourlyRatePaise || 15000) / 100).toString());
+      setPs5Rate2PlayersRupees(((current.ps5Rate2PlayersPaise || current.ps5MultiplayerHourlyRatePaise || 30000) / 100).toString());
+      setPs5Rate3PlayersRupees(((current.ps5Rate3PlayersPaise || 40000) / 100).toString());
+      setPs5Rate4PlayersRupees(((current.ps5Rate4PlayersPaise || 50000) / 100).toString());
+      setSnookerHourlyRupees(((current.snookerHourlyRatePaise || current.poolHourlyRatePaise || 25000) / 100).toString());
+      setPoolPerFrameRupees((current.poolPerFrameRatePaise / 100).toString());
+      setRoundingRule(current.roundingRule);
+      setGraceMinutes((current.graceMinutes ?? 5).toString());
+      setAllowCustomSnacks(current.allowCustomSnacks);
+      setAllowPartialPayments(current.allowPartialPayments);
+      setMaxEmployeeDiscountRupees((current.maxEmployeeDiscountPaise / 100).toString());
+      setBusinessName(current.businessName);
+      setBusinessTimezone(current.businessTimezone);
+    };
+
+    applyConfig(db.getPricingConfig());
+
+    // Pull cloud pricing if available
+    db.fetchAndMergeCloudData().then(() => {
+      applyConfig(db.getPricingConfig());
+    }).catch(() => {});
   }, []);
 
   if (!isAdmin) {

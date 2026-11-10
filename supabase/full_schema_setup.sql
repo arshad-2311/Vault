@@ -89,6 +89,8 @@ CREATE TABLE IF NOT EXISTS public.products (
   category TEXT NOT NULL DEFAULT 'General',
   price_paise INTEGER NOT NULL CHECK (price_paise >= 0),
   is_active BOOLEAN NOT NULL DEFAULT true,
+  stock INTEGER NOT NULL DEFAULT 100,
+  low_stock_threshold INTEGER NOT NULL DEFAULT 5,
   created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now()),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now())
 );

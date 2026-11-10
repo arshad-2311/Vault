@@ -19,7 +19,18 @@ import {
   validatePaymentAmounts,
 } from '../utils/pricing';
 import { formatRupees, formatDateTime, maskPhoneNumber } from '../utils/formatters';
-import { syncSessionToSupabase, syncExpenseToSupabase, deleteExpenseFromSupabase } from './supabase';
+import {
+  syncSessionToSupabase,
+  syncExpenseToSupabase,
+  deleteExpenseFromSupabase,
+  syncSnackToSupabase,
+  deleteSnackFromSupabase,
+  syncAllSnacksToSupabase,
+  fetchSnacksFromSupabase,
+  syncPricingToSupabase,
+  fetchPricingFromSupabase,
+  isSupabaseConfigured,
+} from './supabase';
 
 export interface UserCredential {
   userId: string;
@@ -505,7 +516,7 @@ class PosStorageEngine {
     safeStorage.setItem(STORAGE_KEYS.RATE_LIMITS, JSON.stringify(limits));
   }
 
-  private init() {
+  public init() {
     const usersRaw = safeStorage.getItem(STORAGE_KEYS.USERS);
     if (!usersRaw) {
       safeStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(INITIAL_USERS));
@@ -566,20 +577,6 @@ class PosStorageEngine {
     const snacksRaw = safeStorage.getItem(STORAGE_KEYS.SNACKS);
     if (!snacksRaw) {
       safeStorage.setItem(STORAGE_KEYS.SNACKS, JSON.stringify(INITIAL_SNACKS));
-    } else {
-      try {
-        const parsedSnacks: SnackItem[] = JSON.parse(snacksRaw);
-        let updated = false;
-        parsedSnacks.forEach((s) => {
-          if (s.stock !== undefined && s.stock <= 0) {
-            s.stock = 50;
-            updated = true;
-          }
-        });
-        if (updated) {
-          safeStorage.setItem(STORAGE_KEYS.SNACKS, JSON.stringify(parsedSnacks));
-        }
-      } catch {}
     }
     const pricingRaw = safeStorage.getItem(STORAGE_KEYS.PRICING);
     if (!pricingRaw) {
@@ -647,6 +644,10 @@ class PosStorageEngine {
           safeStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(INITIAL_USERS[0]));
         }
       } catch {}
+    }
+
+    if (!isTestEnvironment && isSupabaseConfigured) {
+      this.fetchAndMergeCloudData().catch(() => {});
     }
   }
 
@@ -1144,6 +1145,11 @@ class PosStorageEngine {
     }));
   }
 
+  setSnacks(snacks: SnackItem[]): void {
+    safeStorage.setItem(STORAGE_KEYS.SNACKS, JSON.stringify(snacks));
+    emitDataChanged();
+  }
+
   createSnack(snackData: Omit<SnackItem, 'id'>, actor: User): SnackItem {
     if (actor.role !== 'admin') {
       throw new Error('Permission denied: Only administrators can add items to the catalogue.');
@@ -1166,6 +1172,10 @@ class PosStorageEngine {
       details: `Added new snack: ${newSnack.name} at ₹${(newSnack.pricePaise / 100).toFixed(2)}`,
     });
 
+    emitDataChanged();
+    try {
+      syncSnackToSupabase(newSnack).catch(() => {});
+    } catch {}
     return newSnack;
   }
 
@@ -1194,6 +1204,10 @@ class PosStorageEngine {
       newState: updated,
     });
 
+    emitDataChanged();
+    try {
+      syncSnackToSupabase(updated).catch(() => {});
+    } catch {}
     return updated;
   }
 
@@ -1221,6 +1235,9 @@ class PosStorageEngine {
     });
 
     emitDataChanged();
+    try {
+      deleteSnackFromSupabase(snackId).catch(() => {});
+    } catch {}
   }
 
   restockAllSnacks(amount = 50, actor?: User): void {
@@ -1241,12 +1258,20 @@ class PosStorageEngine {
         details: `Bulk restocked all snacks (+${amount} units each)`,
       });
     }
+    try {
+      syncAllSnacksToSupabase(snacks).catch(() => {});
+    } catch {}
   }
 
   // --- PRICING CONFIG ---
   getPricingConfig(): PricingConfig {
     const raw = safeStorage.getItem(STORAGE_KEYS.PRICING);
     return raw ? JSON.parse(raw) : DEFAULT_PRICING_CONFIG;
+  }
+
+  setPricingConfig(pricing: PricingConfig): void {
+    safeStorage.setItem(STORAGE_KEYS.PRICING, JSON.stringify(pricing));
+    emitDataChanged();
   }
 
   updatePricingConfig(updates: Partial<PricingConfig>, actor: User): PricingConfig {
@@ -1269,7 +1294,60 @@ class PosStorageEngine {
       newState: updated,
     });
 
+    emitDataChanged();
+    try {
+      syncPricingToSupabase(updated).catch(() => {});
+    } catch {}
     return updated;
+  }
+
+  /**
+   * Two-way Cloud Synchronization for snacks catalogue and business rates.
+   * Loads custom client settings from Supabase so edits on any browser/device persist across reloads.
+   */
+  async fetchAndMergeCloudData(): Promise<void> {
+    if (!isSupabaseConfigured) return;
+    try {
+      // 1. Fetch remote snacks
+      const remoteSnacksRes = await fetchSnacksFromSupabase();
+      if (remoteSnacksRes.success && remoteSnacksRes.snacks && remoteSnacksRes.snacks.length > 0) {
+        const local = this.getSnacks();
+        const remoteMap = new Map(remoteSnacksRes.snacks.map((s) => [s.id, s]));
+        const merged = remoteSnacksRes.snacks.map((remote) => {
+          const localMatch = local.find((l) => l.id === remote.id);
+          return localMatch ? { ...localMatch, ...remote } : remote;
+        });
+        local.forEach((l) => {
+          if (!remoteMap.has(l.id)) {
+            merged.push(l);
+            syncSnackToSupabase(l).catch(() => {});
+          }
+        });
+        safeStorage.setItem(STORAGE_KEYS.SNACKS, JSON.stringify(merged));
+        emitDataChanged();
+      } else if (remoteSnacksRes.success && (!remoteSnacksRes.snacks || remoteSnacksRes.snacks.length === 0)) {
+        // If remote has no snacks yet, seed current local snacks to Supabase
+        const local = this.getSnacks();
+        syncAllSnacksToSupabase(local).catch(() => {});
+      }
+
+      // 2. Fetch remote pricing config
+      const remotePricingRes = await fetchPricingFromSupabase();
+      if (remotePricingRes.success && remotePricingRes.pricing) {
+        const current = this.getPricingConfig();
+        const mergedPricing: PricingConfig = {
+          ...current,
+          ...remotePricingRes.pricing,
+        };
+        safeStorage.setItem(STORAGE_KEYS.PRICING, JSON.stringify(mergedPricing));
+        emitDataChanged();
+      } else if (remotePricingRes.success && !remotePricingRes.pricing) {
+        const current = this.getPricingConfig();
+        syncPricingToSupabase(current).catch(() => {});
+      }
+    } catch (err) {
+      console.warn('Could not fetch cloud settings from Supabase:', err);
+    }
   }
 
   // --- SESSIONS ---
@@ -1400,6 +1478,9 @@ class PosStorageEngine {
 
       if (inventoryChanged) {
         safeStorage.setItem(STORAGE_KEYS.SNACKS, JSON.stringify(allSnacks));
+        try {
+          syncAllSnacksToSupabase(allSnacks).catch(() => {});
+        } catch {}
       }
     }
 
@@ -1529,6 +1610,9 @@ class PosStorageEngine {
         if (product.stock !== undefined) {
           product.stock = Math.max(0, product.stock - quantity);
           safeStorage.setItem(STORAGE_KEYS.SNACKS, JSON.stringify(allSnacks));
+          try {
+            syncSnackToSupabase(product).catch(() => {});
+          } catch {}
         }
       }
     }
@@ -1603,6 +1687,9 @@ class PosStorageEngine {
       if (pIdx !== -1 && allSnacks[pIdx].stock !== undefined) {
         allSnacks[pIdx].stock = (allSnacks[pIdx].stock || 0) + removedItem.quantity;
         safeStorage.setItem(STORAGE_KEYS.SNACKS, JSON.stringify(allSnacks));
+        try {
+          syncSnackToSupabase(allSnacks[pIdx]).catch(() => {});
+        } catch {}
       }
     }
 
@@ -1855,6 +1942,9 @@ class PosStorageEngine {
 
     if (inventoryChanged) {
       safeStorage.setItem(STORAGE_KEYS.SNACKS, JSON.stringify(allSnacks));
+      try {
+        syncAllSnacksToSupabase(allSnacks).catch(() => {});
+      } catch {}
     }
 
     const billBreakdown = calculateFinalBill({
@@ -2318,6 +2408,9 @@ class PosStorageEngine {
       }
       if (snacksModified) {
         safeStorage.setItem(STORAGE_KEYS.SNACKS, JSON.stringify(allSnacks));
+        try {
+          syncAllSnacksToSupabase(allSnacks).catch(() => {});
+        } catch {}
       }
     }
 

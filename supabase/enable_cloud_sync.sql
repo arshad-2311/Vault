@@ -42,17 +42,29 @@ INSERT INTO public.stations (id, name, gaming_type, status, display_order) VALUE
 ('station-walk-in', 'Walk-in Snack Counter', 'pool', 'available', 99)
 ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, gaming_type = EXCLUDED.gaming_type;
 
--- 5. Seed all default products (snacks and beverages)
-INSERT INTO public.products (id, name, category, price_paise, is_active) VALUES
-('snk-1', 'Red Bull Energy Drink (250ml)', 'Beverages', 12500, true),
-('snk-2', 'Mountain Dew Can (300ml)', 'Beverages', 4000, true),
-('snk-3', 'Coca-Cola Zero Can (300ml)', 'Beverages', 4000, true),
-('snk-4', 'Kinley Mineral Water (500ml)', 'Beverages', 2000, true),
-('snk-5', 'Lay''s Magic Masala (Large)', 'Chips & Savouries', 3000, true),
-('snk-6', 'Doritos Cheese Supreme (75g)', 'Chips & Savouries', 5000, true),
-('snk-7', 'Snickers Chocolate Bar', 'Chocolates', 5000, true),
-('snk-8', 'Maggi Masala Double Bowl', 'Hot Items', 6000, true)
-ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, price_paise = EXCLUDED.price_paise;
+-- 5. Seed default products ONLY IF THEY DO NOT EXIST (Never overwrite custom client modifications)
+ALTER TABLE IF EXISTS public.products
+  ADD COLUMN IF NOT EXISTS stock INTEGER DEFAULT 100,
+  ADD COLUMN IF NOT EXISTS low_stock_threshold INTEGER DEFAULT 5;
+
+ALTER TABLE IF EXISTS public.pricing_config
+  ADD COLUMN IF NOT EXISTS ps5_rate_1_player_paise INTEGER DEFAULT 15000,
+  ADD COLUMN IF NOT EXISTS ps5_rate_2_players_paise INTEGER DEFAULT 30000,
+  ADD COLUMN IF NOT EXISTS ps5_rate_3_players_paise INTEGER DEFAULT 40000,
+  ADD COLUMN IF NOT EXISTS ps5_rate_4_players_paise INTEGER DEFAULT 50000,
+  ADD COLUMN IF NOT EXISTS snooker_hourly_rate_paise INTEGER DEFAULT 25000,
+  ADD COLUMN IF NOT EXISTS grace_minutes INTEGER DEFAULT 5;
+
+INSERT INTO public.products (id, name, category, price_paise, is_active, stock, low_stock_threshold) VALUES
+('snk-1', 'Red Bull Energy Drink (250ml)', 'Beverages', 12500, true, 100, 5),
+('snk-2', 'Mountain Dew Can (300ml)', 'Beverages', 4000, true, 100, 5),
+('snk-3', 'Coca-Cola Zero Can (300ml)', 'Beverages', 4000, true, 100, 5),
+('snk-4', 'Kinley Mineral Water (500ml)', 'Beverages', 2000, true, 100, 5),
+('snk-5', 'Lay''s Magic Masala (Large)', 'Chips & Savouries', 3000, true, 100, 5),
+('snk-6', 'Doritos Cheese Supreme (75g)', 'Chips & Savouries', 5000, true, 100, 5),
+('snk-7', 'Snickers Chocolate Bar', 'Chocolates', 5000, true, 100, 5),
+('snk-8', 'Maggi Masala Double Bowl', 'Hot Items', 6000, true, 100, 5)
+ON CONFLICT (id) DO NOTHING;
 
 -- 6. Row Level Security Policies for Sessions
 ALTER TABLE public.sessions ENABLE ROW LEVEL SECURITY;

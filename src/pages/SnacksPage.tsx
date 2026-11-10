@@ -13,14 +13,18 @@ import {
   Boxes,
   AlertTriangle,
   ShoppingBag,
+  Cloud,
+  RefreshCw,
+  Check,
 } from 'lucide-react';
 import { SnackItem } from '../types';
 import { Button } from '../components/common/Button';
 import { Badge } from '../components/common/Badge';
 import { Modal } from '../components/common/Modal';
 import { useAuth } from '../context/AuthContext';
-import { db } from '../services/storage';
+import { db, VAULT_DATA_CHANGED_EVENT } from '../services/storage';
 import { formatRupees, rupeesToPaise, paiseToRupees } from '../utils/formatters';
+import { isSupabaseConfigured, fetchSnacksFromSupabase, syncAllSnacksToSupabase } from '../services/supabase';
 
 interface SnacksPageProps {
   onOpenWalkInPos?: () => void;
@@ -42,6 +46,8 @@ export const SnacksPage: React.FC<SnacksPageProps> = ({ onOpenWalkInPos }) => {
   const [thresholdInput, setThresholdInput] = useState('5');
   const [isActiveInput, setIsActiveInput] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [cloudStatus, setCloudStatus] = useState<string | null>(null);
 
   const loadData = () => {
     setSnacks(db.getSnacks());
@@ -53,8 +59,37 @@ export const SnacksPage: React.FC<SnacksPageProps> = ({ onOpenWalkInPos }) => {
     loadData();
   };
 
+  const handleManualSync = async () => {
+    setIsSyncing(true);
+    setCloudStatus('Syncing with Supabase...');
+    try {
+      await db.fetchAndMergeCloudData();
+      setSnacks(db.getSnacks());
+      setCloudStatus('Synced with Cloud!');
+      setTimeout(() => setCloudStatus(null), 3000);
+    } catch {
+      setCloudStatus('Sync failed. Check connection.');
+      setTimeout(() => setCloudStatus(null), 3000);
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
   useEffect(() => {
     loadData();
+    const handleDataChanged = () => {
+      setSnacks(db.getSnacks());
+    };
+    window.addEventListener(VAULT_DATA_CHANGED_EVENT, handleDataChanged);
+
+    // Actively pull custom client snacks from Supabase cloud on load
+    if (isSupabaseConfigured) {
+      db.fetchAndMergeCloudData()
+        .then(() => setSnacks(db.getSnacks()))
+        .catch(() => {});
+    }
+
+    return () => window.removeEventListener(VAULT_DATA_CHANGED_EVENT, handleDataChanged);
   }, []);
 
   const categories = ['All', 'Low Stock', 'Beverages', 'Chips & Savouries', 'Chocolates', 'Hot Items', 'General'];
@@ -184,6 +219,21 @@ export const SnacksPage: React.FC<SnacksPageProps> = ({ onOpenWalkInPos }) => {
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
+          {/* Supabase Active Cloud Recording Status */}
+          <button
+            type="button"
+            onClick={handleManualSync}
+            disabled={isSyncing}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-zinc-900 border border-zinc-700/80 hover:border-zinc-600 text-xs text-zinc-300 hover:text-white transition-colors"
+            title="Actively synced with Supabase cloud database. Click to refresh latest records."
+          >
+            <Cloud className={`w-3.5 h-3.5 ${isSyncing ? 'text-sky-400 animate-pulse' : 'text-emerald-400'}`} />
+            <span className="font-mono text-3xs">
+              {cloudStatus || (isSupabaseConfigured ? 'Supabase Active' : 'Offline / Local')}
+            </span>
+            <RefreshCw className={`w-3 h-3 text-zinc-500 ml-0.5 ${isSyncing ? 'animate-spin' : ''}`} />
+          </button>
+
           {onOpenWalkInPos && (
             <Button
               variant="secondary"
