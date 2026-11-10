@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   UtensilsCrossed,
   Plus,
+  Minus,
   Search,
   Edit2,
   Trash2,
@@ -92,7 +93,15 @@ export const SnacksPage: React.FC<SnacksPageProps> = ({ onOpenWalkInPos }) => {
     return () => window.removeEventListener(VAULT_DATA_CHANGED_EVENT, handleDataChanged);
   }, []);
 
-  const categories = ['All', 'Low Stock', 'Beverages', 'Chips & Savouries', 'Chocolates', 'Hot Items', 'General'];
+  const categories = ['All', 'Low Stock', 'Beverages', 'Milkshakes', 'Accessories', 'General'];
+
+  const handleQuickStockAdjust = (snack: SnackItem, delta: number) => {
+    if (!isAdmin) return;
+    const currentStock = snack.stock ?? 20;
+    const newStock = Math.max(0, currentStock + delta);
+    db.updateSnack(snack.id, { stock: newStock }, currentUser);
+    loadData();
+  };
 
   const lowStockItems = snacks.filter((s) => s.isActive && (s.stock ?? 20) <= (s.lowStockThreshold ?? 5));
   const outOfStockItems = snacks.filter((s) => s.isActive && (s.stock ?? 20) === 0);
@@ -384,7 +393,7 @@ export const SnacksPage: React.FC<SnacksPageProps> = ({ onOpenWalkInPos }) => {
                 </h3>
               </div>
 
-              <div className="mt-4 pt-3 border-t border-slate-800/60 flex items-center justify-between">
+              <div className="mt-4 pt-3 border-t border-slate-800/60 flex items-center justify-between gap-2 flex-wrap">
                 <div>
                   <span className="text-3xs text-slate-500 uppercase block font-mono">
                     Selling Price
@@ -394,17 +403,44 @@ export const SnacksPage: React.FC<SnacksPageProps> = ({ onOpenWalkInPos }) => {
                   </span>
                 </div>
 
-                {isAdmin && (
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => handleOpenEdit(item)}
-                    leftIcon={<Edit2 className="w-3 h-3 text-red-400" />}
-                    className="text-xs"
-                  >
-                    Edit
-                  </Button>
-                )}
+                <div className="flex items-center gap-1.5">
+                  {isAdmin && (
+                    <div className="flex items-center bg-zinc-950 border border-zinc-800 rounded-lg p-0.5 shadow-inner">
+                      <button
+                        type="button"
+                        onClick={() => handleQuickStockAdjust(item, -1)}
+                        disabled={currentStock <= 0}
+                        className="w-6 h-6 flex items-center justify-center rounded bg-zinc-900 hover:bg-zinc-800 text-zinc-300 disabled:opacity-30 disabled:hover:bg-zinc-900 transition-colors"
+                        title="Reduce stock by 1"
+                      >
+                        <Minus className="w-3 h-3" />
+                      </button>
+                      <span className="font-mono text-2xs font-bold text-zinc-200 px-2 min-w-[2rem] text-center" title="Current Stock Level">
+                        {currentStock}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => handleQuickStockAdjust(item, 1)}
+                        className="w-6 h-6 flex items-center justify-center rounded bg-zinc-900 hover:bg-zinc-800 text-zinc-300 transition-colors"
+                        title="Add 1 to stock"
+                      >
+                        <Plus className="w-3 h-3" />
+                      </button>
+                    </div>
+                  )}
+
+                  {isAdmin && (
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => handleOpenEdit(item)}
+                      leftIcon={<Edit2 className="w-3 h-3 text-red-400" />}
+                      className="text-xs"
+                    >
+                      Edit
+                    </Button>
+                  )}
+                </div>
               </div>
             </div>
           );
@@ -452,6 +488,8 @@ export const SnacksPage: React.FC<SnacksPageProps> = ({ onOpenWalkInPos }) => {
                   className="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-xs text-slate-200 focus:border-red-500 outline-none"
                 >
                   <option value="Beverages">Beverages</option>
+                  <option value="Milkshakes">Milkshakes</option>
+                  <option value="Accessories">Accessories</option>
                   <option value="Chips & Savouries">Chips & Savouries</option>
                   <option value="Chocolates">Chocolates</option>
                   <option value="Hot Items">Hot Items</option>

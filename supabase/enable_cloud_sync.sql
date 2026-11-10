@@ -56,15 +56,20 @@ ALTER TABLE IF EXISTS public.pricing_config
   ADD COLUMN IF NOT EXISTS grace_minutes INTEGER DEFAULT 5;
 
 INSERT INTO public.products (id, name, category, price_paise, is_active, stock, low_stock_threshold) VALUES
-('snk-1', 'Red Bull Energy Drink (250ml)', 'Beverages', 12500, true, 100, 5),
-('snk-2', 'Mountain Dew Can (300ml)', 'Beverages', 4000, true, 100, 5),
-('snk-3', 'Coca-Cola Zero Can (300ml)', 'Beverages', 4000, true, 100, 5),
-('snk-4', 'Kinley Mineral Water (500ml)', 'Beverages', 2000, true, 100, 5),
-('snk-5', 'Lay''s Magic Masala (Large)', 'Chips & Savouries', 3000, true, 100, 5),
-('snk-6', 'Doritos Cheese Supreme (75g)', 'Chips & Savouries', 5000, true, 100, 5),
-('snk-7', 'Snickers Chocolate Bar', 'Chocolates', 5000, true, 100, 5),
-('snk-8', 'Maggi Masala Double Bowl', 'Hot Items', 6000, true, 100, 5)
-ON CONFLICT (id) DO NOTHING;
+('snk-1', 'Miranda', 'Beverages', 2000, true, 50, 5),
+('snk-2', 'Pepsi', 'Beverages', 2000, true, 50, 5),
+('snk-3', 'Seven Up', 'Beverages', 2000, true, 50, 5),
+('snk-4', 'Mountain Dew', 'Beverages', 2000, true, 50, 5),
+('snk-5', 'Vanilla Milkshake', 'Milkshakes', 3000, true, 30, 5),
+('snk-6', 'Badam Milkshake', 'Milkshakes', 3000, true, 30, 5),
+('snk-7', 'Butterscotch Milkshake', 'Milkshakes', 3000, true, 30, 5),
+('snk-8', 'Chocolate Milkshake', 'Milkshakes', 3000, true, 30, 5),
+('snk-9', 'Snooker Gloves', 'Accessories', 10000, true, 20, 3),
+('snk-10', 'Water Bottle', 'Beverages', 1000, true, 50, 10)
+ON CONFLICT (id) DO UPDATE SET 
+  name = EXCLUDED.name, 
+  category = EXCLUDED.category, 
+  price_paise = EXCLUDED.price_paise;
 
 -- 6. Row Level Security Policies for Sessions
 ALTER TABLE public.sessions ENABLE ROW LEVEL SECURITY;

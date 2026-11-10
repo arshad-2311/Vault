@@ -43,30 +43,30 @@ describe('VAULT 147 POS — MASTER QUALITY ASSURANCE & END-TO-END AUDIT SUITE', 
       expect(occupiedStation.status).toBe('occupied');
       expect(occupiedStation.activeSessionId).toBe(session.id);
 
-      // 2. Add snacks mid-session (1x Red Bull @ ₹125 = 12500 paise)
-      const redBull = db.getSnacks().find((s) => s.name.includes('Red Bull'))!;
-      const initialStock = redBull.stock ?? 20;
+      // 2. Add snacks mid-session (1x Miranda @ ₹20 = 2000 paise)
+      const miranda = db.getSnacks().find((s) => s.id === 'snk-1')!;
+      const initialStock = miranda.stock ?? 20;
 
       const sessionWithSnack = db.addSnackToSession({
         sessionId: session.id,
-        productId: redBull.id,
-        unitPricePaise: redBull.pricePaise,
+        productId: miranda.id,
+        unitPricePaise: miranda.pricePaise,
         quantity: 1,
         actor: employeeActor,
       });
 
       expect(sessionWithSnack.items.length).toBe(1);
-      expect(sessionWithSnack.snackSubtotalPaise).toBe(12500);
+      expect(sessionWithSnack.snackSubtotalPaise).toBe(2000);
 
       // Verify stock was decremented
-      const updatedRedBull = db.getSnacks().find((s) => s.id === redBull.id)!;
-      expect(updatedRedBull.stock).toBe(initialStock - 1);
+      const updatedMiranda = db.getSnacks().find((s) => s.id === miranda.id)!;
+      expect(updatedMiranda.stock).toBe(initialStock - 1);
 
       // 3. Complete checkout after exactly 60 minutes
       const endTime = '2026-11-08T11:00:00.000Z'; // 60 mins @ ₹150/hr = ₹150 (15000 paise)
       const expectedGamingPaise = 15000;
-      const expectedSnackPaise = 12500;
-      const expectedTotalPaise = expectedGamingPaise + expectedSnackPaise; // 27500 paise = ₹275.00
+      const expectedSnackPaise = 2000;
+      const expectedTotalPaise = expectedGamingPaise + expectedSnackPaise; // 17000 paise = ₹170.00
 
       const finalized = db.completeSession({
         sessionId: session.id,
@@ -113,7 +113,7 @@ describe('VAULT 147 POS — MASTER QUALITY ASSURANCE & END-TO-END AUDIT SUITE', 
         actor: employeeActor,
       });
 
-      // Add 2x Mountain Dew (@ ₹40 = 4000 paise each)
+      // Add 2x Mountain Dew (@ ₹20 = 2000 paise each)
       const mtnDew = db.getSnacks().find((s) => s.name.includes('Mountain Dew'))!;
       db.addSnackToSession({
         sessionId: session.id,
@@ -123,9 +123,9 @@ describe('VAULT 147 POS — MASTER QUALITY ASSURANCE & END-TO-END AUDIT SUITE', 
         actor: employeeActor,
       });
 
-      const totalBillPaise = 50000 + 8000; // ₹580.00 = 58000 paise
+      const totalBillPaise = 50000 + 4000; // ₹540.00 = 54000 paise
       const gpaySplitPaise = 30000; // ₹300 GPay
-      const cashSplitPaise = 28000; // ₹280 Cash
+      const cashSplitPaise = 24000; // ₹240 Cash
 
       const finalized = db.completeSession({
         sessionId: session.id,
@@ -136,11 +136,11 @@ describe('VAULT 147 POS — MASTER QUALITY ASSURANCE & END-TO-END AUDIT SUITE', 
         actor: employeeActor,
       });
 
-      expect(finalized.finalBillPaise).toBe(58000);
+      expect(finalized.finalBillPaise).toBe(54000);
       expect(finalized.payment?.status).toBe('PAID');
       expect(finalized.payment?.gpayAmountPaise).toBe(30000);
-      expect(finalized.payment?.cashAmountPaise).toBe(28000);
-      expect(finalized.payment?.totalReceivedPaise).toBe(58000);
+      expect(finalized.payment?.cashAmountPaise).toBe(24000);
+      expect(finalized.payment?.totalReceivedPaise).toBe(54000);
       expect(finalized.payment?.outstandingBalancePaise).toBe(0);
     });
   });
@@ -466,9 +466,9 @@ describe('VAULT 147 POS — MASTER QUALITY ASSURANCE & END-TO-END AUDIT SUITE', 
         actor: adminActor,
       });
 
-      // Session B: Snooker 1 hr (₹250) + 1 Red Bull (₹125) = ₹375 paid in GPay
+      // Session B: Snooker 1 hr (₹250) + 1 Miranda (₹20) = ₹270 paid in GPay
       const st2 = db.getStations().find((s) => s.id === 'pool-2')!;
-      const redBull = db.getSnacks().find((s) => s.name.includes('Red Bull'))!;
+      const mirandaItem = db.getSnacks().find((s) => s.id === 'snk-1')!;
       const sessB = db.createSession({
         customerName: 'Player B',
         gamingType: 'pool',
@@ -479,8 +479,8 @@ describe('VAULT 147 POS — MASTER QUALITY ASSURANCE & END-TO-END AUDIT SUITE', 
       });
       db.addSnackToSession({
         sessionId: sessB.id,
-        productId: redBull.id,
-        unitPricePaise: redBull.pricePaise,
+        productId: mirandaItem.id,
+        unitPricePaise: mirandaItem.pricePaise,
         quantity: 1,
         actor: adminActor,
       });
@@ -488,7 +488,7 @@ describe('VAULT 147 POS — MASTER QUALITY ASSURANCE & END-TO-END AUDIT SUITE', 
         sessionId: sessB.id,
         endTimeISO: `${today}T13:00:00.000Z`,
         paymentMethod: 'gpay',
-        gpayAmountPaise: 37500, // Exact ₹375 GPay
+        gpayAmountPaise: 27000, // Exact ₹270 GPay
         cashAmountPaise: 0,
         actor: adminActor,
       });
@@ -540,28 +540,28 @@ describe('VAULT 147 POS — MASTER QUALITY ASSURANCE & END-TO-END AUDIT SUITE', 
   // =========================================================================
   describe('Inventory Auditing & Void Stock Restoration', () => {
     it('restores stock when a session with snacks is voided by administrator', () => {
-      const doritos = db.getSnacks().find((s) => s.name.includes('Doritos'))!;
-      const initialStock = doritos.stock ?? 20;
+      const testSnack = db.getSnacks()[1]; // Pepsi
+      const initialStock = testSnack.stock ?? 20;
 
-      // Create a walk-in snack sale for 3x Doritos
+      // Create a walk-in snack sale for 3x Pepsi
       const sale = db.createWalkInSnackSale({
         customerName: 'Void Stock Test',
-        items: [{ snackId: doritos.id, quantity: 3 }],
+        items: [{ snackId: testSnack.id, quantity: 3 }],
         paymentMethod: 'cash',
         gpayAmountPaise: 0,
-        cashAmountPaise: doritos.pricePaise * 3,
+        cashAmountPaise: testSnack.pricePaise * 3,
         actor: adminActor,
       });
 
       // Stock should have decreased by 3
-      const stockAfterSale = db.getSnacks().find((s) => s.id === doritos.id)!.stock;
+      const stockAfterSale = db.getSnacks().find((s) => s.id === testSnack.id)!.stock;
       expect(stockAfterSale).toBe(initialStock - 3);
 
       // Admin voids transaction
       db.voidSession(sale.id, 'Customer cancelled order before takeaway', adminActor);
 
       // Stock should be restored back to initial level
-      const stockAfterVoid = db.getSnacks().find((s) => s.id === doritos.id)!.stock;
+      const stockAfterVoid = db.getSnacks().find((s) => s.id === testSnack.id)!.stock;
       expect(stockAfterVoid).toBe(initialStock);
     });
   });

@@ -37,25 +37,25 @@ describe('Snacks & Pricing Cloud Synchronization & Zero Reversion Test Suite', (
 
     it('updates an existing snack price and stock accurately', () => {
       const snacks = db.getSnacks();
-      const firstSnack = snacks[0]; // Red Bull
+      const firstSnack = snacks[0]; // Miranda
 
       const updated = db.updateSnack(
         firstSnack.id,
         {
-          name: 'Red Bull Energy Drink (Updated 250ml)',
-          pricePaise: 14000, // ₹140
+          name: 'Miranda (Updated 300ml)',
+          pricePaise: 2500, // ₹25
           stock: 80,
           lowStockThreshold: 8,
         },
         admin
       );
 
-      expect(updated.pricePaise).toBe(14000);
+      expect(updated.pricePaise).toBe(2500);
       expect(updated.stock).toBe(80);
 
       const refreshed = db.getSnacks().find((s) => s.id === firstSnack.id);
-      expect(refreshed?.pricePaise).toBe(14000);
-      expect(refreshed?.name).toBe('Red Bull Energy Drink (Updated 250ml)');
+      expect(refreshed?.pricePaise).toBe(2500);
+      expect(refreshed?.name).toBe('Miranda (Updated 300ml)');
       expect(refreshed?.stock).toBe(80);
     });
 
@@ -156,3 +156,4 @@ describe('Snacks & Pricing Cloud Synchronization & Zero Reversion Test Suite', (
     });
   });
 });
+

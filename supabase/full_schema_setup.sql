@@ -448,16 +448,21 @@ INSERT INTO public.stations (id, name, gaming_type, status, display_order) VALUE
 ('pool-3', 'Snooker Table 3', 'pool', 'available', 6)
 ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, gaming_type = EXCLUDED.gaming_type;
 
-INSERT INTO public.products (id, name, category, price_paise, is_active) VALUES
-('snk-1', 'Red Bull Energy Drink (250ml)', 'Beverages', 12500, true),
-('snk-2', 'Mountain Dew Can (300ml)', 'Beverages', 4000, true),
-('snk-3', 'Coca-Cola Zero Can (300ml)', 'Beverages', 4000, true),
-('snk-4', 'Kinley Mineral Water (500ml)', 'Beverages', 2000, true),
-('snk-5', 'Lay''s Magic Masala (Large)', 'Chips & Savouries', 3000, true),
-('snk-6', 'Doritos Cheese Supreme (75g)', 'Chips & Savouries', 5000, true),
-('snk-7', 'Snickers Chocolate Bar', 'Chocolates', 5000, true),
-('snk-8', 'Maggi Masala Double Bowl', 'Hot Items', 6000, true)
-ON CONFLICT (id) DO NOTHING;
+INSERT INTO public.products (id, name, category, price_paise, is_active, stock, low_stock_threshold) VALUES
+('snk-1', 'Miranda', 'Beverages', 2000, true, 50, 5),
+('snk-2', 'Pepsi', 'Beverages', 2000, true, 50, 5),
+('snk-3', 'Seven Up', 'Beverages', 2000, true, 50, 5),
+('snk-4', 'Mountain Dew', 'Beverages', 2000, true, 50, 5),
+('snk-5', 'Vanilla Milkshake', 'Milkshakes', 3000, true, 30, 5),
+('snk-6', 'Badam Milkshake', 'Milkshakes', 3000, true, 30, 5),
+('snk-7', 'Butterscotch Milkshake', 'Milkshakes', 3000, true, 30, 5),
+('snk-8', 'Chocolate Milkshake', 'Milkshakes', 3000, true, 30, 5),
+('snk-9', 'Snooker Gloves', 'Accessories', 10000, true, 20, 3),
+('snk-10', 'Water Bottle', 'Beverages', 1000, true, 50, 10)
+ON CONFLICT (id) DO UPDATE SET 
+  name = EXCLUDED.name, 
+  category = EXCLUDED.category, 
+  price_paise = EXCLUDED.price_paise;
 
 INSERT INTO public.pricing_config (
   id, business_name, business_timezone, currency_symbol,

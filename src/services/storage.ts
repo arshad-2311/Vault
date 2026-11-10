@@ -200,14 +200,16 @@ export const INITIAL_USERS: User[] = [
 ];
 
 export const INITIAL_SNACKS: SnackItem[] = [
-  { id: 'snk-1', name: 'Red Bull Energy Drink (250ml)', category: 'Beverages', pricePaise: 12500, isActive: true, stock: 100, lowStockThreshold: 5 },
-  { id: 'snk-2', name: 'Mountain Dew Can (300ml)', category: 'Beverages', pricePaise: 4000, isActive: true, stock: 100, lowStockThreshold: 5 },
-  { id: 'snk-3', name: 'Coca-Cola Zero Can (300ml)', category: 'Beverages', pricePaise: 4000, isActive: true, stock: 100, lowStockThreshold: 5 },
-  { id: 'snk-4', name: 'Kinley Mineral Water (500ml)', category: 'Beverages', pricePaise: 2000, isActive: true, stock: 100, lowStockThreshold: 10 },
-  { id: 'snk-5', name: "Lay's Magic Masala (Large)", category: 'Chips & Savouries', pricePaise: 3000, isActive: true, stock: 100, lowStockThreshold: 5 },
-  { id: 'snk-6', name: 'Doritos Cheese Supreme (75g)', category: 'Chips & Savouries', pricePaise: 5000, isActive: true, stock: 100, lowStockThreshold: 5 },
-  { id: 'snk-7', name: 'Snickers Chocolate Bar', category: 'Chocolates', pricePaise: 5000, isActive: true, stock: 100, lowStockThreshold: 5 },
-  { id: 'snk-8', name: 'Maggi Masala Double Bowl', category: 'Hot Items', pricePaise: 6000, isActive: true, stock: 100, lowStockThreshold: 5 },
+  { id: 'snk-1', name: 'Miranda', category: 'Beverages', pricePaise: 2000, isActive: true, stock: 50, lowStockThreshold: 5 },
+  { id: 'snk-2', name: 'Pepsi', category: 'Beverages', pricePaise: 2000, isActive: true, stock: 50, lowStockThreshold: 5 },
+  { id: 'snk-3', name: 'Seven Up', category: 'Beverages', pricePaise: 2000, isActive: true, stock: 50, lowStockThreshold: 5 },
+  { id: 'snk-4', name: 'Mountain Dew', category: 'Beverages', pricePaise: 2000, isActive: true, stock: 50, lowStockThreshold: 5 },
+  { id: 'snk-5', name: 'Vanilla Milkshake', category: 'Milkshakes', pricePaise: 3000, isActive: true, stock: 30, lowStockThreshold: 5 },
+  { id: 'snk-6', name: 'Badam Milkshake', category: 'Milkshakes', pricePaise: 3000, isActive: true, stock: 30, lowStockThreshold: 5 },
+  { id: 'snk-7', name: 'Butterscotch Milkshake', category: 'Milkshakes', pricePaise: 3000, isActive: true, stock: 30, lowStockThreshold: 5 },
+  { id: 'snk-8', name: 'Chocolate Milkshake', category: 'Milkshakes', pricePaise: 3000, isActive: true, stock: 30, lowStockThreshold: 5 },
+  { id: 'snk-9', name: 'Snooker Gloves', category: 'Accessories', pricePaise: 10000, isActive: true, stock: 20, lowStockThreshold: 3 },
+  { id: 'snk-10', name: 'Water Bottle', category: 'Beverages', pricePaise: 1000, isActive: true, stock: 50, lowStockThreshold: 10 },
 ];
 
 function generateInitialSessions(): Session[] {
@@ -237,30 +239,30 @@ function generateInitialSessions(): Session[] {
         description: 'PS5 Single Player',
         roundingPolicy: 'nearest_5',
       },
-      gamingChargePaise: 15000, // ₹150
+      gamingChargePaise: 25000, // ₹250
       items: [
         {
           id: 'item-1',
           sessionId: 'sess-comp-1',
           productId: 'snk-1',
-          name: 'Red Bull Energy Drink (250ml)',
+          name: 'Miranda',
           quantity: 1,
-          unitPricePaise: 12500,
-          lineTotalPaise: 12500,
+          unitPricePaise: 2000,
+          lineTotalPaise: 2000,
           isCustom: false,
         },
         {
           id: 'item-2',
           sessionId: 'sess-comp-1',
           productId: 'snk-5',
-          name: "Lay's Magic Masala (Large)",
+          name: 'Vanilla Milkshake',
           quantity: 1,
-          unitPricePaise: 2500, // historical price test
-          lineTotalPaise: 2500,
+          unitPricePaise: 3000,
+          lineTotalPaise: 3000,
           isCustom: false,
         },
       ],
-      snackSubtotalPaise: 15000, // ₹150
+      snackSubtotalPaise: 5000, // ₹50
       discountPaise: 0,
       finalBillPaise: 30000, // ₹300 total
       payment: {
@@ -308,17 +310,16 @@ function generateInitialSessions(): Session[] {
         {
           id: 'item-3',
           sessionId: 'sess-comp-2',
-          productId: 'snk-4',
-          name: 'Kinley Mineral Water (500ml)',
+          productId: 'snk-10',
+          name: 'Water Bottle',
           quantity: 2,
-          unitPricePaise: 2000,
-          lineTotalPaise: 4000,
+          unitPricePaise: 1000,
+          lineTotalPaise: 2000,
           isCustom: false,
         },
       ],
-      snackSubtotalPaise: 4000,
-      discountPaise: 2000, // ₹20 promo discount
-      discountReason: 'Happy Hour Welcome Discount',
+      snackSubtotalPaise: 2000,
+      discountPaise: 0,
       finalBillPaise: 20000, // ₹200
       payment: {
         id: 'pay-2',
@@ -367,9 +368,9 @@ function generateInitialSessions(): Session[] {
           id: 'item-4',
           sessionId: 'sess-comp-3',
           productId: 'snk-8',
-          name: 'Maggi Masala Double Bowl',
-          quantity: 1,
-          unitPricePaise: 6000,
+          name: 'Chocolate Milkshake',
+          quantity: 2,
+          unitPricePaise: 3000,
           lineTotalPaise: 6000,
           isCustom: false,
         },
@@ -423,17 +424,17 @@ function generateInitialSessions(): Session[] {
               {
                 id: 'item-active-1',
                 sessionId: 'sess-active-1',
-                productId: 'snk-2',
-                name: 'Mountain Dew Can (300ml)',
+                productId: 'snk-4',
+                name: 'Mountain Dew',
                 quantity: 2,
-                unitPricePaise: 4000,
-                lineTotalPaise: 8000,
+                unitPricePaise: 2000,
+                lineTotalPaise: 4000,
                 isCustom: false,
               },
             ],
-            snackSubtotalPaise: 8000,
+            snackSubtotalPaise: 4000,
             discountPaise: 0,
-            finalBillPaise: 30500,
+            finalBillPaise: 26500,
             createdBy: 'usr-emp-1',
             createdByName: 'Rahul Sharma',
             createdAt: new Date(now.getTime() - 45 * 60 * 1000).toISOString(),
@@ -575,8 +576,29 @@ class PosStorageEngine {
       } catch {}
     }
     const snacksRaw = safeStorage.getItem(STORAGE_KEYS.SNACKS);
-    if (!snacksRaw) {
+    let shouldMigrateSnacks = !snacksRaw;
+    if (snacksRaw) {
+      try {
+        const parsedSnacks: SnackItem[] = JSON.parse(snacksRaw);
+        const hasLegacy = parsedSnacks.some((s) =>
+          s.name?.includes('Red Bull') ||
+          s.name?.includes('Maggi') ||
+          s.name?.includes('Doritos') ||
+          s.name?.includes("Lay's") ||
+          s.name?.includes('Snickers') ||
+          s.name?.includes('Kinley') ||
+          s.name?.includes('Coca-Cola')
+        );
+        if (hasLegacy || !safeStorage.getItem('vault_snacks_v3_client_migrated')) {
+          shouldMigrateSnacks = true;
+        }
+      } catch {
+        shouldMigrateSnacks = true;
+      }
+    }
+    if (shouldMigrateSnacks) {
       safeStorage.setItem(STORAGE_KEYS.SNACKS, JSON.stringify(INITIAL_SNACKS));
+      safeStorage.setItem('vault_snacks_v3_client_migrated', 'true');
     }
     const pricingRaw = safeStorage.getItem(STORAGE_KEYS.PRICING);
     if (!pricingRaw) {
@@ -1310,25 +1332,47 @@ class PosStorageEngine {
     try {
       // 1. Fetch remote snacks
       const remoteSnacksRes = await fetchSnacksFromSupabase();
-      if (remoteSnacksRes.success && remoteSnacksRes.snacks && remoteSnacksRes.snacks.length > 0) {
+      if (remoteSnacksRes.success && remoteSnacksRes.snacks) {
+        const isLegacy = (name: string) => {
+          const l = (name || '').toLowerCase();
+          return (
+            l.includes('red bull') ||
+            l.includes('maggi') ||
+            l.includes('doritos') ||
+            l.includes("lay's") ||
+            l.includes('snickers') ||
+            l.includes('kinley') ||
+            l.includes('coca-cola zero')
+          );
+        };
+
+        const validRemote = remoteSnacksRes.snacks.filter((s) => !isLegacy(s.name));
+        const legacyRemote = remoteSnacksRes.snacks.filter((s) => isLegacy(s.name));
+
+        // Purge legacy products from Supabase so they don't persist
+        for (const leg of legacyRemote) {
+          deleteSnackFromSupabase(leg.id).catch(() => {});
+        }
+
         const local = this.getSnacks();
-        const remoteMap = new Map(remoteSnacksRes.snacks.map((s) => [s.id, s]));
-        const merged = remoteSnacksRes.snacks.map((remote) => {
-          const localMatch = local.find((l) => l.id === remote.id);
-          return localMatch ? { ...localMatch, ...remote } : remote;
-        });
-        local.forEach((l) => {
-          if (!remoteMap.has(l.id)) {
-            merged.push(l);
-            syncSnackToSupabase(l).catch(() => {});
-          }
-        });
-        safeStorage.setItem(STORAGE_KEYS.SNACKS, JSON.stringify(merged));
-        emitDataChanged();
-      } else if (remoteSnacksRes.success && (!remoteSnacksRes.snacks || remoteSnacksRes.snacks.length === 0)) {
-        // If remote has no snacks yet, seed current local snacks to Supabase
-        const local = this.getSnacks();
-        syncAllSnacksToSupabase(local).catch(() => {});
+        if (validRemote.length > 0) {
+          const remoteMap = new Map(validRemote.map((s) => [s.id, s]));
+          const merged = validRemote.map((remote) => {
+            const localMatch = local.find((l) => l.id === remote.id);
+            return localMatch ? { ...localMatch, ...remote } : remote;
+          });
+          local.forEach((l) => {
+            if (!remoteMap.has(l.id)) {
+              merged.push(l);
+              syncSnackToSupabase(l).catch(() => {});
+            }
+          });
+          safeStorage.setItem(STORAGE_KEYS.SNACKS, JSON.stringify(merged));
+          emitDataChanged();
+        } else {
+          // If no valid items in Supabase (or all were legacy), upload current client catalogue
+          syncAllSnacksToSupabase(local).catch(() => {});
+        }
       }
 
       // 2. Fetch remote pricing config
