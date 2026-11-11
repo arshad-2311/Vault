@@ -185,3 +185,4 @@ All remote network requests interact with the Supabase PostgREST and GoTrue APIs
 | `syncAllSessionsToSupabase` | `sessions: Session[]` | `sessions`, `session_items`, `payments` | Transactions page 60s background timer, manual sync button, `beforeunload` exit hook. |
 | `syncAllExpensesToSupabase` | `expenses: DailyExpense[]` | `daily_expenses` | Transactions page background timer, exit hook. |
 | `syncAllSnacksToSupabase` | `snacks: SnackItem[]` | `products` | Snacks page restock all, cloud reconciliation. |
+

@@ -115,3 +115,4 @@ Customer phone numbers are protected from unauthorized collection:
 1. **SQL Injection**: All cloud database queries execute through Supabase's prepared-statement PostgREST abstraction. No raw user strings are concatenated into dynamic SQL queries.
 2. **Cross-Site Scripting (XSS)**: React 19's virtual DOM automatically escapes all expressions in JSX. No `dangerouslySetInnerHTML` is used in any component.
 3. **Input Sanitization**: Numerical inputs are parsed with explicit radices and checked against `isNaN` and negative limits.
+

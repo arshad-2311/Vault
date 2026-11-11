@@ -73,3 +73,4 @@ Before deploying any changes, verify this 6-point checklist:
 - [ ] **Integer Paise Verification**: Ensure no floating-point arithmetic was introduced into pricing calculations.
 - [ ] **RBAC Safeguard**: Confirm non-admin staff cannot view unmasked phone numbers or delete records.
 - [ ] **Cloud Sync Parity**: Verify asynchronous Supabase methods handle network failures gracefully.
+

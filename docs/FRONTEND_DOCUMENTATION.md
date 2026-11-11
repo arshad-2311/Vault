@@ -179,3 +179,4 @@ Follow this 5-step blueprint to add a new tab/view:
      {activeTab === 'my-new-feature' && <MyNewFeaturePage />}
      ```
 5. **Add Unit/Render Test** in `src/test/components_render.test.tsx` to verify clean mounting.
+

@@ -165,3 +165,4 @@ Vault Digital/
 | **`src/components/pos/AddSnackModal.tsx`** | Adds snacks or drinks to an active session tab. | Station card, ActiveSessionsPage | Category browsing, real-time stock deduction, quantity selection, tab subtotal update. |
 | **`src/components/pos/ReceiptModal.tsx`** | Renders printable thermal receipt for customers. | Checkout completion, Transactions, Walk-in POS | Clean monochrome layout, line item breakdown, payment breakdown, browser window print trigger. |
 | **`src/components/pos/StationCard.tsx`** | Individual station card on dashboard and active views. | Dashboard, ActiveSessionsPage | Dynamic color-coding (Green/Red/Amber), real-time live elapsed counter, action buttons. |
+

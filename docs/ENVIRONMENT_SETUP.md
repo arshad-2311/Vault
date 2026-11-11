@@ -85,3 +85,4 @@ If you wish to test or develop without connecting to a real Supabase database:
 1. Leave `VITE_SUPABASE_URL` unset or blank in `.env`.
 2. The POS automatically detects that Supabase is unconfigured and switches to **Offline / Local Mode**.
 3. All sessions, transactions, expenses, and inventory adjustments execute seamlessly inside the embedded `PosStorageEngine`.
+

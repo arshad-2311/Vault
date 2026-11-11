@@ -83,8 +83,13 @@ export const AppContent: React.FC = () => {
     document.addEventListener('visibilitychange', handleVisibilityChange);
     window.addEventListener('focus', refreshData);
 
-    // Auto sync periodically (every 10 seconds)
-    const timer = setInterval(refreshData, 10000);
+    // Low-frequency fallback heartbeat (every 5 minutes, only if tab is visible)
+    // Instant updates are handled in real-time via WebSocket subscription below
+    const timer = setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        refreshData();
+      }
+    }, 300000);
 
     // Realtime Supabase change stream
     const unsubRealtime = subscribeToSupabaseSessions(() => {

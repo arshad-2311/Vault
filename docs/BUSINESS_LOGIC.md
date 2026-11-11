@@ -193,3 +193,4 @@ Enables administrators to void an erroneous entry or cancelled transaction while
 3. **Inventory Reversion**: Loops through `session.items` and adds quantities back to `product.stock`.
 4. Frees station if the voided session was currently active.
 5. Emits `VAULT_DATA_CHANGED_EVENT` and syncs to Supabase.
+

@@ -41,3 +41,4 @@ This document provides a transparent engineering assessment of current architect
 - **Observation**: Phone number masking (`maskPhoneNumber`) occurs in the presentation layer ([`src/utils/formatters.ts`](file:///c:/Users/arsha/Downloads/Vault%20Digital/src/utils/formatters.ts)) rather than through a dedicated PostgreSQL view or database mask.
 - **Architectural Impact**: Raw phone numbers reside in the browser memory heap of an authenticated employee.
 - **Future Enhancement**: If strict regulatory separation is required, create a PostgreSQL view `sessions_public` that masks the `customer_phone` column before emitting to non-admin JWT roles.
+

@@ -364,3 +364,4 @@ CREATE TRIGGER trg_audit_logs_immutable
   BEFORE UPDATE OR DELETE ON public.audit_logs
   FOR EACH ROW EXECUTE FUNCTION public.prevent_audit_log_tampering();
 ```
+

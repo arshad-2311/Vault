@@ -178,3 +178,4 @@ For comprehensive engineering details on specific subsystems, consult the corres
 15. [**Known Issues & Technical Debt**](file:///c:/Users/arsha/Downloads/Vault%20Digital/docs/KNOWN_ISSUES.md) — Edge cases, architectural tradeoffs, and planned optimizations.
 16. [**Future Development Guide**](file:///c:/Users/arsha/Downloads/Vault%20Digital/docs/FUTURE_DEVELOPMENT.md) — Step-by-step blueprints for adding stations, pricing rules, and new views.
 17. [**AI Developer Handover Rules**](file:///c:/Users/arsha/Downloads/Vault%20Digital/docs/AI_DEVELOPER_HANDOVER.md) — 15 immutable rules for any subsequent AI coding assistant working on this codebase.
+

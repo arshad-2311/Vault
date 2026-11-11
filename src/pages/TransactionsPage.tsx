@@ -228,30 +228,15 @@ export const TransactionsPage: React.FC = () => {
     };
     window.addEventListener(VAULT_DATA_CHANGED_EVENT, handleDataChanged);
 
-    // Auto-sync every 60 seconds (1 minute)
-    const syncTimer = setInterval(() => {
-      handleSyncToCloud(true);
-    }, 60000);
-
     // Auto-sync before exit (tab close, reload, or navigating away)
     const handleBeforeUnload = () => {
       handleSyncToCloud(true);
     };
     window.addEventListener('beforeunload', handleBeforeUnload);
 
-    // Auto-sync when tab visibility becomes hidden (mobile app switch or screen lock)
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'hidden') {
-        handleSyncToCloud(true);
-      }
-    };
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-
     return () => {
       window.removeEventListener(VAULT_DATA_CHANGED_EVENT, handleDataChanged);
-      clearInterval(syncTimer);
       window.removeEventListener('beforeunload', handleBeforeUnload);
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, []);
 

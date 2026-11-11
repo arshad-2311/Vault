@@ -44,3 +44,4 @@ Before you inspect or modify any file, **read and internalize this document and 
 
 ### Pitfall 5: Deleting Financial Records
 - **DO NOT** implement `DELETE` operations on `sessions`, `payments`, or `audit_logs`. Use `voidSession` with an immutable audit log entry.
+

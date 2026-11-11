@@ -113,3 +113,4 @@ Follow this recipe to add a new physical station:
 4. **Wire into `PosStorageEngine`** in `src/services/storage.ts`:
    Add getter, setter, creation method, audit logging, and asynchronous call to `syncTournamentToSupabase`.
 5. **Create Unit Test** verifying offline creation and cloud sync payload.
+

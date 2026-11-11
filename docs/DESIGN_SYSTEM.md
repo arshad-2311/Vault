@@ -82,3 +82,4 @@ Defined in [`tailwind.config.js`](file:///c:/Users/arsha/Downloads/Vault%20Digit
 - **Quick Stock Adjust Buttons**: Small `$24 \times 24\text{ px}$` (`w-6 h-6`) buttons styled with `bg-zinc-900 hover:bg-zinc-800` allow 1-click inventory management.
 - **Cloud Sync Status Badge**: Displays in the header of the Snacks and Transactions pages with an animated spinning icon during active synchronization and an emerald cloud icon when idle.
 - **Thermal Receipt View**: Monochromatic high-contrast styling ready for standard 80mm ESC/POS thermal receipt printers.
+

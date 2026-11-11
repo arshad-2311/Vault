@@ -83,3 +83,4 @@ To initialize or migrate the cloud database:
 1. **Supabase Point-in-Time Recovery**: Supabase Pro projects provide automated continuous daily WAL backups.
 2. **Local POS Recovery**: All active sessions, past transactions, and catalogue data reside in browser `localStorage`.
 3. **Manual Cloud Sync**: Cashiers can click the **"Sync Cloud"** button in [`TransactionsPage.tsx`](file:///c:/Users/arsha/Downloads/Vault%20Digital/src/pages/TransactionsPage.tsx) or [`SnacksPage.tsx`](file:///c:/Users/arsha/Downloads/Vault%20Digital/src/pages/SnacksPage.tsx) at any time to push all local data to Supabase.
+

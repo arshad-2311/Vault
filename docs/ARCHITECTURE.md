@@ -146,9 +146,9 @@ Whenever any mutative method executes (`createSession`, `completeSession`, `crea
 
 ### Incoming Cloud Synchronization (Read Path)
 To receive modifications made from other devices:
-1. **Periodic Heartbeat**: Every 10 seconds, `AppContent` triggers `refreshData()` to query Supabase for new sessions.
+1. **Real-time WebSockets (Primary)**: `subscribeToSupabaseSessions()` establishes a live channel (`sessions-all-changes`) on PostgreSQL table mutations, automatically triggering a refresh upon changes with zero idle egress bandwidth.
 2. **App Focus / Tab Visibility Resumption**: When a smartphone unlocks or the user switches back to the POS browser tab, a `visibilitychange` listener immediately queries Supabase to prevent stale states.
-3. **Real-time WebSockets**: `subscribeToSupabaseSessions()` establishes a live channel (`sessions-all-changes`) on PostgreSQL table mutations, automatically triggering a refresh upon changes.
+3. **Low-Frequency Fallback Heartbeat**: Every 5 minutes (`300000ms`), `AppContent` triggers a background heartbeat query (only when the tab is visible) to guard against dropped socket connections while conserving Supabase free-tier quota.
 4. **Catalogue & Rate Synchronization**: In [`src/services/storage.ts`](file:///c:/Users/arsha/Downloads/Vault%20Digital/src/services/storage.ts), `fetchAndMergeCloudData()` downloads remote snacks and business rates, merging them seamlessly into local state while purging legacy items.
 
 ---
@@ -159,8 +159,8 @@ The system maintains several standing timers to handle automation and security:
 
 | Timer Name | Interval / Schedule | Location | Purpose |
 | :--- | :--- | :--- | :--- |
-| **Active Session Poller** | 10 seconds | [`src/App.tsx`](file:///c:/Users/arsha/Downloads/Vault%20Digital/src/App.tsx) | Pulls remote session updates from Supabase to maintain multi-device parity. |
-| **Cloud Auto-Backup** | 60 seconds | [`src/pages/TransactionsPage.tsx`](file:///c:/Users/arsha/Downloads/Vault%20Digital/src/pages/TransactionsPage.tsx) | Periodically pushes all sessions, expenses, snacks, and pricing configs to Supabase. |
+| **Realtime Session Channel** | Event-driven (WebSocket) | [`src/App.tsx`](file:///c:/Users/arsha/Downloads/Vault%20Digital/src/App.tsx) | Pushes instant remote session updates from Supabase to maintain multi-device parity with minimal network egress. |
+| **Fallback Heartbeat** | 5 minutes (visible tab only) | [`src/App.tsx`](file:///c:/Users/arsha/Downloads/Vault%20Digital/src/App.tsx) | Periodic safety sync ensuring state consistency in the event of dropped WebSocket frames. |
 | **Exit Backup (`beforeunload`)** | On tab/browser close | [`src/pages/TransactionsPage.tsx`](file:///c:/Users/arsha/Downloads/Vault%20Digital/src/pages/TransactionsPage.tsx) | Executes an emergency final sync to Supabase before the window unloads. |
 | **Inactivity Monitor** | 30 seconds | [`src/context/AuthContext.tsx`](file:///c:/Users/arsha/Downloads/Vault%20Digital/src/context/AuthContext.tsx) | Verifies session expiry and logs out inactive staff after 4 hours of inactivity. |
 | **Settlement Toast Auto-Dismiss** | 7 seconds | [`src/App.tsx`](file:///c:/Users/arsha/Downloads/Vault%20Digital/src/App.tsx) | Auto-dismisses the post-checkout confirmation notification banner. |
@@ -182,3 +182,4 @@ The architecture enforces strict fail-safe isolation across all tiers:
 3. **Transaction Rollback & Collision Guards**:
    - Station check-ins guard against race conditions: if a station is already occupied, `createSession()` rejects the request before writing to storage.
    - Checkouts verify the session is active and not already finalized, preventing double-billing or multiple payments for the same session.
+

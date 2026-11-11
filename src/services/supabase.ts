@@ -316,7 +316,8 @@ export async function fetchSessionsFromSupabase(): Promise<{
     const { data, error } = await supabase
       .from('sessions')
       .select('*, items:session_items(*), payment:payments(*)')
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .limit(50);
 
     if (error) {
       return { success: false, error: error.message };
@@ -452,7 +453,7 @@ export async function deleteExpenseFromSupabase(
 }
 
 /**
- * Bulk syncs an array of daily expenses to Supabase cloud.
+ * Bulk syncs an array of daily expenses to Supabase cloud in a single batch request.
  */
 export async function syncAllExpensesToSupabase(
   expenses: DailyExpense[]
@@ -460,14 +461,31 @@ export async function syncAllExpensesToSupabase(
   if (!supabase || !isSupabaseConfigured || expenses.length === 0) {
     return { synced: 0, failed: 0 };
   }
-  let synced = 0;
-  let failed = 0;
-  for (const exp of expenses) {
-    const res = await syncExpenseToSupabase(exp);
-    if (res.success) synced++;
-    else failed++;
+  try {
+    const payload = expenses.map((exp) => ({
+      id: exp.id,
+      date: exp.date,
+      title: exp.title,
+      category: exp.category,
+      amount_paise: exp.amountPaise,
+      payment_method: exp.paymentMethod,
+      notes: exp.notes || null,
+      receipt_number: exp.receiptNumber || null,
+      recorded_by: isValidUUID(exp.recordedBy) ? exp.recordedBy : null,
+      recorded_by_name: exp.recordedByName,
+      created_at: exp.createdAt,
+      updated_at: exp.updatedAt,
+    }));
+    const { error } = await supabase.from('daily_expenses').upsert(payload);
+    if (error) {
+      logWarn('Could not bulk sync expenses to Supabase:', error.message);
+      return { synced: 0, failed: expenses.length };
+    }
+    return { synced: expenses.length, failed: 0 };
+  } catch (err: any) {
+    logWarn('Bulk sync expenses error:', err.message);
+    return { synced: 0, failed: expenses.length };
   }
-  return { synced, failed };
 }
 
 /**
@@ -560,7 +578,7 @@ export async function fetchSnacksFromSupabase(): Promise<{
 }
 
 /**
- * Bulk syncs an array of snacks to Supabase cloud database.
+ * Bulk syncs an array of snacks to Supabase cloud database in a single batch request.
  */
 export async function syncAllSnacksToSupabase(
   snacks: SnackItem[]
@@ -568,14 +586,27 @@ export async function syncAllSnacksToSupabase(
   if (!supabase || !isSupabaseConfigured || snacks.length === 0) {
     return { synced: 0, failed: 0 };
   }
-  let synced = 0;
-  let failed = 0;
-  for (const s of snacks) {
-    const res = await syncSnackToSupabase(s);
-    if (res.success) synced++;
-    else failed++;
+  try {
+    const payload = snacks.map((s) => ({
+      id: s.id,
+      name: s.name,
+      category: s.category || 'General',
+      price_paise: s.pricePaise,
+      is_active: s.isActive,
+      stock: s.stock !== undefined ? s.stock : 100,
+      low_stock_threshold: s.lowStockThreshold !== undefined ? s.lowStockThreshold : 5,
+      updated_at: new Date().toISOString(),
+    }));
+    const { error } = await supabase.from('products').upsert(payload);
+    if (error) {
+      logWarn('Could not bulk sync snacks to Supabase:', error.message);
+      return { synced: 0, failed: snacks.length };
+    }
+    return { synced: snacks.length, failed: 0 };
+  } catch (err: any) {
+    logWarn('Bulk sync snacks error:', err.message);
+    return { synced: 0, failed: snacks.length };
   }
-  return { synced, failed };
 }
 
 /**
