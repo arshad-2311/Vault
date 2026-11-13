@@ -64,9 +64,10 @@ export const TransactionsPage: React.FC = () => {
   const [isSyncing, setIsSyncing] = useState(false);
   const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
 
-  // Edit Payment Modal State (Admin only)
+  // Edit Payment & Finalized Bill Modal State (Admin only)
   const [editingPaymentSession, setEditingPaymentSession] = useState<Session | null>(null);
   const [editPaymentMethod, setEditPaymentMethod] = useState<'cash' | 'gpay' | 'split'>('cash');
+  const [editFinalBillRupees, setEditFinalBillRupees] = useState('');
   const [editCashAmountRupees, setEditCashAmountRupees] = useState('');
   const [editGpayAmountRupees, setEditGpayAmountRupees] = useState('');
   const [editPaymentNotes, setEditPaymentNotes] = useState('');
@@ -120,7 +121,7 @@ export const TransactionsPage: React.FC = () => {
 
   const openEditPaymentModal = (session: Session) => {
     if (!isAdmin) {
-      alert('Access Restricted: Only Administrators can edit settled payments.');
+      alert('Access Restricted: Only Administrators can edit settled transactions.');
       return;
     }
     if (!session.payment) {
@@ -129,6 +130,8 @@ export const TransactionsPage: React.FC = () => {
     }
     setEditingPaymentSession(session);
     setEditPaymentMethod(session.payment.method);
+    const billRupees = (session.finalBillPaise / 100).toString();
+    setEditFinalBillRupees(billRupees);
     setEditCashAmountRupees((session.payment.cashAmountPaise / 100).toString());
     setEditGpayAmountRupees((session.payment.gpayAmountPaise / 100).toString());
     setEditPaymentNotes(session.payment.notes || '');
@@ -138,7 +141,7 @@ export const TransactionsPage: React.FC = () => {
   const handleMethodSelect = (method: 'cash' | 'gpay' | 'split') => {
     setEditPaymentMethod(method);
     if (!editingPaymentSession || !editingPaymentSession.payment) return;
-    const finalRupees = (editingPaymentSession.payment.finalBillPaise / 100).toString();
+    const finalRupees = editFinalBillRupees || (editingPaymentSession.payment.finalBillPaise / 100).toString();
 
     if (method === 'cash') {
       setEditCashAmountRupees(finalRupees);
@@ -148,7 +151,7 @@ export const TransactionsPage: React.FC = () => {
       setEditCashAmountRupees('0');
     } else {
       // Default to 50/50 split if previously pure cash/gpay
-      const total = editingPaymentSession.payment.finalBillPaise / 100;
+      const total = parseFloat(finalRupees) || 0;
       const half = (total / 2).toFixed(2);
       const otherHalf = (total - parseFloat(half)).toFixed(2);
       setEditGpayAmountRupees(half);
@@ -159,7 +162,12 @@ export const TransactionsPage: React.FC = () => {
   const handleSavePaymentEdit = () => {
     if (!editingPaymentSession || !editingPaymentSession.payment) return;
     try {
-      const finalBillPaise = editingPaymentSession.payment.finalBillPaise;
+      const finalBillRupeesNum = parseFloat(editFinalBillRupees);
+      if (isNaN(finalBillRupeesNum) || finalBillRupeesNum < 0) {
+        setEditPaymentError('Please enter a valid finalized bill amount (₹0 or greater).');
+        return;
+      }
+      const finalBillPaise = Math.round(finalBillRupeesNum * 100);
       let cashPaise = 0;
       let gpayPaise = 0;
 
@@ -174,7 +182,7 @@ export const TransactionsPage: React.FC = () => {
         gpayPaise = Math.round((parseFloat(editGpayAmountRupees) || 0) * 100);
         if (cashPaise + gpayPaise < finalBillPaise) {
           setEditPaymentError(
-            `Total split (₹${((cashPaise + gpayPaise) / 100).toFixed(2)}) must equal or exceed bill total (₹${(finalBillPaise / 100).toFixed(2)}).`
+            `Total split (₹${((cashPaise + gpayPaise) / 100).toFixed(2)}) must equal or exceed finalized bill total (₹${(finalBillPaise / 100).toFixed(2)}).`
           );
           return;
         }
@@ -185,6 +193,7 @@ export const TransactionsPage: React.FC = () => {
         method: editPaymentMethod,
         cashAmountPaise: cashPaise,
         gpayAmountPaise: gpayPaise,
+        finalBillPaise,
         notes: editPaymentNotes.trim() || undefined,
         actor: currentUser,
       });
@@ -194,7 +203,7 @@ export const TransactionsPage: React.FC = () => {
         setSelectedSession(updated);
       }
       setEditingPaymentSession(null);
-      alert('Payment breakdown updated and synced successfully!');
+      alert('Transaction finalized sales and payment breakdown updated successfully!');
     } catch (err: any) {
       setEditPaymentError(err.message || 'Failed to update payment.');
     }
@@ -1004,35 +1013,68 @@ export const TransactionsPage: React.FC = () => {
               </div>
             )}
 
-            {/* Bill Info Banner */}
-            <div className="p-3 rounded-xl bg-zinc-900 border border-zinc-800 flex items-center justify-between">
-              <div>
-                <span className="text-3xs font-mono uppercase text-zinc-400 block">Total Final Bill</span>
-                <span className="text-lg font-black font-mono text-white">
-                  {formatRupees(editingPaymentSession.payment.finalBillPaise)}
+            {/* Final Bill / Sales Amount Input (Admin Editable) */}
+            <div className="p-3.5 rounded-xl bg-zinc-900 border border-zinc-800 space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="block text-2xs font-semibold text-zinc-300 uppercase tracking-wider font-mono">
+                  Total Finalized Bill / Sales (₹)
+                </label>
+                <div className="flex items-center gap-1.5">
+                  <Badge
+                    variant={
+                      editingPaymentSession.payment.method === 'gpay'
+                        ? 'info'
+                        : editingPaymentSession.payment.method === 'cash'
+                        ? 'success'
+                        : 'neutral'
+                    }
+                    size="sm"
+                  >
+                    {editingPaymentSession.payment.method.toUpperCase()}
+                  </Badge>
+                  <span className="text-3xs text-red-400 font-mono font-bold bg-red-950/60 px-2 py-0.5 rounded border border-red-900/60">
+                    Admin Editable
+                  </span>
+                </div>
+              </div>
+              <div className="relative">
+                <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-zinc-400 font-mono font-bold text-base">
+                  ₹
                 </span>
+                <input
+                  type="number"
+                  step="1"
+                  min="0"
+                  value={editFinalBillRupees}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setEditFinalBillRupees(val);
+                    const newBill = Math.max(0, parseFloat(val) || 0);
+                    if (editPaymentMethod === 'cash') {
+                      setEditCashAmountRupees(newBill.toString());
+                      setEditGpayAmountRupees('0');
+                    } else if (editPaymentMethod === 'gpay') {
+                      setEditGpayAmountRupees(newBill.toString());
+                      setEditCashAmountRupees('0');
+                    } else {
+                      const half = (newBill / 2).toFixed(2);
+                      const otherHalf = (newBill - parseFloat(half)).toFixed(2);
+                      setEditGpayAmountRupees(half);
+                      setEditCashAmountRupees(otherHalf);
+                    }
+                  }}
+                  className="w-full pl-8 pr-3 py-2 bg-zinc-950 border border-zinc-700 rounded-lg text-lg text-white font-mono font-black outline-none focus:border-red-500"
+                />
               </div>
-              <div className="text-right">
-                <span className="text-3xs font-mono uppercase text-zinc-400 block">Current Method</span>
-                <Badge
-                  variant={
-                    editingPaymentSession.payment.method === 'gpay'
-                      ? 'info'
-                      : editingPaymentSession.payment.method === 'cash'
-                      ? 'success'
-                      : 'neutral'
-                  }
-                  size="sm"
-                >
-                  {editingPaymentSession.payment.method.toUpperCase()}
-                </Badge>
-              </div>
+              <p className="text-3xs text-zinc-500 font-mono">
+                Original amount: {formatRupees(editingPaymentSession.payment.finalBillPaise)} • Modifying this updates this transaction's finalized sales.
+              </p>
             </div>
 
             {/* Method Selector Tabs */}
             <div>
               <label className="block text-2xs font-semibold text-zinc-300 uppercase tracking-wider font-mono mb-1.5">
-                Select New Payment Method
+                Select Payment Method
               </label>
               <div className="grid grid-cols-3 gap-2">
                 <button
@@ -1090,7 +1132,7 @@ export const TransactionsPage: React.FC = () => {
                         const val = e.target.value;
                         setEditGpayAmountRupees(val);
                         const gpayNum = parseFloat(val) || 0;
-                        const totalRupees = editingPaymentSession.payment!.finalBillPaise / 100;
+                        const totalRupees = parseFloat(editFinalBillRupees) || (editingPaymentSession.payment!.finalBillPaise / 100);
                         const remainder = Math.max(0, totalRupees - gpayNum);
                         setEditCashAmountRupees(remainder.toString());
                       }}
@@ -1110,7 +1152,7 @@ export const TransactionsPage: React.FC = () => {
                         const val = e.target.value;
                         setEditCashAmountRupees(val);
                         const cashNum = parseFloat(val) || 0;
-                        const totalRupees = editingPaymentSession.payment!.finalBillPaise / 100;
+                        const totalRupees = parseFloat(editFinalBillRupees) || (editingPaymentSession.payment!.finalBillPaise / 100);
                         const remainder = Math.max(0, totalRupees - cashNum);
                         setEditGpayAmountRupees(remainder.toString());
                       }}
@@ -1127,7 +1169,7 @@ export const TransactionsPage: React.FC = () => {
                       (parseFloat(editCashAmountRupees) || 0)
                     ).toFixed(2)}
                   </span>
-                  <span>Required: {formatRupees(editingPaymentSession.payment.finalBillPaise)}</span>
+                  <span>Required: ₹{(parseFloat(editFinalBillRupees) || (editingPaymentSession.payment.finalBillPaise / 100)).toFixed(2)}</span>
                 </div>
               </div>
             )}

@@ -5,9 +5,12 @@ import {
   Banknote,
   AlertCircle,
   RefreshCw,
+  Edit2,
 } from 'lucide-react';
 import { Station, Session, DashboardMetrics } from '../types';
 import { StationCard } from '../components/pos/StationCard';
+import { ManualSalesModal } from '../components/pos/ManualSalesModal';
+import { useAuth } from '../context/AuthContext';
 import { db, VAULT_DATA_CHANGED_EVENT } from '../services/storage';
 import { isSupabaseConfigured, fetchSessionsFromSupabase } from '../services/supabase';
 import { formatRupees, getTodayDateString } from '../utils/formatters';
@@ -26,6 +29,10 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   onAddSnack,
   onEndSession,
 }) => {
+  const { currentUser } = useAuth();
+  const isAdmin = currentUser?.role === 'admin';
+  const [manualSalesModalOpen, setManualSalesModalOpen] = useState(false);
+
   // Synchronous initial state guarantees no 0/0 stations or missing cards flicker on mount
   const [stations, setStations] = useState<Station[]>(() => db.getStations());
   const [sessions, setSessions] = useState<Session[]>(() => db.getSessions());
@@ -167,7 +174,20 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             <span className="text-3xs sm:text-2xs font-mono uppercase tracking-wider text-zinc-400 font-bold">
               Total Sales
             </span>
-            <TrendingUp className="w-4 h-4 text-red-500" />
+            <div className="flex items-center gap-1.5">
+              {isAdmin && (
+                <button
+                  type="button"
+                  onClick={() => setManualSalesModalOpen(true)}
+                  className="px-1.5 py-0.5 rounded text-3xs font-mono font-bold bg-red-600/20 text-red-400 hover:bg-red-600 hover:text-white border border-red-500/30 transition-all flex items-center gap-1 shrink-0"
+                  title="Manually edit or add to total finalized sales"
+                >
+                  <Edit2 className="w-2.5 h-2.5" />
+                  <span>Edit</span>
+                </button>
+              )}
+              <TrendingUp className="w-4 h-4 text-red-500" />
+            </div>
           </div>
           <div className="flex items-baseline justify-between sm:block">
             <div className="text-xl sm:text-2xl font-black font-mono tracking-tight text-white tabular-nums">
@@ -293,6 +313,14 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           ))}
         </div>
       </div>
+
+      {/* Manual Finalized Sales Modal */}
+      <ManualSalesModal
+        isOpen={manualSalesModalOpen}
+        onClose={() => setManualSalesModalOpen(false)}
+        targetDate={getTodayDateString()}
+        onSalesUpdated={loadData}
+      />
     </div>
   );
 };

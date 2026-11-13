@@ -2157,13 +2157,14 @@ class PosStorageEngine {
     method: 'cash' | 'gpay' | 'split';
     cashAmountPaise: number;
     gpayAmountPaise: number;
+    finalBillPaise?: number;
     notes?: string;
     actor: User;
   }): Session {
     if (params.actor.role !== 'admin') {
       throw new Error('Permission denied: Only administrators can modify payment records.');
     }
-    const { sessionId, method, cashAmountPaise, gpayAmountPaise, notes, actor } = params;
+    const { sessionId, method, cashAmountPaise, gpayAmountPaise, finalBillPaise, notes, actor } = params;
     const sessions = this.getSessions();
     const index = sessions.findIndex((s) => s.id === sessionId);
     if (index === -1) throw new Error('Session not found.');
@@ -2176,7 +2177,7 @@ class PosStorageEngine {
       throw new Error('Cannot modify a voided session.');
     }
 
-    const finalBill = session.payment.finalBillPaise;
+    const finalBill = finalBillPaise !== undefined ? Math.max(0, finalBillPaise) : session.payment.finalBillPaise;
     const totalReceived = cashAmountPaise + gpayAmountPaise;
 
     if (totalReceived < finalBill) {
@@ -2186,6 +2187,11 @@ class PosStorageEngine {
     }
 
     const previousPayment = { ...session.payment };
+    const previousFinalBill = session.finalBillPaise;
+
+    session.finalBillPaise = finalBill;
+    session.payment.finalBillPaise = finalBill;
+    session.gamingChargePaise = Math.max(0, finalBill - (session.snackSubtotalPaise || 0) + (session.discountPaise || 0));
 
     session.payment.method = method;
     session.payment.cashAmountPaise = cashAmountPaise;
@@ -2209,8 +2215,8 @@ class PosStorageEngine {
       action: 'PAYMENT_UPDATED',
       entityType: 'payment',
       entityId: session.payment.id,
-      details: `Admin ${actor.displayName} updated payment method to ${method.toUpperCase()} for ${session.customerName} (Cash: ₹${(cashAmountPaise / 100).toFixed(0)}, GPay: ₹${(gpayAmountPaise / 100).toFixed(0)}). ${notes ? `Note: ${notes}` : ''}`.trim(),
-      previousState: previousPayment,
+      details: `Admin ${actor.displayName} updated session ${session.customerName} bill to ₹${(finalBill / 100).toFixed(0)} (was ₹${(previousFinalBill / 100).toFixed(0)}) via ${method.toUpperCase()} (Cash: ₹${(cashAmountPaise / 100).toFixed(0)}, GPay: ₹${(gpayAmountPaise / 100).toFixed(0)}). ${notes ? `Note: ${notes}` : ''}`.trim(),
+      previousState: { ...previousPayment, finalBillPaise: previousFinalBill },
       newState: session.payment,
     });
 
@@ -2219,6 +2225,132 @@ class PosStorageEngine {
       syncSessionToSupabase(session).catch(() => {});
     } catch {}
     return session;
+  }
+
+  /**
+   * Manually adds a finalized revenue or sales adjustment entry for a specific date (Admin only).
+   */
+  createManualSalesAdjustment(params: {
+    date?: string;
+    amountPaise: number;
+    customerName?: string;
+    paymentMethod: 'cash' | 'gpay' | 'split';
+    cashAmountPaise?: number;
+    gpayAmountPaise?: number;
+    notes?: string;
+    actor: User;
+  }): Session {
+    if (params.actor.role !== 'admin') {
+      throw new Error('Permission denied: Only administrators can adjust finalized sales.');
+    }
+    const {
+      date = new Date().toISOString().split('T')[0],
+      amountPaise,
+      customerName = 'Manual Sales Entry',
+      paymentMethod,
+      notes,
+      actor,
+    } = params;
+
+    if (amountPaise <= 0) {
+      throw new Error('Sales adjustment amount must be greater than zero.');
+    }
+
+    const now = new Date();
+    let timestampISO = now.toISOString();
+    if (date) {
+      const parts = date.split('-').map(Number);
+      if (parts.length === 3) {
+        const d = new Date(parts[0], parts[1] - 1, parts[2], now.getHours(), now.getMinutes(), now.getSeconds());
+        timestampISO = d.toISOString();
+      }
+    }
+
+    const sessionId = `adj-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+    let cashPaise = params.cashAmountPaise ?? 0;
+    let gpayPaise = params.gpayAmountPaise ?? 0;
+
+    if (paymentMethod === 'cash') {
+      cashPaise = amountPaise;
+      gpayPaise = 0;
+    } else if (paymentMethod === 'gpay') {
+      gpayPaise = amountPaise;
+      cashPaise = 0;
+    }
+
+    const totalReceived = cashPaise + gpayPaise;
+    if (totalReceived < amountPaise) {
+      throw new Error(`Total received (₹${(totalReceived / 100).toFixed(0)}) must cover the adjustment amount (₹${(amountPaise / 100).toFixed(0)}).`);
+    }
+
+    const paymentRecord: PaymentRecord = {
+      id: `pay-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+      sessionId,
+      method: paymentMethod,
+      gpayAmountPaise: gpayPaise,
+      cashAmountPaise: cashPaise,
+      totalReceivedPaise: totalReceived,
+      finalBillPaise: amountPaise,
+      outstandingBalancePaise: Math.max(0, amountPaise - totalReceived),
+      changeDuePaise: paymentMethod === 'cash' ? Math.max(0, cashPaise - amountPaise) : 0,
+      recordedBy: actor.id,
+      recordedByName: actor.displayName,
+      timestamp: timestampISO,
+      status: 'PAID',
+      notes: notes || 'Manual finalized sales entry',
+    };
+
+    const adjustmentSession: Session = {
+      id: sessionId,
+      customerName: customerName.trim() || 'Manual Sales Entry',
+      gamingType: 'pool',
+      stationId: 'station-sales-adj',
+      stationName: 'Direct Sales Counter',
+      billingType: 'fixed',
+      startTime: timestampISO,
+      endTime: timestampISO,
+      durationMinutes: 0,
+      status: 'completed',
+      rateSnapshot: {
+        description: 'Manual Sales Adjustment',
+        roundingPolicy: 'exact',
+      },
+      gamingChargePaise: amountPaise,
+      items: [],
+      snackSubtotalPaise: 0,
+      discountPaise: 0,
+      finalBillPaise: amountPaise,
+      payment: paymentRecord,
+      createdBy: actor.id,
+      createdByName: actor.displayName,
+      completedBy: actor.id,
+      completedByName: actor.displayName,
+      notes: notes || 'Manual finalized sales entry',
+      createdAt: timestampISO,
+      updatedAt: timestampISO,
+    };
+
+    const sessions = this.getSessions();
+    sessions.unshift(adjustmentSession);
+    safeStorage.setItem(STORAGE_KEYS.SESSIONS, JSON.stringify(sessions));
+
+    this.addAuditLog({
+      actorId: actor.id,
+      actorName: actor.displayName,
+      actorRole: actor.role,
+      action: 'SALES_ADJUSTED',
+      entityType: 'session',
+      entityId: sessionId,
+      details: `Admin ${actor.displayName} added manual finalized sale of ₹${(amountPaise / 100).toFixed(0)} for ${date} via ${paymentMethod.toUpperCase()}. ${notes ? `Note: ${notes}` : ''}`.trim(),
+      newState: adjustmentSession,
+    });
+
+    emitDataChanged();
+    try {
+      syncSessionToSupabase(adjustmentSession).catch(() => {});
+    } catch {}
+
+    return adjustmentSession;
   }
 
   // --- DAILY EXPENSES ---

@@ -102,6 +102,56 @@ describe('Admin Payment Modification & Daily Expenses Test Suite', () => {
       expect(paymentLog).toBeDefined();
       expect(paymentLog?.details).toContain('CASH');
     });
+
+    it('allows an administrator to edit the total finalized bill amount of a completed session', () => {
+      const completedSession = db.getSessions().find((s) => s.status === 'completed' && s.payment);
+      expect(completedSession).toBeDefined();
+
+      const newBillPaise = 75000; // ₹750
+      const updated = db.updatePaymentDetails({
+        sessionId: completedSession!.id,
+        method: 'cash',
+        cashAmountPaise: newBillPaise,
+        gpayAmountPaise: 0,
+        finalBillPaise: newBillPaise,
+        notes: 'Adjusted bill amount manually as requested by customer',
+        actor: admin,
+      });
+
+      expect(updated.finalBillPaise).toBe(newBillPaise);
+      expect(updated.payment?.finalBillPaise).toBe(newBillPaise);
+      expect(updated.payment?.cashAmountPaise).toBe(newBillPaise);
+      expect(updated.payment?.totalReceivedPaise).toBe(newBillPaise);
+
+      // Verify audit log has the new bill amount
+      const logs = db.getAuditLogs();
+      const billLog = logs.find((l) => l.action === 'PAYMENT_UPDATED' && l.details.includes('750'));
+      expect(billLog).toBeDefined();
+    });
+
+    it('allows an administrator to add a manual finalized sales adjustment entry', () => {
+      const initialMetrics = db.calculateDashboardMetrics('2026-11-10', '2026-11-10');
+      const initialSales = initialMetrics.totalSalesPaise;
+
+      const adjustment = db.createManualSalesAdjustment({
+        date: '2026-11-10',
+        amountPaise: 50000, // ₹500
+        customerName: 'Private Tournament Fee',
+        paymentMethod: 'gpay',
+        notes: 'Offline tournament fee collected',
+        actor: admin,
+      });
+
+      expect(adjustment.status).toBe('completed');
+      expect(adjustment.finalBillPaise).toBe(50000);
+      expect(adjustment.payment?.method).toBe('gpay');
+      expect(adjustment.payment?.gpayAmountPaise).toBe(50000);
+
+      // Verify dashboard / reports metrics reflect the adjusted sales
+      const newMetrics = db.calculateDashboardMetrics('2026-11-10', '2026-11-10');
+      expect(newMetrics.totalSalesPaise).toBe(initialSales + 50000);
+      expect(newMetrics.gpayCollectionsPaise).toBe(initialMetrics.gpayCollectionsPaise + 50000);
+    });
   });
 
   describe('Daily Expenses Management (Admin Only)', () => {

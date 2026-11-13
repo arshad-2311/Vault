@@ -13,16 +13,19 @@ import {
   Users,
   CheckCircle,
   HelpCircle,
+  Edit2,
 } from 'lucide-react';
 import { DashboardMetrics, Session } from '../types';
 import { Button } from '../components/common/Button';
 import { Badge } from '../components/common/Badge';
+import { ManualSalesModal } from '../components/pos/ManualSalesModal';
 import { useAuth } from '../context/AuthContext';
 import { db, VAULT_DATA_CHANGED_EVENT } from '../services/storage';
 import { formatRupees, getTodayDateString, formatDateOnly } from '../utils/formatters';
 
 export const ReportsPage: React.FC = () => {
   const { currentUser } = useAuth();
+  const isAdmin = currentUser?.role === 'admin';
   const [rangeMode, setRangeMode] = useState<'daily' | 'weekly' | 'monthly' | 'custom'>('daily');
   const [selectedDate, setSelectedDate] = useState<string>(getTodayDateString());
   const [customStart, setCustomStart] = useState<string>(getTodayDateString());
@@ -30,6 +33,7 @@ export const ReportsPage: React.FC = () => {
 
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
   const [reportSessions, setReportSessions] = useState<Session[]>([]);
+  const [manualSalesModalOpen, setManualSalesModalOpen] = useState(false);
 
   const calculateReport = () => {
     let start = selectedDate;
@@ -201,9 +205,22 @@ export const ReportsPage: React.FC = () => {
         <div className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div className="p-4 rounded-xl bg-slate-900 border border-slate-800">
-              <span className="text-3xs uppercase tracking-wider text-slate-400 font-semibold block">
-                Total Finalized Sales
-              </span>
+              <div className="flex items-center justify-between">
+                <span className="text-3xs uppercase tracking-wider text-slate-400 font-semibold block">
+                  Total Finalized Sales
+                </span>
+                {isAdmin && (
+                  <button
+                    type="button"
+                    onClick={() => setManualSalesModalOpen(true)}
+                    className="px-2 py-0.5 rounded text-3xs font-bold font-mono bg-red-600/20 text-red-400 hover:bg-red-600 hover:text-white border border-red-500/30 transition-all flex items-center gap-1 shrink-0"
+                    title="Manually edit or add to total finalized sales"
+                  >
+                    <Edit2 className="w-2.5 h-2.5" />
+                    <span>Edit Sales</span>
+                  </button>
+                )}
+              </div>
               <div className="text-2xl font-bold font-mono text-white mt-1 tabular-nums">
                 {formatRupees(metrics.totalSalesPaise)}
               </div>
@@ -477,6 +494,14 @@ export const ReportsPage: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Manual Finalized Sales Modal */}
+      <ManualSalesModal
+        isOpen={manualSalesModalOpen}
+        onClose={() => setManualSalesModalOpen(false)}
+        targetDate={selectedDate}
+        onSalesUpdated={calculateReport}
+      />
     </div>
   );
 };
