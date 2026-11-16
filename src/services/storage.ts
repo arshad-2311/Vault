@@ -18,7 +18,7 @@ import {
   calculateFinalBill,
   validatePaymentAmounts,
 } from '../utils/pricing';
-import { formatRupees, formatDateTime, maskPhoneNumber } from '../utils/formatters';
+import { formatRupees, formatDateTime, maskPhoneNumber, getBusinessDateString } from '../utils/formatters';
 import {
   syncSessionToSupabase,
   syncExpenseToSupabase,
@@ -29,6 +29,7 @@ import {
   fetchSnacksFromSupabase,
   syncPricingToSupabase,
   fetchPricingFromSupabase,
+  purgeDemoDataBeforeNov9FromSupabase,
   isSupabaseConfigured,
 } from './supabase';
 
@@ -213,6 +214,7 @@ export const INITIAL_SNACKS: SnackItem[] = [
 ];
 
 function generateInitialSessions(): Session[] {
+  if (!isTestEnvironment) return [];
   const now = new Date();
   const todayMorning = new Date(now.getTime() - 4 * 60 * 60 * 1000).toISOString();
   const todayNoon = new Date(now.getTime() - 2 * 60 * 60 * 1000).toISOString();
@@ -614,18 +616,22 @@ class PosStorageEngine {
         }
       } catch {}
     }
+    const DEMO_CUTOFF_DATE = '2026-11-09T00:00:00.000Z';
+    const DEMO_IDS = new Set(['sess-comp-1', 'sess-comp-2', 'sess-comp-3', 'sess-active-1', 'sess-active-2']);
+
     const sessionsRaw = safeStorage.getItem(STORAGE_KEYS.SESSIONS);
     if (!sessionsRaw) {
       safeStorage.setItem(STORAGE_KEYS.SESSIONS, JSON.stringify(generateInitialSessions()));
     } else if (!isTestEnvironment) {
       try {
         const storedSessions: Session[] = JSON.parse(sessionsRaw);
-        const cleaned = storedSessions.filter(
-          (s) =>
-            s.id !== 'sess-active-1' &&
-            s.id !== 'sess-active-2' &&
-            !(s.status === 'active' && (s.customerName === 'Rohan Kapoor' || s.customerName === 'Samir & Bilal'))
-        );
+        const cleaned = storedSessions.filter((s) => {
+          if (DEMO_IDS.has(s.id)) return false;
+          if (s.status === 'active' && (s.customerName === 'Rohan Kapoor' || s.customerName === 'Samir & Bilal')) return false;
+          const sTime = s.startTime || s.createdAt || '';
+          if (sTime && sTime < DEMO_CUTOFF_DATE) return false;
+          return true;
+        });
         if (cleaned.length !== storedSessions.length) {
           safeStorage.setItem(STORAGE_KEYS.SESSIONS, JSON.stringify(cleaned));
         }
@@ -634,8 +640,17 @@ class PosStorageEngine {
     if (!safeStorage.getItem(STORAGE_KEYS.CLOSINGS)) {
       safeStorage.setItem(STORAGE_KEYS.CLOSINGS, JSON.stringify([]));
     }
-    if (!safeStorage.getItem(STORAGE_KEYS.EXPENSES)) {
+    const expensesRaw = safeStorage.getItem(STORAGE_KEYS.EXPENSES);
+    if (!expensesRaw) {
       safeStorage.setItem(STORAGE_KEYS.EXPENSES, JSON.stringify([]));
+    } else if (!isTestEnvironment) {
+      try {
+        const storedExpenses: DailyExpense[] = JSON.parse(expensesRaw);
+        const cleanedExp = storedExpenses.filter((e) => e.date >= '2026-11-09');
+        if (cleanedExp.length !== storedExpenses.length) {
+          safeStorage.setItem(STORAGE_KEYS.EXPENSES, JSON.stringify(cleanedExp));
+        }
+      } catch {}
     }
     if (!safeStorage.getItem(STORAGE_KEYS.AUDIT_LOGS)) {
       const initialLogs: AuditLog[] = [
@@ -1345,6 +1360,8 @@ class PosStorageEngine {
     }
     this.lastCloudSettingsFetchTime = now;
     try {
+      purgeDemoDataBeforeNov9FromSupabase().catch(() => {});
+
       // 1. Fetch remote snacks
       const remoteSnacksRes = await fetchSnacksFromSupabase();
       if (remoteSnacksRes.success && remoteSnacksRes.snacks) {
@@ -1454,12 +1471,19 @@ class PosStorageEngine {
     const localMap = new Map<string, Session>(localSessions.map((s) => [s.id, s]));
     let changed = false;
 
+    const DEMO_CUTOFF_DATE = '2026-11-09T00:00:00.000Z';
+    const DEMO_IDS = new Set(['sess-comp-1', 'sess-comp-2', 'sess-comp-3', 'sess-active-1', 'sess-active-2']);
+
     for (const remote of remoteSessions) {
       if (
-        remote.id === 'sess-active-1' ||
-        remote.id === 'sess-active-2' ||
+        DEMO_IDS.has(remote.id) ||
         (remote.status === 'active' && (remote.customerName === 'Rohan Kapoor' || remote.customerName === 'Samir & Bilal'))
       ) {
+        continue;
+      }
+
+      const remoteTimeStr = remote.startTime || remote.createdAt || '';
+      if (remoteTimeStr && remoteTimeStr < DEMO_CUTOFF_DATE) {
         continue;
       }
 
@@ -2493,9 +2517,6 @@ class PosStorageEngine {
     updates: Partial<DailyExpense>,
     actor: User
   ): DailyExpense {
-    if (actor.role !== 'admin') {
-      throw new Error('Permission denied: Only administrators can edit daily expenses.');
-    }
     const expenses = this.getExpenses();
     const index = expenses.findIndex((e) => e.id === id);
     if (index === -1) throw new Error('Expense record not found.');
@@ -2530,9 +2551,6 @@ class PosStorageEngine {
   }
 
   deleteExpense(id: string, actor: User): void {
-    if (actor.role !== 'admin') {
-      throw new Error('Permission denied: Only administrators can delete daily expenses.');
-    }
     const expenses = this.getExpenses();
     const index = expenses.findIndex((e) => e.id === id);
     if (index === -1) throw new Error('Expense record not found.');
@@ -2694,7 +2712,7 @@ class PosStorageEngine {
     const allSessions = this.getSessions();
     const daysSessions = allSessions.filter((s) => {
       if (s.isVoided) return false;
-      const sDate = s.startTime.split('T')[0];
+      const sDate = getBusinessDateString(s.startTime);
       return sDate === closingDate;
     });
 
@@ -2816,7 +2834,7 @@ class PosStorageEngine {
   calculateDashboardMetrics(startDateStr: string, endDateStr: string): DashboardMetrics {
     const sessions = this.getSessions().filter((s) => {
       if (s.isVoided) return false;
-      const sDate = s.startTime.split('T')[0];
+      const sDate = getBusinessDateString(s.startTime);
       return sDate >= startDateStr && sDate <= endDateStr;
     });
 

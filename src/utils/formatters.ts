@@ -136,14 +136,33 @@ export function getCurrentLocalISO(): string {
 }
 
 /**
- * Returns today's date in YYYY-MM-DD
+ * Returns the business date string (YYYY-MM-DD) for a given timestamp or Date,
+ * where the business day begins at 3:00 AM local time and runs until 2:59:59 AM the next day.
+ * Sessions between 00:00:00 and 02:59:59 belong to the previous calendar day's business cycle.
+ */
+export function getBusinessDateString(dateInput: Date | string = new Date()): string {
+  const d = typeof dateInput === 'string' ? new Date(dateInput) : new Date(dateInput.getTime());
+  if (isNaN(d.getTime())) {
+    if (typeof dateInput === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(dateInput)) {
+      return dateInput;
+    }
+    return new Date().toISOString().split('T')[0];
+  }
+  // If the time is before 3:00 AM local time, roll back 1 day to associate with the current night's shift
+  if (d.getHours() < 3) {
+    d.setDate(d.getDate() - 1);
+  }
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+/**
+ * Returns today's active business date in YYYY-MM-DD (cycles over at 3:00 AM local time)
  */
 export function getTodayDateString(): string {
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, '0');
-  const day = String(now.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
+  return getBusinessDateString(new Date());
 }
 
 /**

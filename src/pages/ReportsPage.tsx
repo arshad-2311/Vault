@@ -21,7 +21,7 @@ import { Badge } from '../components/common/Badge';
 import { ManualSalesModal } from '../components/pos/ManualSalesModal';
 import { useAuth } from '../context/AuthContext';
 import { db, VAULT_DATA_CHANGED_EVENT } from '../services/storage';
-import { formatRupees, getTodayDateString, formatDateOnly } from '../utils/formatters';
+import { formatRupees, getTodayDateString, formatDateOnly, getBusinessDateString } from '../utils/formatters';
 
 export const ReportsPage: React.FC = () => {
   const { currentUser } = useAuth();
@@ -65,7 +65,7 @@ export const ReportsPage: React.FC = () => {
 
     const filtered = db.getSessions().filter((s) => {
       if (s.isVoided) return false;
-      const sDate = s.startTime.split('T')[0];
+      const sDate = getBusinessDateString(s.startTime);
       return sDate >= start && sDate <= end;
     });
     setReportSessions(filtered);

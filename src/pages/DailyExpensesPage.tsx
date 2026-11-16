@@ -454,8 +454,84 @@ export const DailyExpensesPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Expenses Table */}
-      <div className="bg-[#0c0c12] border border-zinc-800/80 rounded-xl overflow-hidden shadow-xl">
+      {/* Mobile Expenses Cards (< md) */}
+      <div className="md:hidden space-y-3">
+        {filtered.length === 0 ? (
+          <div className="p-8 text-center bg-[#0c0c12] border border-zinc-800/80 rounded-xl">
+            <Receipt className="w-8 h-8 text-zinc-600 mx-auto mb-2 opacity-50" />
+            <p className="font-medium text-sm text-zinc-400">No expenses recorded</p>
+            <p className="text-2xs text-zinc-500 mt-0.5">
+              Tap "+ Add Expense" above to log operating costs.
+            </p>
+          </div>
+        ) : (
+          filtered.map((exp) => (
+            <div
+              key={exp.id}
+              className="p-4 rounded-xl bg-[#0c0c12] border border-zinc-800/80 space-y-3 shadow-lg"
+            >
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-mono font-bold text-zinc-300">{exp.date}</span>
+                    <Badge
+                      variant={
+                        exp.paymentMethod === 'cash'
+                          ? 'success'
+                          : exp.paymentMethod === 'gpay'
+                          ? 'info'
+                          : 'neutral'
+                      }
+                      size="sm"
+                    >
+                      {exp.paymentMethod.toUpperCase()}
+                    </Badge>
+                  </div>
+                  <h4 className="text-sm font-bold text-white mt-1">{exp.title}</h4>
+                </div>
+                <span className="text-base font-black text-white font-mono tabular-nums">
+                  {formatRupees(exp.amountPaise)}
+                </span>
+              </div>
+
+              <div className="flex items-center justify-between text-2xs text-zinc-400 pt-2 border-t border-zinc-800/60 flex-wrap gap-2">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span className="px-2 py-0.5 rounded-full text-3xs font-medium bg-zinc-800 text-zinc-300 border border-zinc-700">
+                    {exp.category}
+                  </span>
+                  {exp.receiptNumber && (
+                    <span className="text-3xs text-zinc-500 font-mono">
+                      Ref: <span className="text-zinc-300">{exp.receiptNumber}</span>
+                    </span>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => openEditModal(exp)}
+                    className="px-3 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-white text-xs font-bold flex items-center gap-1.5 transition-colors border border-zinc-700 shadow-sm"
+                  >
+                    <Edit2 className="w-3.5 h-3.5 text-red-400" />
+                    <span>Edit</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleDelete(exp.id, exp.title)}
+                    className="p-1.5 rounded-lg bg-red-950/40 hover:bg-red-900/60 text-red-400 border border-red-900/50 transition-colors"
+                    title="Delete Expense"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+
+      {/* Desktop Expenses Table (>= md) */}
+      <div className="hidden md:block bg-[#0c0c12] border border-zinc-800/80 rounded-xl overflow-hidden shadow-xl">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
             <thead className="bg-[#12121a] text-zinc-400 font-mono uppercase text-3xs tracking-wider border-b border-zinc-800">
@@ -522,15 +598,16 @@ export const DailyExpensesPage: React.FC = () => {
                           type="button"
                           onClick={() => openEditModal(exp)}
                           title="Edit Expense"
-                          className="p-1 rounded hover:bg-zinc-800 text-zinc-400 hover:text-white transition-colors"
+                          className="px-2.5 py-1 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 hover:text-white transition-colors flex items-center gap-1 text-3xs font-sans font-bold border border-zinc-700 shadow-sm"
                         >
-                          <Edit2 className="w-3.5 h-3.5" />
+                          <Edit2 className="w-3 h-3 text-red-400" />
+                          <span>Edit</span>
                         </button>
                         <button
                           type="button"
                           onClick={() => handleDelete(exp.id, exp.title)}
                           title="Delete Expense"
-                          className="p-1 rounded hover:bg-red-950/60 text-zinc-400 hover:text-red-400 transition-colors"
+                          className="p-1.5 rounded-lg hover:bg-red-950/60 text-zinc-400 hover:text-red-400 transition-colors"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>

@@ -55,19 +55,30 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     let endDate = today;
 
     if (rangePreset === 'yesterday') {
-      const y = new Date();
-      y.setDate(y.getDate() - 1);
-      startDate = y.toISOString().split('T')[0];
+      const d = new Date();
+      if (d.getHours() < 3) {
+        d.setDate(d.getDate() - 1);
+      }
+      d.setDate(d.getDate() - 1);
+      startDate = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
       endDate = startDate;
     } else if (rangePreset === 'week') {
-      const now = new Date();
-      const firstDay = new Date(now.setDate(now.getDate() - now.getDay() + 1));
-      startDate = firstDay.toISOString().split('T')[0];
-      endDate = getTodayDateString();
+      const d = new Date();
+      if (d.getHours() < 3) {
+        d.setDate(d.getDate() - 1);
+      }
+      const day = d.getDay();
+      const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+      const firstDay = new Date(d.setDate(diff));
+      startDate = `${firstDay.getFullYear()}-${String(firstDay.getMonth() + 1).padStart(2, '0')}-${String(firstDay.getDate()).padStart(2, '0')}`;
+      endDate = today;
     } else if (rangePreset === 'month') {
-      const now = new Date();
-      startDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
-      endDate = getTodayDateString();
+      const d = new Date();
+      if (d.getHours() < 3) {
+        d.setDate(d.getDate() - 1);
+      }
+      startDate = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`;
+      endDate = today;
     }
 
     const calculated = db.calculateDashboardMetrics(startDate, endDate);

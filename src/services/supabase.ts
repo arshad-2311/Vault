@@ -340,6 +340,19 @@ export async function fetchSessionsFromSupabase(limit = 20): Promise<{
 }
 
 /**
+ * Purges obsolete demo sessions and test expenses created prior to 9 November 2026.
+ */
+export async function purgeDemoDataBeforeNov9FromSupabase(): Promise<void> {
+  if (!supabase || !isSupabaseConfigured) return;
+  try {
+    const cutoff = '2026-11-09T00:00:00Z';
+    await supabase.from('sessions').delete().lt('created_at', cutoff);
+    await supabase.from('sessions').delete().in('id', ['sess-comp-1', 'sess-comp-2', 'sess-comp-3', 'sess-active-1', 'sess-active-2']);
+    await supabase.from('daily_expenses').delete().lt('date', '2026-11-09');
+  } catch {}
+}
+
+/**
  * Listens for real-time Supabase postgres changes to notify connected devices.
  */
 export function subscribeToSupabaseSessions(onUpdate: () => void): () => void {

@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { db, INITIAL_USERS } from '../services/storage';
+import { getBusinessDateString } from '../utils/formatters';
 
 describe('Admin Payment Modification & Daily Expenses Test Suite', () => {
   const admin = INITIAL_USERS[0]; // Ruwaidh Admin
@@ -250,6 +251,53 @@ describe('Admin Payment Modification & Daily Expenses Test Suite', () => {
       expect(metrics.cashExpensesPaise).toBe(35000); // ₹350
       expect(metrics.gpayExpensesPaise).toBe(150000); // ₹1,500
       expect(metrics.count).toBe(2);
+    });
+
+    it('allows editing an expense description, amount, category and notes', () => {
+      const exp = db.addExpense(
+        {
+          date: '2026-11-12',
+          title: 'Snooker Chalk Box',
+          category: 'Equipment & Maintenance',
+          amountPaise: 40000,
+          paymentMethod: 'cash',
+        },
+        admin
+      );
+
+      const updated = db.updateExpense(
+        exp.id,
+        {
+          title: 'Snooker Chalk Box (12 pcs)',
+          amountPaise: 45000,
+          category: 'Supplies & Groceries',
+          notes: 'Price adjusted per receipt',
+        },
+        admin
+      );
+
+      expect(updated.title).toBe('Snooker Chalk Box (12 pcs)');
+      expect(updated.amountPaise).toBe(45000);
+      expect(updated.category).toBe('Supplies & Groceries');
+      expect(updated.notes).toBe('Price adjusted per receipt');
+    });
+
+    it('implements 3:00 AM business day cutoff so late-night sales do not reset at 12:00 midnight', () => {
+      // 11:30 PM on Nov 16 belongs to Nov 16
+      const nightTime = new Date('2026-11-16T23:30:00');
+      expect(getBusinessDateString(nightTime)).toBe('2026-11-16');
+
+      // 1:45 AM on Nov 17 belongs to Nov 16's shift
+      const pastMidnight = new Date('2026-11-17T01:45:00');
+      expect(getBusinessDateString(pastMidnight)).toBe('2026-11-16');
+
+      // 2:59 AM on Nov 17 STILL belongs to Nov 16's shift
+      const justBefore3am = new Date('2026-11-17T02:59:59');
+      expect(getBusinessDateString(justBefore3am)).toBe('2026-11-16');
+
+      // 3:00 AM sharp on Nov 17 flips to Nov 17!
+      const after3am = new Date('2026-11-17T03:00:00');
+      expect(getBusinessDateString(after3am)).toBe('2026-11-17');
     });
   });
 });
