@@ -612,7 +612,22 @@ export const NewEntryModal: React.FC<NewEntryModalProps> = ({
                         }`}
                       >
                         <div>
-                          <p className="text-2xs font-medium text-zinc-200 truncate">{snk.name}</p>
+                          <div className="flex items-center justify-between gap-1">
+                            <p className="text-2xs font-medium text-zinc-200 truncate">{snk.name}</p>
+                            {snk.stock !== undefined && (
+                              <span
+                                className={`text-3xs font-mono font-bold px-1 py-0.2 rounded shrink-0 ${
+                                  isOutOfStock
+                                    ? 'bg-red-950 text-red-400 border border-red-800/40'
+                                    : snk.stock <= 5
+                                    ? 'bg-amber-950 text-amber-300'
+                                    : 'text-zinc-500'
+                                }`}
+                              >
+                                {isOutOfStock ? '0 left' : `${Math.max(0, snk.stock - qty)} left`}
+                              </span>
+                            )}
+                          </div>
                           <span className="text-3xs font-mono text-zinc-400">
                             {formatRupees(snk.pricePaise)}
                           </span>
@@ -630,7 +645,8 @@ export const NewEntryModal: React.FC<NewEntryModalProps> = ({
                           <button
                             type="button"
                             onClick={() => handleSnackQtyChange(snk.id, 1)}
-                            className="w-6 h-6 rounded bg-zinc-800 flex items-center justify-center text-zinc-400 hover:text-white"
+                            disabled={isMaxReached}
+                            className="w-6 h-6 rounded bg-zinc-800 flex items-center justify-center text-zinc-400 hover:text-white disabled:opacity-30"
                           >
                             <Plus className="w-3 h-3" />
                           </button>

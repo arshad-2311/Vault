@@ -351,7 +351,7 @@ export const WalkInSnackPosPage: React.FC<WalkInSnackPosPageProps> = ({ onPrintR
                               : 'text-zinc-500'
                           }`}
                         >
-                          {isOutOfStock ? '0 in stock' : `${snk.stock} left`}
+                          {isOutOfStock ? '0 in stock' : qtyInCart > 0 ? `${Math.max(0, snk.stock - qtyInCart)} left` : `${snk.stock} left`}
                         </span>
                       )}
                     </div>

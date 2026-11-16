@@ -1180,6 +1180,7 @@ class PosStorageEngine {
     const newSnack: SnackItem = {
       ...snackData,
       id: `snk-${Date.now()}`,
+      updatedAt: new Date().toISOString(),
     };
     snacks.push(newSnack);
     safeStorage.setItem(STORAGE_KEYS.SNACKS, JSON.stringify(snacks));
@@ -1210,7 +1211,11 @@ class PosStorageEngine {
     if (index === -1) throw new Error('Snack item not found.');
 
     const oldSnack = snacks[index];
-    const updated = { ...oldSnack, ...updates };
+    const updated = {
+      ...oldSnack,
+      ...updates,
+      updatedAt: new Date().toISOString(),
+    };
     snacks[index] = updated;
     safeStorage.setItem(STORAGE_KEYS.SNACKS, JSON.stringify(snacks));
 
@@ -1264,8 +1269,10 @@ class PosStorageEngine {
 
   restockAllSnacks(amount = 50, actor?: User): void {
     const snacks = this.getSnacks();
+    const nowISO = new Date().toISOString();
     snacks.forEach((s) => {
       s.stock = (s.stock || 0) + amount;
+      s.updatedAt = nowISO;
     });
     safeStorage.setItem(STORAGE_KEYS.SNACKS, JSON.stringify(snacks));
     emitDataChanged();
@@ -1359,7 +1366,29 @@ class PosStorageEngine {
           const remoteMap = new Map(validRemote.map((s) => [s.id, s]));
           const merged = validRemote.map((remote) => {
             const localMatch = local.find((l) => l.id === remote.id);
-            return localMatch ? { ...localMatch, ...remote } : remote;
+            if (!localMatch) return remote;
+
+            const remoteTime = remote.updatedAt ? new Date(remote.updatedAt).getTime() : 0;
+            const localTime = localMatch.updatedAt ? new Date(localMatch.updatedAt).getTime() : 0;
+
+            // If local was updated more recently or at same time (or both 0),
+            // preserve the local stock count because the cashier's physical count is authoritative!
+            if (localTime >= remoteTime) {
+              if (localTime > remoteTime) {
+                syncSnackToSupabase(localMatch).catch(() => {});
+              }
+              return {
+                ...remote,
+                ...localMatch,
+                stock: localMatch.stock !== undefined ? localMatch.stock : remote.stock,
+              };
+            } else {
+              // Remote was explicitly updated more recently on another device
+              return {
+                ...localMatch,
+                ...remote,
+              };
+            }
           });
           local.forEach((l) => {
             if (!remoteMap.has(l.id)) {
@@ -1367,8 +1396,14 @@ class PosStorageEngine {
               syncSnackToSupabase(l).catch(() => {});
             }
           });
-          safeStorage.setItem(STORAGE_KEYS.SNACKS, JSON.stringify(merged));
-          emitDataChanged();
+
+          // Only write and emit changes if data actually changed to avoid phantom UI refresh loops
+          const currentLocalRaw = safeStorage.getItem(STORAGE_KEYS.SNACKS);
+          const newMergedRaw = JSON.stringify(merged);
+          if (currentLocalRaw !== newMergedRaw) {
+            safeStorage.setItem(STORAGE_KEYS.SNACKS, newMergedRaw);
+            emitDataChanged();
+          }
         } else {
           // If no valid items in Supabase (or all were legacy), upload current client catalogue
           syncAllSnacksToSupabase(local).catch(() => {});
@@ -1383,8 +1418,12 @@ class PosStorageEngine {
           ...current,
           ...remotePricingRes.pricing,
         };
-        safeStorage.setItem(STORAGE_KEYS.PRICING, JSON.stringify(mergedPricing));
-        emitDataChanged();
+        const currentPricingRaw = safeStorage.getItem(STORAGE_KEYS.PRICING);
+        const newPricingRaw = JSON.stringify(mergedPricing);
+        if (currentPricingRaw !== newPricingRaw) {
+          safeStorage.setItem(STORAGE_KEYS.PRICING, newPricingRaw);
+          emitDataChanged();
+        }
       } else if (remotePricingRes.success && !remotePricingRes.pricing) {
         const current = this.getPricingConfig();
         syncPricingToSupabase(current).catch(() => {});
@@ -1515,6 +1554,7 @@ class PosStorageEngine {
           // Deduct from stock if inventory is tracked
           if (product.stock !== undefined) {
             product.stock = Math.max(0, product.stock - item.quantity);
+            product.updatedAt = new Date().toISOString();
             inventoryChanged = true;
           }
         }
@@ -1653,6 +1693,7 @@ class PosStorageEngine {
         isCustom = false;
         if (product.stock !== undefined) {
           product.stock = Math.max(0, product.stock - quantity);
+          product.updatedAt = new Date().toISOString();
           safeStorage.setItem(STORAGE_KEYS.SNACKS, JSON.stringify(allSnacks));
           try {
             syncSnackToSupabase(product).catch(() => {});
@@ -1730,6 +1771,7 @@ class PosStorageEngine {
       const pIdx = allSnacks.findIndex((s) => s.id === removedItem.productId);
       if (pIdx !== -1 && allSnacks[pIdx].stock !== undefined) {
         allSnacks[pIdx].stock = (allSnacks[pIdx].stock || 0) + removedItem.quantity;
+        allSnacks[pIdx].updatedAt = new Date().toISOString();
         safeStorage.setItem(STORAGE_KEYS.SNACKS, JSON.stringify(allSnacks));
         try {
           syncSnackToSupabase(allSnacks[pIdx]).catch(() => {});
@@ -1976,6 +2018,7 @@ class PosStorageEngine {
       // Deduct inventory stock
       if (product.stock !== undefined) {
         product.stock = Math.max(0, product.stock - it.quantity);
+        product.updatedAt = new Date().toISOString();
         inventoryChanged = true;
       }
     }
@@ -2578,6 +2621,7 @@ class PosStorageEngine {
           const p = allSnacks.find((s) => s.id === item.productId);
           if (p && p.stock !== undefined) {
             p.stock = (p.stock || 0) + item.quantity;
+            p.updatedAt = new Date().toISOString();
             snacksModified = true;
           }
         }

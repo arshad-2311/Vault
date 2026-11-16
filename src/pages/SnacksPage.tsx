@@ -85,9 +85,7 @@ export const SnacksPage: React.FC<SnacksPageProps> = ({ onOpenWalkInPos }) => {
 
     // Actively pull custom client snacks from Supabase cloud on load
     if (isSupabaseConfigured) {
-      db.fetchAndMergeCloudData()
-        .then(() => setSnacks(db.getSnacks()))
-        .catch(() => {});
+      db.fetchAndMergeCloudData().catch(() => {});
     }
 
     return () => window.removeEventListener(VAULT_DATA_CHANGED_EVENT, handleDataChanged);
@@ -100,7 +98,12 @@ export const SnacksPage: React.FC<SnacksPageProps> = ({ onOpenWalkInPos }) => {
     const currentStock = snack.stock ?? 20;
     const newStock = Math.max(0, currentStock + delta);
     db.updateSnack(snack.id, { stock: newStock }, currentUser);
-    loadData();
+  };
+
+  const handleDirectStockChange = (snack: SnackItem, val: string) => {
+    if (!isAdmin) return;
+    const parsed = Math.max(0, parseInt(val, 10) || 0);
+    db.updateSnack(snack.id, { stock: parsed }, currentUser);
   };
 
   const lowStockItems = snacks.filter((s) => s.isActive && (s.stock ?? 20) <= (s.lowStockThreshold ?? 5));
@@ -415,9 +418,14 @@ export const SnacksPage: React.FC<SnacksPageProps> = ({ onOpenWalkInPos }) => {
                       >
                         <Minus className="w-3 h-3" />
                       </button>
-                      <span className="font-mono text-2xs font-bold text-zinc-200 px-2 min-w-[2rem] text-center" title="Current Stock Level">
-                        {currentStock}
-                      </span>
+                      <input
+                        type="number"
+                        min="0"
+                        value={currentStock}
+                        onChange={(e) => handleDirectStockChange(item, e.target.value)}
+                        className="w-12 h-6 text-center font-mono text-2xs font-bold text-white bg-transparent border-x border-zinc-800 outline-none focus:bg-zinc-800 px-0.5 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                        title="Click to type exact stock count directly"
+                      />
                       <button
                         type="button"
                         onClick={() => handleQuickStockAdjust(item, 1)}

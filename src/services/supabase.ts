@@ -504,9 +504,9 @@ export async function syncSnackToSupabase(
       category: snack.category || 'General',
       price_paise: snack.pricePaise,
       is_active: snack.isActive,
-      stock: snack.stock !== undefined ? snack.stock : 100,
+      stock: snack.stock !== undefined ? snack.stock : 20,
       low_stock_threshold: snack.lowStockThreshold !== undefined ? snack.lowStockThreshold : 5,
-      updated_at: new Date().toISOString(),
+      updated_at: snack.updatedAt || new Date().toISOString(),
     };
     const { error } = await supabase.from('products').upsert(payload);
     if (error) {
@@ -567,8 +567,9 @@ export async function fetchSnacksFromSupabase(): Promise<{
       category: row.category || 'General',
       pricePaise: row.price_paise,
       isActive: row.is_active ?? true,
-      stock: row.stock !== undefined && row.stock !== null ? row.stock : 100,
+      stock: row.stock !== undefined && row.stock !== null ? row.stock : 20,
       lowStockThreshold: row.low_stock_threshold !== undefined && row.low_stock_threshold !== null ? row.low_stock_threshold : 5,
+      updatedAt: row.updated_at || undefined,
     }));
 
     return { success: true, snacks };
@@ -593,9 +594,9 @@ export async function syncAllSnacksToSupabase(
       category: s.category || 'General',
       price_paise: s.pricePaise,
       is_active: s.isActive,
-      stock: s.stock !== undefined ? s.stock : 100,
+      stock: s.stock !== undefined ? s.stock : 20,
       low_stock_threshold: s.lowStockThreshold !== undefined ? s.lowStockThreshold : 5,
-      updated_at: new Date().toISOString(),
+      updated_at: s.updatedAt || new Date().toISOString(),
     }));
     const { error } = await supabase.from('products').upsert(payload);
     if (error) {

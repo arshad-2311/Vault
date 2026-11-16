@@ -33,6 +33,7 @@ export interface SnackItem {
   isActive: boolean;
   stock?: number; // Stock inventory quantity
   lowStockThreshold?: number; // Reminder threshold (e.g. 5)
+  updatedAt?: string;
 }
 
 export interface SessionItem {

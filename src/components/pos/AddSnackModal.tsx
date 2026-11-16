@@ -351,7 +351,7 @@ export const AddSnackModal: React.FC<AddSnackModalProps> = ({
                             : 'text-slate-500'
                         }`}
                       >
-                        {isOutOfStock ? '0 left' : `${snk.stock} left`}
+                        {isOutOfStock ? '0 left' : isSelected && quantity > 0 ? `${Math.max(0, snk.stock - quantity)} left` : `${snk.stock} left`}
                       </span>
                     )}
                   </div>

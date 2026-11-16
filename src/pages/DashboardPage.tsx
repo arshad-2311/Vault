@@ -43,7 +43,38 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   });
   const [isLoading, setIsLoading] = useState(false);
 
-  const loadData = async () => {
+  const loadLocalMetrics = () => {
+    const allStations = db.getStations();
+    const allSessions = db.getSessions();
+    setStations(allStations);
+    setSessions(allSessions);
+
+    // Compute date ranges
+    const today = getTodayDateString();
+    let startDate = today;
+    let endDate = today;
+
+    if (rangePreset === 'yesterday') {
+      const y = new Date();
+      y.setDate(y.getDate() - 1);
+      startDate = y.toISOString().split('T')[0];
+      endDate = startDate;
+    } else if (rangePreset === 'week') {
+      const now = new Date();
+      const firstDay = new Date(now.setDate(now.getDate() - now.getDay() + 1));
+      startDate = firstDay.toISOString().split('T')[0];
+      endDate = getTodayDateString();
+    } else if (rangePreset === 'month') {
+      const now = new Date();
+      startDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+      endDate = getTodayDateString();
+    }
+
+    const calculated = db.calculateDashboardMetrics(startDate, endDate);
+    setMetrics(calculated);
+  };
+
+  const handleManualRefresh = async () => {
     setIsLoading(true);
     try {
       if (isSupabaseConfigured) {
@@ -54,45 +85,18 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           }
         } catch {}
       }
-
-      const allStations = db.getStations();
-      const allSessions = db.getSessions();
-      setStations(allStations);
-      setSessions(allSessions);
-
-      // Compute date ranges
-      const today = getTodayDateString();
-      let startDate = today;
-      let endDate = today;
-
-      if (rangePreset === 'yesterday') {
-        const y = new Date();
-        y.setDate(y.getDate() - 1);
-        startDate = y.toISOString().split('T')[0];
-        endDate = startDate;
-      } else if (rangePreset === 'week') {
-        const now = new Date();
-        const firstDay = new Date(now.setDate(now.getDate() - now.getDay() + 1));
-        startDate = firstDay.toISOString().split('T')[0];
-        endDate = getTodayDateString();
-      } else if (rangePreset === 'month') {
-        const now = new Date();
-        startDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
-        endDate = getTodayDateString();
-      }
-
-      const calculated = db.calculateDashboardMetrics(startDate, endDate);
-      setMetrics(calculated);
+      loadLocalMetrics();
     } finally {
       setIsLoading(false);
     }
   };
 
   useEffect(() => {
-    loadData();
-    const handleDataChanged = () => loadData();
+    loadLocalMetrics();
+    const handleDataChanged = () => loadLocalMetrics();
     window.addEventListener(VAULT_DATA_CHANGED_EVENT, handleDataChanged);
-    const interval = setInterval(loadData, 30000);
+    // Periodically recalculate local metrics without hitting Supabase network
+    const interval = setInterval(loadLocalMetrics, 60000);
     return () => {
       window.removeEventListener(VAULT_DATA_CHANGED_EVENT, handleDataChanged);
       clearInterval(interval);
@@ -156,7 +160,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           </div>
 
           <button
-            onClick={loadData}
+            onClick={handleManualRefresh}
             disabled={isLoading}
             className="p-2 rounded-xl bg-black/40 hover:bg-white/[0.08] border border-white/[0.08] text-zinc-400 hover:text-white transition-colors shrink-0"
             title="Refresh Ledger"
@@ -319,7 +323,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         isOpen={manualSalesModalOpen}
         onClose={() => setManualSalesModalOpen(false)}
         targetDate={getTodayDateString()}
-        onSalesUpdated={loadData}
+        onSalesUpdated={loadLocalMetrics}
       />
     </div>
   );
