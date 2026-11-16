@@ -303,7 +303,7 @@ function mapSupabaseRowToSession(row: any): Session {
 /**
  * Fetches all sessions from Supabase cloud database to synchronize across browsers and devices.
  */
-export async function fetchSessionsFromSupabase(): Promise<{
+export async function fetchSessionsFromSupabase(limit = 20): Promise<{
   success: boolean;
   sessions?: Session[];
   error?: string;
@@ -315,9 +315,18 @@ export async function fetchSessionsFromSupabase(): Promise<{
   try {
     const { data, error } = await supabase
       .from('sessions')
-      .select('*, items:session_items(*), payment:payments(*)')
+      .select(`
+        id, customer_name, customer_phone, gaming_type, station_id, station_name,
+        billing_type, is_multiplayer, fixed_plan_id, fixed_plan_name, frames_count,
+        start_time, end_time, duration_minutes, status, rate_snapshot, gaming_charge_paise,
+        snack_subtotal_paise, discount_paise, discount_reason, final_bill_paise,
+        created_by, created_by_name, completed_by, completed_by_name, notes,
+        is_voided, void_reason, voided_at, created_at, updated_at,
+        items:session_items(id, session_id, product_id, name, quantity, unit_price_paise, line_total_paise, is_custom),
+        payment:payments(id, session_id, method, gpay_amount_paise, cash_amount_paise, total_received_paise, final_bill_paise, outstanding_balance_paise, recorded_by, recorded_by_name, status, notes, timestamp)
+      `)
       .order('created_at', { ascending: false })
-      .limit(50);
+      .limit(limit);
 
     if (error) {
       return { success: false, error: error.message };
@@ -392,7 +401,7 @@ export async function syncExpenseToSupabase(expense: DailyExpense): Promise<{ su
 /**
  * Fetches all daily expenses from Supabase cloud database.
  */
-export async function fetchExpensesFromSupabase(): Promise<{
+export async function fetchExpensesFromSupabase(limit = 50): Promise<{
   success: boolean;
   expenses?: DailyExpense[];
   error?: string;
@@ -403,8 +412,9 @@ export async function fetchExpensesFromSupabase(): Promise<{
   try {
     const { data, error } = await supabase
       .from('daily_expenses')
-      .select('*')
-      .order('date', { ascending: false });
+      .select('id, date, title, category, amount_paise, payment_method, notes, receipt_number, recorded_by, recorded_by_name, created_at, updated_at')
+      .order('date', { ascending: false })
+      .limit(limit);
 
     if (error) {
       return { success: false, error: error.message };
@@ -554,7 +564,7 @@ export async function fetchSnacksFromSupabase(): Promise<{
   try {
     const { data, error } = await supabase
       .from('products')
-      .select('*')
+      .select('id, name, category, price_paise, is_active, stock, low_stock_threshold, updated_at')
       .order('name', { ascending: true });
 
     if (error) {
@@ -661,7 +671,7 @@ export async function fetchPricingFromSupabase(): Promise<{
   try {
     const { data, error } = await supabase
       .from('pricing_config')
-      .select('*')
+      .select('id, business_name, business_timezone, currency_symbol, ps5_hourly_rate_paise, ps5_multiplayer_hourly_rate_paise, ps5_fixed_plans, pool_hourly_rate_paise, pool_per_frame_rate_paise, rounding_rule, allow_custom_snacks, allow_partial_payments, max_employee_discount_paise')
       .eq('id', 'cfg-default')
       .maybeSingle();
 

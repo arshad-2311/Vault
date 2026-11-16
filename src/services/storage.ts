@@ -1330,12 +1330,20 @@ class PosStorageEngine {
     return updated;
   }
 
+  private lastCloudSettingsFetchTime = 0;
+
   /**
    * Two-way Cloud Synchronization for snacks catalogue and business rates.
    * Loads custom client settings from Supabase so edits on any browser/device persist across reloads.
+   * Cached for 5 minutes to eliminate redundant egress during page navigation.
    */
-  async fetchAndMergeCloudData(): Promise<void> {
+  async fetchAndMergeCloudData(force = false): Promise<void> {
     if (!isSupabaseConfigured) return;
+    const now = Date.now();
+    if (!force && now - this.lastCloudSettingsFetchTime < 300000) {
+      return;
+    }
+    this.lastCloudSettingsFetchTime = now;
     try {
       // 1. Fetch remote snacks
       const remoteSnacksRes = await fetchSnacksFromSupabase();
@@ -1537,6 +1545,7 @@ class PosStorageEngine {
       const allSnacks = this.getSnacks();
       let inventoryChanged = false;
 
+      const modifiedSnacks: SnackItem[] = [];
       for (const item of initialSnacks) {
         const product = allSnacks.find((s) => s.id === item.snackId);
         if (product && item.quantity > 0) {
@@ -1556,6 +1565,7 @@ class PosStorageEngine {
             product.stock = Math.max(0, product.stock - item.quantity);
             product.updatedAt = new Date().toISOString();
             inventoryChanged = true;
+            modifiedSnacks.push(product);
           }
         }
       }
@@ -1563,7 +1573,9 @@ class PosStorageEngine {
       if (inventoryChanged) {
         safeStorage.setItem(STORAGE_KEYS.SNACKS, JSON.stringify(allSnacks));
         try {
-          syncAllSnacksToSupabase(allSnacks).catch(() => {});
+          for (const mod of modifiedSnacks) {
+            syncSnackToSupabase(mod).catch(() => {});
+          }
         } catch {}
       }
     }
@@ -1996,6 +2008,8 @@ class PosStorageEngine {
     let snackSubtotalPaise = 0;
     let inventoryChanged = false;
 
+    const modifiedSnacks: SnackItem[] = [];
+
     for (const it of items) {
       if (it.quantity <= 0) continue;
       const product = allSnacks.find((s) => s.id === it.snackId);
@@ -2020,6 +2034,7 @@ class PosStorageEngine {
         product.stock = Math.max(0, product.stock - it.quantity);
         product.updatedAt = new Date().toISOString();
         inventoryChanged = true;
+        modifiedSnacks.push(product);
       }
     }
 
@@ -2030,7 +2045,9 @@ class PosStorageEngine {
     if (inventoryChanged) {
       safeStorage.setItem(STORAGE_KEYS.SNACKS, JSON.stringify(allSnacks));
       try {
-        syncAllSnacksToSupabase(allSnacks).catch(() => {});
+        for (const mod of modifiedSnacks) {
+          syncSnackToSupabase(mod).catch(() => {});
+        }
       } catch {}
     }
 
@@ -2616,6 +2633,7 @@ class PosStorageEngine {
     if (session.items && session.items.length > 0) {
       const allSnacks = this.getSnacks();
       let snacksModified = false;
+      const restoredProducts: SnackItem[] = [];
       for (const item of session.items) {
         if (item.productId) {
           const p = allSnacks.find((s) => s.id === item.productId);
@@ -2623,13 +2641,16 @@ class PosStorageEngine {
             p.stock = (p.stock || 0) + item.quantity;
             p.updatedAt = new Date().toISOString();
             snacksModified = true;
+            restoredProducts.push(p);
           }
         }
       }
       if (snacksModified) {
         safeStorage.setItem(STORAGE_KEYS.SNACKS, JSON.stringify(allSnacks));
         try {
-          syncAllSnacksToSupabase(allSnacks).catch(() => {});
+          for (const rest of restoredProducts) {
+            syncSnackToSupabase(rest).catch(() => {});
+          }
         } catch {}
       }
     }

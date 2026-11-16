@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { Navbar } from './components/layout/Navbar';
 import { Sidebar, NavTab } from './components/layout/Sidebar';
@@ -47,59 +47,70 @@ export const AppContent: React.FC = () => {
   const [receiptModalSession, setReceiptModalSession] = useState<Session | null>(null);
   const [autoPrintReceipt, setAutoPrintReceipt] = useState(false);
 
-  // Sync state from local storage and Supabase cloud
-  const refreshData = async () => {
-    // 1. Instant local update
+  // Sync state from local storage and Supabase cloud (throttled to preserve Free Plan quota)
+  const lastSyncTimeRef = useRef<number>(0);
+
+  const refreshData = async (forceRemote = false) => {
+    // 1. Instant local update (0ms, 0 network bytes)
     setStations(db.getStations());
     setSessions(db.getSessions());
 
     // 2. Fetch remote sessions from Supabase to keep multi-browser/multi-device in sync
-    if (isSupabaseConfigured) {
-      try {
-        const res = await fetchSessionsFromSupabase();
-        if (res.success && res.sessions) {
-          db.syncWithRemoteSessions(res.sessions);
-          setStations(db.getStations());
-          setSessions(db.getSessions());
-        }
-      } catch {}
+    if (!isSupabaseConfigured) return;
+
+    const now = Date.now();
+    // 60-second cooldown on remote fetches to eliminate network spam from alt-tabbing / window focus
+    if (!forceRemote && now - lastSyncTimeRef.current < 60000) {
+      return;
     }
+
+    try {
+      lastSyncTimeRef.current = now;
+      const res = await fetchSessionsFromSupabase(20);
+      if (res.success && res.sessions) {
+        db.syncWithRemoteSessions(res.sessions);
+        setStations(db.getStations());
+        setSessions(db.getSessions());
+      }
+    } catch {}
   };
 
   useEffect(() => {
-    refreshData();
+    // Initial sync
+    refreshData(true);
+
     const handleDataChanged = () => {
       setStations(db.getStations());
       setSessions(db.getSessions());
     };
     window.addEventListener(VAULT_DATA_CHANGED_EVENT, handleDataChanged);
 
-    // Sync on tab focus / returning to app after phone lock or switching apps
+    // Sync on tab focus / returning to app after phone lock or switching apps (throttled by 60s cooldown)
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
-        refreshData();
+        refreshData(false);
       }
     };
     document.addEventListener('visibilitychange', handleVisibilityChange);
-    window.addEventListener('focus', refreshData);
+    window.addEventListener('focus', () => refreshData(false));
 
-    // Low-frequency fallback heartbeat (every 5 minutes, only if tab is visible)
+    // Low-frequency fallback heartbeat (every 10 minutes, only if tab is visible)
     // Instant updates are handled in real-time via WebSocket subscription below
     const timer = setInterval(() => {
       if (document.visibilityState === 'visible') {
-        refreshData();
+        refreshData(false);
       }
-    }, 300000);
+    }, 600000);
 
-    // Realtime Supabase change stream
+    // Realtime Supabase change stream: immediate sync when another device updates!
     const unsubRealtime = subscribeToSupabaseSessions(() => {
-      refreshData();
+      refreshData(true);
     });
 
     return () => {
       window.removeEventListener(VAULT_DATA_CHANGED_EVENT, handleDataChanged);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
-      window.removeEventListener('focus', refreshData);
+      window.removeEventListener('focus', () => refreshData(false));
       clearInterval(timer);
       unsubRealtime();
     };

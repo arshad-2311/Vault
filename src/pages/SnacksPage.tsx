@@ -64,7 +64,7 @@ export const SnacksPage: React.FC<SnacksPageProps> = ({ onOpenWalkInPos }) => {
     setIsSyncing(true);
     setCloudStatus('Syncing with Supabase...');
     try {
-      await db.fetchAndMergeCloudData();
+      await db.fetchAndMergeCloudData(true);
       setSnacks(db.getSnacks());
       setCloudStatus('Synced with Cloud!');
       setTimeout(() => setCloudStatus(null), 3000);

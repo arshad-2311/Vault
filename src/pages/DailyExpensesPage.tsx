@@ -37,6 +37,8 @@ const EXPENSE_CATEGORIES: ExpenseCategory[] = [
   'Miscellaneous',
 ];
 
+let lastExpensesFetchTime = 0;
+
 export const DailyExpensesPage: React.FC = () => {
   const { currentUser, isAdmin } = useAuth();
   const [expenses, setExpenses] = useState<DailyExpense[]>(() => db.getExpenses());
@@ -59,11 +61,16 @@ export const DailyExpensesPage: React.FC = () => {
   const [formError, setFormError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const loadData = async () => {
+  const loadData = async (force = false) => {
     setExpenses(db.getExpenses());
     if (isSupabaseConfigured) {
+      const now = Date.now();
+      if (!force && now - lastExpensesFetchTime < 300000) {
+        return;
+      }
       try {
-        const res = await fetchExpensesFromSupabase();
+        lastExpensesFetchTime = now;
+        const res = await fetchExpensesFromSupabase(50);
         if (res.success && res.expenses && res.expenses.length > 0) {
           // Merge remote expenses with local expenses
           const local = db.getExpenses();
