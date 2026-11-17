@@ -14,6 +14,7 @@ import {
   CheckCircle,
   HelpCircle,
   Edit2,
+  RefreshCw,
 } from 'lucide-react';
 import { DashboardMetrics, Session } from '../types';
 import { Button } from '../components/common/Button';
@@ -21,7 +22,15 @@ import { Badge } from '../components/common/Badge';
 import { ManualSalesModal } from '../components/pos/ManualSalesModal';
 import { useAuth } from '../context/AuthContext';
 import { db, VAULT_DATA_CHANGED_EVENT } from '../services/storage';
-import { formatRupees, getTodayDateString, formatDateOnly, getBusinessDateString } from '../utils/formatters';
+import { isSupabaseConfigured } from '../services/supabase';
+import {
+  formatRupees,
+  getTodayDateString,
+  formatDateOnly,
+  getBusinessDateString,
+  getBusinessWeekRange,
+  getBusinessMonthRange,
+} from '../utils/formatters';
 
 export const ReportsPage: React.FC = () => {
   const { currentUser } = useAuth();
@@ -34,8 +43,9 @@ export const ReportsPage: React.FC = () => {
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
   const [reportSessions, setReportSessions] = useState<Session[]>([]);
   const [manualSalesModalOpen, setManualSalesModalOpen] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
 
-  const calculateReport = () => {
+  const getDateRange = () => {
     let start = selectedDate;
     let end = selectedDate;
 
@@ -43,22 +53,22 @@ export const ReportsPage: React.FC = () => {
       start = selectedDate;
       end = selectedDate;
     } else if (rangeMode === 'weekly') {
-      const curr = new Date(selectedDate);
-      const first = curr.getDate() - curr.getDay() + 1; // Monday
-      const last = first + 6; // Sunday
-      const firstDay = new Date(curr.setDate(first));
-      const lastDay = new Date(curr.setDate(last));
-      start = firstDay.toISOString().split('T')[0];
-      end = lastDay.toISOString().split('T')[0];
+      const week = getBusinessWeekRange(selectedDate);
+      start = week.start;
+      end = week.end;
     } else if (rangeMode === 'monthly') {
-      const [year, month] = selectedDate.split('-');
-      const lastDayOfMonth = new Date(Number(year), Number(month), 0).getDate();
-      start = `${year}-${month}-01`;
-      end = `${year}-${month}-${String(lastDayOfMonth).padStart(2, '0')}`;
+      const month = getBusinessMonthRange(selectedDate);
+      start = month.start;
+      end = month.end;
     } else if (rangeMode === 'custom') {
       start = customStart;
       end = customEnd;
     }
+    return { start, end };
+  };
+
+  const calculateReport = () => {
+    const { start, end } = getDateRange();
 
     const calculated = db.calculateDashboardMetrics(start, end);
     setMetrics(calculated);
@@ -71,8 +81,22 @@ export const ReportsPage: React.FC = () => {
     setReportSessions(filtered);
   };
 
+  const syncRemoteRange = async () => {
+    if (!isSupabaseConfigured) return;
+    const { start, end } = getDateRange();
+    setIsSyncing(true);
+    try {
+      await db.syncSessionsForDateRange(start, end);
+      calculateReport();
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
   useEffect(() => {
     calculateReport();
+    syncRemoteRange();
+
     const handleDataChanged = () => {
       calculateReport();
     };
@@ -106,15 +130,30 @@ export const ReportsPage: React.FC = () => {
           </p>
         </div>
 
-        <Button
-          variant="secondary"
-          size="md"
-          onClick={handleExportCSV}
-          leftIcon={<Download className="w-4 h-4 text-zinc-300" />}
-          className="font-medium"
-        >
-          Export Report to CSV
-        </Button>
+        <div className="flex items-center gap-2">
+          {isSupabaseConfigured && (
+            <Button
+              variant="secondary"
+              size="md"
+              onClick={syncRemoteRange}
+              disabled={isSyncing}
+              leftIcon={<RefreshCw className={`w-4 h-4 text-zinc-300 ${isSyncing ? 'animate-spin' : ''}`} />}
+              className="font-medium"
+            >
+              {isSyncing ? 'Syncing...' : 'Sync Cloud Data'}
+            </Button>
+          )}
+
+          <Button
+            variant="secondary"
+            size="md"
+            onClick={handleExportCSV}
+            leftIcon={<Download className="w-4 h-4 text-zinc-300" />}
+            className="font-medium"
+          >
+            Export Report to CSV
+          </Button>
+        </div>
       </div>
 
       {/* Range Mode Selector & Date Inputs */}

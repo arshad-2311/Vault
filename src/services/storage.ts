@@ -30,6 +30,8 @@ import {
   syncPricingToSupabase,
   fetchPricingFromSupabase,
   purgeDemoDataBeforeNov9FromSupabase,
+  fetchSessionsForDateRangeFromSupabase,
+  fetchExpensesForDateRangeFromSupabase,
   isSupabaseConfigured,
 } from './supabase';
 
@@ -1511,6 +1513,20 @@ class PosStorageEngine {
     }
   }
 
+  /**
+   * Fetches and syncs remote sessions for a specific business date range (e.g. for reports or historical review).
+   */
+  async syncSessionsForDateRange(startDateStr: string, endDateStr: string = startDateStr): Promise<Session[]> {
+    if (!isSupabaseConfigured) return this.getSessions();
+    try {
+      const res = await fetchSessionsForDateRangeFromSupabase(startDateStr, endDateStr);
+      if (res.success && res.sessions && res.sessions.length > 0) {
+        this.syncWithRemoteSessions(res.sessions);
+      }
+    } catch {}
+    return this.getSessions();
+  }
+
   getSessionById(sessionId: string): Session | undefined {
     return this.getSessions().find((s) => s.id === sessionId);
   }
@@ -2345,7 +2361,7 @@ class PosStorageEngine {
     if (date) {
       const parts = date.split('-').map(Number);
       if (parts.length === 3) {
-        const d = new Date(parts[0], parts[1] - 1, parts[2], now.getHours(), now.getMinutes(), now.getSeconds());
+        const d = new Date(parts[0], parts[1] - 1, parts[2], 12, 0, 0);
         timestampISO = d.toISOString();
       }
     }

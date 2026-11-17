@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { Session, SessionItem, PaymentRecord, DailyExpense, SnackItem, PricingConfig } from '../types';
+import { getBusinessDateRangeUTC } from '../utils/formatters';
 
 const supabaseUrl =
   (import.meta.env.VITE_SUPABASE_URL as string | undefined) ||
@@ -301,9 +302,10 @@ function mapSupabaseRowToSession(row: any): Session {
 }
 
 /**
- * Fetches all sessions from Supabase cloud database to synchronize across browsers and devices.
+ * Fetches sessions from Supabase cloud database to synchronize across browsers and devices.
+ * Always ensures active sessions are fetched plus recent transactions (default limit: 100).
  */
-export async function fetchSessionsFromSupabase(limit = 20): Promise<{
+export async function fetchSessionsFromSupabase(limit = 100): Promise<{
   success: boolean;
   sessions?: Session[];
   error?: string;
@@ -313,7 +315,23 @@ export async function fetchSessionsFromSupabase(limit = 20): Promise<{
   }
 
   try {
-    const { data, error } = await supabase
+    // 1. Fetch active sessions first so that active stations are 100% accurate across all devices
+    const { data: activeData } = await supabase
+      .from('sessions')
+      .select(`
+        id, customer_name, customer_phone, gaming_type, station_id, station_name,
+        billing_type, is_multiplayer, fixed_plan_id, fixed_plan_name, frames_count,
+        start_time, end_time, duration_minutes, status, rate_snapshot, gaming_charge_paise,
+        snack_subtotal_paise, discount_paise, discount_reason, final_bill_paise,
+        created_by, created_by_name, completed_by, completed_by_name, notes,
+        is_voided, void_reason, voided_at, created_at, updated_at,
+        items:session_items(id, session_id, product_id, name, quantity, unit_price_paise, line_total_paise, is_custom),
+        payment:payments(id, session_id, method, gpay_amount_paise, cash_amount_paise, total_received_paise, final_bill_paise, outstanding_balance_paise, recorded_by, recorded_by_name, status, notes, timestamp)
+      `)
+      .eq('status', 'active');
+
+    // 2. Fetch recent transactions
+    const { data: recentData, error } = await supabase
       .from('sessions')
       .select(`
         id, customer_name, customer_phone, gaming_type, station_id, station_name,
@@ -327,6 +345,56 @@ export async function fetchSessionsFromSupabase(limit = 20): Promise<{
       `)
       .order('created_at', { ascending: false })
       .limit(limit);
+
+    if (error) {
+      return { success: false, error: error.message };
+    }
+
+    const rowMap = new Map<string, any>();
+    (activeData || []).forEach((row) => rowMap.set(row.id, row));
+    (recentData || []).forEach((row) => rowMap.set(row.id, row));
+
+    const sessions = Array.from(rowMap.values()).map(mapSupabaseRowToSession);
+    return { success: true, sessions };
+  } catch (err: any) {
+    return { success: false, error: err.message || 'Fetch failed' };
+  }
+}
+
+/**
+ * Fetches all sessions for a specific business date range (in IST, e.g. '2026-11-15' to '2026-11-15')
+ * from Supabase cloud database to ensure 100% complete settlement reports across all devices.
+ */
+export async function fetchSessionsForDateRangeFromSupabase(
+  startDateStr: string,
+  endDateStr: string = startDateStr
+): Promise<{
+  success: boolean;
+  sessions?: Session[];
+  error?: string;
+}> {
+  if (!supabase || !isSupabaseConfigured) {
+    return { success: false, error: 'Supabase not configured' };
+  }
+
+  try {
+    const { startISO, endISO } = getBusinessDateRangeUTC(startDateStr, endDateStr);
+
+    const { data, error } = await supabase
+      .from('sessions')
+      .select(`
+        id, customer_name, customer_phone, gaming_type, station_id, station_name,
+        billing_type, is_multiplayer, fixed_plan_id, fixed_plan_name, frames_count,
+        start_time, end_time, duration_minutes, status, rate_snapshot, gaming_charge_paise,
+        snack_subtotal_paise, discount_paise, discount_reason, final_bill_paise,
+        created_by, created_by_name, completed_by, completed_by_name, notes,
+        is_voided, void_reason, voided_at, created_at, updated_at,
+        items:session_items(id, session_id, product_id, name, quantity, unit_price_paise, line_total_paise, is_custom),
+        payment:payments(id, session_id, method, gpay_amount_paise, cash_amount_paise, total_received_paise, final_bill_paise, outstanding_balance_paise, recorded_by, recorded_by_name, status, notes, timestamp)
+      `)
+      .gte('start_time', startISO)
+      .lte('start_time', endISO)
+      .order('start_time', { ascending: false });
 
     if (error) {
       return { success: false, error: error.message };
@@ -428,6 +496,53 @@ export async function fetchExpensesFromSupabase(limit = 50): Promise<{
       .select('id, date, title, category, amount_paise, payment_method, notes, receipt_number, recorded_by, recorded_by_name, created_at, updated_at')
       .order('date', { ascending: false })
       .limit(limit);
+
+    if (error) {
+      return { success: false, error: error.message };
+    }
+
+    const expenses: DailyExpense[] = (data || []).map((row: any) => ({
+      id: row.id,
+      date: row.date,
+      title: row.title,
+      category: row.category,
+      amountPaise: row.amount_paise,
+      paymentMethod: row.payment_method,
+      notes: row.notes || undefined,
+      receiptNumber: row.receipt_number || undefined,
+      recordedBy: row.recorded_by || 'usr-admin-1',
+      recordedByName: row.recorded_by_name || 'Admin',
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+    }));
+
+    return { success: true, expenses };
+  } catch (err: any) {
+    return { success: false, error: err.message };
+  }
+}
+
+/**
+ * Fetches expenses for a specific date range from Supabase cloud database.
+ */
+export async function fetchExpensesForDateRangeFromSupabase(
+  startDateStr: string,
+  endDateStr: string = startDateStr
+): Promise<{
+  success: boolean;
+  expenses?: DailyExpense[];
+  error?: string;
+}> {
+  if (!supabase || !isSupabaseConfigured) {
+    return { success: false, error: 'Supabase not configured' };
+  }
+  try {
+    const { data, error } = await supabase
+      .from('daily_expenses')
+      .select('id, date, title, category, amount_paise, payment_method, notes, receipt_number, recorded_by, recorded_by_name, created_at, updated_at')
+      .gte('date', startDateStr)
+      .lte('date', endDateStr)
+      .order('date', { ascending: false });
 
     if (error) {
       return { success: false, error: error.message };

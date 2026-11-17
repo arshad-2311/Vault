@@ -66,7 +66,7 @@ export const AppContent: React.FC = () => {
 
     try {
       lastSyncTimeRef.current = now;
-      const res = await fetchSessionsFromSupabase(20);
+      const res = await fetchSessionsFromSupabase(100);
       if (res.success && res.sessions) {
         db.syncWithRemoteSessions(res.sessions);
         setStations(db.getStations());

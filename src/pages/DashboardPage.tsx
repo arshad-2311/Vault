@@ -13,7 +13,13 @@ import { ManualSalesModal } from '../components/pos/ManualSalesModal';
 import { useAuth } from '../context/AuthContext';
 import { db, VAULT_DATA_CHANGED_EVENT } from '../services/storage';
 import { isSupabaseConfigured, fetchSessionsFromSupabase } from '../services/supabase';
-import { formatRupees, getTodayDateString } from '../utils/formatters';
+import {
+  formatRupees,
+  getTodayDateString,
+  getYesterdayDateString,
+  getBusinessWeekRange,
+  getBusinessMonthRange,
+} from '../utils/formatters';
 
 interface DashboardPageProps {
   onStartSession: (stationId: string) => void;
@@ -55,29 +61,15 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     let endDate = today;
 
     if (rangePreset === 'yesterday') {
-      const d = new Date();
-      if (d.getHours() < 3) {
-        d.setDate(d.getDate() - 1);
-      }
-      d.setDate(d.getDate() - 1);
-      startDate = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      startDate = getYesterdayDateString();
       endDate = startDate;
     } else if (rangePreset === 'week') {
-      const d = new Date();
-      if (d.getHours() < 3) {
-        d.setDate(d.getDate() - 1);
-      }
-      const day = d.getDay();
-      const diff = d.getDate() - day + (day === 0 ? -6 : 1);
-      const firstDay = new Date(d.setDate(diff));
-      startDate = `${firstDay.getFullYear()}-${String(firstDay.getMonth() + 1).padStart(2, '0')}-${String(firstDay.getDate()).padStart(2, '0')}`;
+      const week = getBusinessWeekRange(today);
+      startDate = week.start;
       endDate = today;
     } else if (rangePreset === 'month') {
-      const d = new Date();
-      if (d.getHours() < 3) {
-        d.setDate(d.getDate() - 1);
-      }
-      startDate = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`;
+      const month = getBusinessMonthRange(today);
+      startDate = month.start;
       endDate = today;
     }
 
@@ -90,7 +82,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     try {
       if (isSupabaseConfigured) {
         try {
-          const res = await fetchSessionsFromSupabase();
+          const res = await fetchSessionsFromSupabase(100);
           if (res.success && res.sessions) {
             db.syncWithRemoteSessions(res.sessions);
           }

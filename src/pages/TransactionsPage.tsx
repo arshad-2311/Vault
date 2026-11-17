@@ -32,6 +32,7 @@ import {
   syncAllExpensesToSupabase,
   syncAllSnacksToSupabase,
   syncPricingToSupabase,
+  fetchSessionsFromSupabase,
   isSupabaseConfigured,
 } from '../services/supabase';
 
@@ -232,6 +233,17 @@ export const TransactionsPage: React.FC = () => {
 
   useEffect(() => {
     loadData();
+    if (isSupabaseConfigured) {
+      fetchSessionsFromSupabase(100)
+        .then((res) => {
+          if (res.success && res.sessions) {
+            db.syncWithRemoteSessions(res.sessions);
+            loadData();
+          }
+        })
+        .catch(() => {});
+    }
+
     const handleDataChanged = () => {
       loadData();
     };

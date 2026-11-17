@@ -77,9 +77,17 @@ export const DailyExpensesPage: React.FC = () => {
           const localMap = new Map(local.map((e) => [e.id, e]));
           let modified = false;
           res.expenses.forEach((remote) => {
-            if (!localMap.has(remote.id)) {
+            const existing = localMap.get(remote.id);
+            if (!existing) {
               localMap.set(remote.id, remote);
               modified = true;
+            } else {
+              const localTime = new Date(existing.updatedAt || existing.createdAt || 0).getTime();
+              const remoteTime = new Date(remote.updatedAt || remote.createdAt || 0).getTime();
+              if (remoteTime > localTime) {
+                localMap.set(remote.id, { ...existing, ...remote });
+                modified = true;
+              }
             }
           });
           if (modified) {
